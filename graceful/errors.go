@@ -19,6 +19,8 @@ const (
 	RedisDomain   DomainCode = "redis"
 	MySqlDomain   DomainCode = "mysql"
 	ParsingDomain DomainCode = "parsing"
+	FbDomain DomainCode = "fb"
+	InvalidDomain = "invalid"
 )
 
 func (e Error) Error() string {
@@ -76,4 +78,12 @@ func NewRedisError(message string, code ...int) *Error {
 
 func NewParsingError(message string, code ...int) *Error {
 	return newError(ParsingDomain, message, code...)
+}
+
+func NewFbError(message string, code ...int) *Error {
+	return newError(FbDomain, message, code...)
+}
+
+func NewInvalidError(message string, code ...int) *Error {
+	return newError(InvalidDomain, message, code...)
 }

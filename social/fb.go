@@ -6,13 +6,18 @@ import (
 	"encoding/json"
 	"gamelink-go/graceful"
 	"net/url"
-	"path"
 	log "github.com/sirupsen/logrus"
+	"path"
 )
 
 type (
 	FbToken struct {
 		token string
+	}
+
+	fbError struct {
+		Message string `json:"message"`
+		Code int `json:"code"`
 	}
 )
 
@@ -29,7 +34,8 @@ func (fb FbToken) debugToken() (string, *graceful.Error) {
 		}
 
 		fbDebugTokenResponse struct {
-			Data fbDebugTokenData `json:"data"`
+			Data *fbDebugTokenData `json:"data"`
+			Error *fbError `json:"error"`
 		}
 	)
 	log.Debug("fb.debugToken")
@@ -51,8 +57,17 @@ func (fb FbToken) debugToken() (string, *graceful.Error) {
 	if err != nil {
 		return "", graceful.NewParsingError(err.Error())
 	}
-	if f.Data.AppId != config.FaceBookAppId || !f.Data.IsValid || f.Data.UserId == "" {
-		return "", graceful.NewParsingError("invalid response format app_id or is_valid or user_id")
+	if f.Error != nil {
+		return "", graceful.NewFbError(f.Error.Message, f.Error.Code)
+	}
+	if f.Data == nil {
+		return "", graceful.NewParsingError("empty data")
+	}
+	if !f.Data.IsValid {
+		return "", graceful.NewInvalidError("bad is_valid flag", InvalidOrUnsuccessCode)
+	}
+	if f.Data.AppId != config.FaceBookAppId || f.Data.UserId == "" {
+		return "", graceful.NewInvalidError("invalid response format app_id or user_id", WrongApplicationOrEmptyUserIdCode)
 	}
 	return f.Data.UserId, nil
 }
@@ -62,6 +77,7 @@ func (fb FbToken) get(userId string) (string, *graceful.Error) {
 		fbGetResponse struct {
 			Name string `json:"name"`
 			Id string `json:"id"`
+			Error *fbError `json:"error"`
 		}
 	)
 	log.Debug("fb.get")
@@ -88,8 +104,11 @@ func (fb FbToken) get(userId string) (string, *graceful.Error) {
 	if err != nil {
 		return "", graceful.NewParsingError(err.Error())
 	}
+	if f.Error != nil {
+		return "", graceful.NewFbError(f.Error.Message, f.Error.Code)
+	}
 	if f.Id != userId {
-		return "", graceful.NewParsingError("invalid response user id")
+		return "", graceful.NewInvalidError( "user id not match")
 	}
 	return f.Name, nil
 }

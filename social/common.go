@@ -15,3 +15,8 @@ func init() {
 	}
 	client = &http.Client{Transport: tr}
 }
+
+const (
+	InvalidOrUnsuccessCode int = 1
+	WrongApplicationOrEmptyUserIdCode = 2
+)
