@@ -64,7 +64,7 @@ func requestServiceKey() string {
 			return "", graceful.NewVkError(f.ErrorDescription)
 		}
 		if f.AccessToken == "" {
-			return "", graceful.NewParsingError("empty access_token")
+			return "", graceful.NewInvalidError("empty access_token")
 		}
 		return f.AccessToken, nil
 	}
@@ -85,7 +85,7 @@ func (vk VkToken) checkToken() (string, *graceful.Error) {
 		}
 
 		vkCheckTokenResponse struct {
-			Response *vkCheckTokenData `json:"response"`
+			Response vkCheckTokenData `json:"response"`
 			Error *vkError `json:"error"`
 		}
 	)
@@ -113,11 +113,8 @@ func (vk VkToken) checkToken() (string, *graceful.Error) {
 	if f.Error != nil {
 		return "", graceful.NewVkError(f.Error.Message, f.Error.Code)
 	}
-	if f.Response == nil {
-		return "", graceful.NewParsingError("empty response")
-	}
 	if f.Response.Success != 1 {
-		return "", graceful.NewParsingError("bad success flag")
+		return "", graceful.NewInvalidError("bad success flag")
 	}
 	return fmt.Sprint(f.Response.UserId), nil
 }
@@ -159,7 +156,7 @@ func (vk VkToken) get(userId string) (string, *graceful.Error) {
 		return "", graceful.NewVkError(f.Error.Message, f.Error.Code)
 	}
 	if len(f.Response) != 1 || fmt.Sprint(f.Response[0].Id) != userId  {
-		return "", graceful.NewParsingError("invalid or empty response")
+		return "", graceful.NewInvalidError("user id not match or empty response")
 	}
 	return f.Response[0].FirstName + " " + f.Response[0].LastName, nil
 }
