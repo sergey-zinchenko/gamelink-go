@@ -96,8 +96,30 @@ func (a *App) registerLogin(ctx iris.Context) {
 			return
 		}
 	} else if fb != nil && len(fb) == 1 && vk == nil {
-		sendError(http.StatusBadRequest, nil, ctx)
-		return
+		log.WithField("fb_token", fb[0]).Debug("token received")
+		userId, err = storage.FbCheckRegister(fb[0], a.MySql)
+		if err != nil {
+			var status int
+			switch err.Domain() {
+			case graceful.FbDomain:
+				if hasCode, code := err.Code(); !hasCode {
+					status = http.StatusInternalServerError
+				} else {
+					switch code {
+					case 102, 190:
+						status = http.StatusUnauthorized
+					default:
+						status = http.StatusInternalServerError
+					}
+				}
+			case graceful.InvalidDomain:
+				status = http.StatusUnauthorized
+			default:
+				status = http.StatusInternalServerError
+			}
+			sendError(status, err, ctx)
+			return
+		}
 	} else {
 		sendError(http.StatusBadRequest, nil, ctx)
 		return
