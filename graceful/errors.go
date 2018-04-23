@@ -3,7 +3,7 @@ package graceful
 import "fmt"
 
 type (
-	DomainCode string
+	DomainCode int
 	Error struct {
 		message  string
 		code     int
@@ -13,29 +13,41 @@ type (
 )
 
 const (
-	DefaultDomain DomainCode = "default"
-	VkDomain      DomainCode = "vk"
-	NetworkDomain DomainCode = "network"
-	RedisDomain   DomainCode = "redis"
-	MySqlDomain   DomainCode = "mysql"
-	ParsingDomain DomainCode = "parsing"
-	FbDomain DomainCode = "fb"
-	InvalidDomain = "invalid"
+	VkDomain      DomainCode = iota + 1
+	NetworkDomain
+	RedisDomain
+	MySqlDomain
+	ParsingDomain
+	FbDomain
+	InvalidDomain
 )
 
+func (c DomainCode) String() string {
+	switch c {
+	case VkDomain:
+		return "vk"
+	case NetworkDomain:
+		return "network"
+	case RedisDomain:
+		return "redis"
+	case MySqlDomain:
+		return "mysql"
+	case ParsingDomain:
+		return "parsing"
+	case FbDomain:
+		return "fb"
+	case InvalidDomain:
+		return "invalid"
+	default:
+		return "unknown"
+	}
+}
+
 func (e Error) Error() string {
-	if e.domain != DefaultDomain {
-		if e.withCode {
-			return fmt.Sprintf("%s > code:%d; message:%s", e.domain, e.code, e.message)
-		} else {
-			return fmt.Sprintf("%s > message:%s", e.domain, e.message)
-		}
+	if e.withCode {
+		return fmt.Sprintf("d=%s; code=%d; message=%s", e.domain, e.code, e.message)
 	} else {
-		if e.withCode {
-			return fmt.Sprintf("code:%d; message:%s", e.code, e.message)
-		} else {
-			return e.message
-		}
+		return fmt.Sprintf("d=%s; message=%s", e.domain, e.message)
 	}
 }
 
@@ -54,10 +66,6 @@ func newError(domain DomainCode, message string, code ...int) *Error {
 	default:
 		return &Error{message, code[0], true, domain}
 	}
-}
-
-func NewError(message string, code ...int) *Error {
-	return newError(DefaultDomain, message, code...)
 }
 
 func NewVkError(message string, code ...int) *Error {

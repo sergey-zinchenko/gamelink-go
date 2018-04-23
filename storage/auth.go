@@ -164,7 +164,7 @@ func FbCheckRegister(token string, db *sql.DB) (int64, *graceful.Error) {
 	log.Debug("fb user info ok")
 	var transaction = func(tx *sql.Tx) (int64, *graceful.Error) {
 		log.Debug("auth.checkregister.transaction")
-		registered, userId, err := vkCheck(fbId, tx)
+		registered, userId, err := fbCheck(fbId, tx)
 		if err != nil {
 			log.WithError(err).Debug("db check user failed")
 			return 0, err
@@ -217,7 +217,7 @@ func CheckAuthToken(token string, rc *redis.Client) (uint64, *graceful.Error) {
 	idStr, err := rc.Get(authRedisKeyPref + token).Result()
 	if err != nil {
 		if err == redis.Nil {
-			return 0, graceful.NewError("key does not exists")
+			return 0, graceful.NewInvalidError("key does not exists")
 		} else {
 			return 0, graceful.NewRedisError(err.Error())
 		}

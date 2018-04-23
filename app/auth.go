@@ -32,12 +32,12 @@ func (a *App) authMiddleware(ctx iris.Context) {
 	}
 	token := ctx.GetHeader("Authorization")
 	if token == "" {
-		sendError(http.StatusUnauthorized, graceful.NewError("missing authorization header"))
+		sendError(http.StatusUnauthorized, graceful.NewInvalidError("missing authorization header"))
 		return
 	}
 	if userId, err := storage.CheckAuthToken(token, a.Redis); err != nil {
 		switch err.Domain() {
-		case graceful.DefaultDomain:
+		case graceful.InvalidDomain:
 			sendError(http.StatusUnauthorized, err)
 		default:
 			sendError(http.StatusInternalServerError, err)

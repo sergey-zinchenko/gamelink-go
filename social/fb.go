@@ -34,7 +34,7 @@ func (fb FbToken) debugToken() (string, *graceful.Error) {
 		}
 
 		fbDebugTokenResponse struct {
-			Data *fbDebugTokenData `json:"data"`
+			Data fbDebugTokenData `json:"data"`
 			Error *fbError `json:"error"`
 		}
 	)
@@ -59,9 +59,6 @@ func (fb FbToken) debugToken() (string, *graceful.Error) {
 	}
 	if f.Error != nil {
 		return "", graceful.NewFbError(f.Error.Message, f.Error.Code)
-	}
-	if f.Data == nil {
-		return "", graceful.NewParsingError("empty data")
 	}
 	if !f.Data.IsValid {
 		return "", graceful.NewInvalidError("bad is_valid flag", InvalidOrUnsuccessCode)
