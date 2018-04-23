@@ -90,4 +90,3 @@ func init() {
 		log.Fatal("vk app secret must be set")
 	}
 }
-
