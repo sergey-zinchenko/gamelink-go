@@ -89,6 +89,8 @@ func (a *App) registerLogin(ctx iris.Context) {
 						status = http.StatusInternalServerError
 					}
 				}
+			case graceful.InvalidDomain:
+				status = http.StatusUnauthorized
 			default:
 				status = http.StatusInternalServerError
 			}

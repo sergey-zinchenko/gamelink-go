@@ -6,8 +6,7 @@ type (
 	DomainCode int
 	Error struct {
 		message  string
-		code     int
-		withCode bool
+		codes    []int
 		domain   DomainCode
 	}
 )
@@ -44,54 +43,57 @@ func (c DomainCode) String() string {
 }
 
 func (e Error) Error() string {
-	if e.withCode {
-		return fmt.Sprintf("d=%s; code=%d; message=%s", e.domain, e.code, e.message)
+	if withCode, code := e.Code(); withCode {
+		return fmt.Sprintf("d=%s; code=%d; message=%s", e.domain, code, e.message)
 	} else {
 		return fmt.Sprintf("d=%s; message=%s", e.domain, e.message)
 	}
 }
 
 func (e Error) Code() (bool, int) {
-	return e.withCode, e.code
+	if len(e.codes) > 0 {
+		return true, e.codes[0]
+	} else {
+		return false, 0
+	}
+}
+
+func (e Error) Codes() []int {
+	return e.codes
 }
 
 func (e Error) Domain() DomainCode {
 	return e.domain
 }
 
-func newError(domain DomainCode, message string, code ...int) *Error {
-	switch len(code) {
-	case 0:
-		return &Error{message, 0, false, domain}
-	default:
-		return &Error{message, code[0], true, domain}
-	}
+func newError(domain DomainCode, message string, codes ...int) *Error {
+	return &Error{message, codes, domain}
 }
 
-func NewVkError(message string, code ...int) *Error {
-	return newError(VkDomain, message, code...)
+func NewVkError(message string, codes ...int) *Error {
+	return newError(VkDomain, message, codes...)
 }
 
-func NewNetworkError(message string, code ...int) *Error {
-	return newError(NetworkDomain, message, code...)
+func NewNetworkError(message string, codes ...int) *Error {
+	return newError(NetworkDomain, message, codes...)
 }
 
-func NewMySqlError(message string, code ...int) *Error {
-	return newError(MySqlDomain, message, code...)
+func NewMySqlError(message string, codes ...int) *Error {
+	return newError(MySqlDomain, message, codes...)
 }
 
-func NewRedisError(message string, code ...int) *Error {
-	return newError(RedisDomain, message, code...)
+func NewRedisError(message string, codes ...int) *Error {
+	return newError(RedisDomain, message, codes...)
 }
 
-func NewParsingError(message string, code ...int) *Error {
-	return newError(ParsingDomain, message, code...)
+func NewParsingError(message string, codes ...int) *Error {
+	return newError(ParsingDomain, message, codes...)
 }
 
-func NewFbError(message string, code ...int) *Error {
-	return newError(FbDomain, message, code...)
+func NewFbError(message string, codes ...int) *Error {
+	return newError(FbDomain, message, codes...)
 }
 
-func NewInvalidError(message string, code ...int) *Error {
-	return newError(InvalidDomain, message, code...)
+func NewInvalidError(message string, codes ...int) *Error {
+	return newError(InvalidDomain, message, codes...)
 }

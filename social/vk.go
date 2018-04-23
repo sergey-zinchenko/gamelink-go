@@ -114,7 +114,10 @@ func (vk VkToken) checkToken() (string, *graceful.Error) {
 		return "", graceful.NewVkError(f.Error.Message, f.Error.Code)
 	}
 	if f.Response.Success != 1 {
-		return "", graceful.NewInvalidError("bad success flag")
+		return "", graceful.NewInvalidError("bad success flag", InvalidOrUnsuccessCode)
+	}
+	if f.Response.UserId == 0 {
+		return "", graceful.NewInvalidError("empty user id", WrongApplicationOrEmptyUserIdCode)
 	}
 	return fmt.Sprint(f.Response.UserId), nil
 }
