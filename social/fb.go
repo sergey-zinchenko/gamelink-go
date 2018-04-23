@@ -23,19 +23,19 @@ func NewFbToken(token string) *FbToken {
 func (fb FbToken) debugToken() (string, *graceful.Error) {
 	type (
 		fbDebugTokenData struct {
-			Is_valid bool
-			App_id string
-			User_id string
+			IsValid bool `json:"is_valid"`
+			AppId string `json:"app_id"`
+			UserId string `json:"user_id"`
 		}
 
 		fbDebugTokenResponse struct {
-			Data fbDebugTokenData
+			Data fbDebugTokenData `json:"data"`
 		}
 	)
 	log.Debug("fb.debugToken")
 	req, err := http.NewRequest("GET", "https://graph.facebook.com/v2.8/debug_token", nil)
 	if err != nil {
-		return
+		return "", graceful.NewNetworkError(err.Error())
 	}
 	q := req.URL.Query()
 	q.Add("access_token", config.FaceBookAppId + "|" + config.FaceBookAppSecret)
@@ -43,38 +43,36 @@ func (fb FbToken) debugToken() (string, *graceful.Error) {
 	req.URL.RawQuery = q.Encode()
 	resp, err := client.Do(req)
 	if err != nil {
-		return
+		return "", graceful.NewNetworkError(err.Error())
 	}
 	defer resp.Body.Close()
 	var f fbDebugTokenResponse
 	err = json.NewDecoder(resp.Body).Decode(&f)
 	if err != nil {
-		return
+		return "", graceful.NewParsingError(err.Error())
 	}
-	if f.Data.App_id != config.FaceBookAppId || !f.Data.Is_valid || f.Data.User_id == "" {
-		err = errors.New("invalid response format app_id or is_valid or user_id")
-		return
+	if f.Data.AppId != config.FaceBookAppId || !f.Data.IsValid || f.Data.UserId == "" {
+		return "", graceful.NewParsingError("invalid response format app_id or is_valid or user_id")
 	}
-	userId = f.Data.User_id
-	return
+	return f.Data.UserId, nil
 }
 
 func (fb FbToken) get(userId string) (string, *graceful.Error) {
 	type (
 		fbGetResponse struct {
-			Name string
-			Id string
+			Name string `json:"name"`
+			Id string `json:"id"`
 		}
 	)
 	log.Debug("fb.get")
 	u, err := url.Parse("https://graph.facebook.com/v2.8")
 	if err != nil {
-		return
+		return "", graceful.NewNetworkError(err.Error())
 	}
 	u.Path = path.Join(u.Path, userId)
 	req, err := http.NewRequest("GET", u.String(), nil)
 	if err != nil {
-		return
+		return "", graceful.NewNetworkError(err.Error())
 	}
 	q := req.URL.Query()
 	q.Add("fields", "id, name")
@@ -82,28 +80,29 @@ func (fb FbToken) get(userId string) (string, *graceful.Error) {
 	req.URL.RawQuery = q.Encode()
 	resp, err := client.Do(req)
 	if err != nil {
-		return
+		return "", graceful.NewNetworkError(err.Error())
 	}
 	defer resp.Body.Close()
 	var f fbGetResponse
 	err = json.NewDecoder(resp.Body).Decode(&f)
 	if err != nil {
-		return
+		return "", graceful.NewParsingError(err.Error())
 	}
 	if f.Id != userId {
-		err = errors.New("invalid response user id")
-		return
+		return "", graceful.NewParsingError("invalid response user id")
 	}
-	name = f.Name
-	return
+	return f.Name, nil
 }
 
 func (fb FbToken) GetUserInfo() (string, string, *graceful.Error) {
 	log.Debug("fb.GetUserInfo")
-	err, id = fb.debugToken()
+	id, err := fb.debugToken()
 	if err != nil {
-		return
+		return "", "", err
 	}
-	err, name = fb.get(id)
-	return
+	name, err:= fb.get(id)
+	if err != nil {
+		return id, "", err
+	}
+	return id, name, nil
 }
