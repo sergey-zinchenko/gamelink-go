@@ -43,10 +43,10 @@ func (c DomainCode) String() string {
 }
 
 func (e Error) Error() string {
-	if withCode, code := e.Code(); withCode {
-		return fmt.Sprintf("d=%s; code=%d; message=%s", e.domain, code, e.message)
+	if len(e.codes) > 0 {
+		return fmt.Sprintf("d=%s; c=%v; m=%s", e.domain, e.codes, e.message)
 	} else {
-		return fmt.Sprintf("d=%s; message=%s", e.domain, e.message)
+		return fmt.Sprintf("d=%s; m=%s", e.domain, e.message)
 	}
 }
 
