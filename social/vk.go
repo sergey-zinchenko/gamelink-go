@@ -1,5 +1,8 @@
 package social
 
+
+//TODO: нужно обработать {"error":"d=vk; c=[28]; m=Application authorization failed: refresh service token"}
+
 import (
 	"net/http"
 	"gamelink-go/config"
