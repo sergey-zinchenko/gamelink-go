@@ -11,6 +11,8 @@ type (
 	}
 )
 
+//TODO: Предложение! надо сделать отдельную правильную ошибку для ненайденного пользователя.
+
 const (
 	VkDomain      DomainCode = iota + 1
 	NetworkDomain
@@ -19,6 +21,7 @@ const (
 	ParsingDomain
 	FbDomain
 	InvalidDomain
+	NotFoundDomain //новый супер-домен для обработки ощибки когда при авторизации надо ответить 401 про токен или про отсутвие ключа в редисе в обработчике Authorization
 )
 
 func (c DomainCode) String() string {
@@ -37,6 +40,8 @@ func (c DomainCode) String() string {
 		return "fb"
 	case InvalidDomain:
 		return "invalid"
+	case NotFoundDomain:
+		return "notfound"
 	default:
 		return "unknown"
 	}

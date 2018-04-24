@@ -198,6 +198,11 @@ func FbCheckRegister(token string, db *sql.DB) (int64, *graceful.Error) {
 	return userId, nil
 }
 
+
+func CheckRegister(source social.TokenSource, socialId, name string, db *sql.DB) (uint64, *graceful.Error) {
+	return 0, nil //TODO: placeholder
+}
+
 func GenerateStoreAuthToken(userId int64, rc *redis.Client) (string, *graceful.Error) {
 	log.Debug("stoarage.GenerateStoreAuthToken")
 	authToken := RandStringBytes(20)
@@ -217,6 +222,7 @@ func CheckAuthToken(token string, rc *redis.Client) (uint64, *graceful.Error) {
 	idStr, err := rc.Get(authRedisKeyPref + token).Result()
 	if err != nil {
 		if err == redis.Nil {
+			//TODO: вот может про слежующую строку и подумать когда говорим про особый класс ошибок "не найдено", объеденить его с ошибками из социалочки
 			return 0, graceful.NewInvalidError("key does not exists")
 		} else {
 			return 0, graceful.NewRedisError(err.Error())

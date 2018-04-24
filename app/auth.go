@@ -7,6 +7,7 @@ import (
 	"gamelink-go/config"
 	"gamelink-go/graceful"
 	"gamelink-go/storage"
+	"gamelink-go/social"
 )
 
 type (
@@ -55,6 +56,56 @@ func (a *App) authMiddleware(ctx iris.Context) {
 		}
 		ctx.Next()
 		return
+	}
+}
+
+func (a *App) registerLogin2(ctx iris.Context) {
+	log.Debug("app.registerLogin2")
+	var socialId, name, token, authToken string
+	var userId uint64
+	var tokenSource social.TokenSource
+	var status int = http.StatusOK
+	var err *graceful.Error = nil
+	qs := ctx.Request().URL.Query()
+	if vk, fb := qs["vk"], qs["fb"]; vk != nil && len(vk) == 1 && fb == nil {
+		token = vk[0]
+		tokenSource = social.VKSource
+	} else if fb != nil && len(fb) == 1 && vk == nil {
+		token = fb[0]
+		tokenSource = social.FbSource
+	} else {
+		status = http.StatusBadRequest
+		err = graceful.NewInvalidError("query without vk or fb token")
+		goto sendResponce
+	}
+	socialId, name, err = social.GetSocialUserInfo(tokenSource, token)
+	if err != nil {
+		switch err.Domain() {
+		case graceful.NotFoundDomain:
+			status = http.StatusUnauthorized //пример использования супер домена ошибок "не найдено"
+		default:
+			status = http.StatusInternalServerError
+		}
+		goto sendResponce
+	}
+	userId, err = storage.CheckRegister(tokenSource, socialId, name, a.MySql)
+	if err != nil {
+		status = http.StatusInternalServerError
+		goto sendResponce
+	}
+	authToken, err = storage.GenerateStoreAuthToken(int64(userId), a.Redis) //TODO: фейковая конвертация для того чтобы собирался проект! убрать ее!
+	if err != nil {
+		log.WithError(err).Error("store token failed")
+		status = http.StatusInternalServerError
+		goto sendResponce
+	}
+	log.WithField("token", authToken).Debug("store token ok")
+sendResponce:
+	ctx.ResponseWriter().WriteHeader(status)
+	if config.IsDevelopmentEnv() && err != nil {
+		ctx.JSON(J{"error": err.Error()})
+	} else if err == nil {
+		ctx.JSON(J{"token": authToken})
 	}
 }
 
