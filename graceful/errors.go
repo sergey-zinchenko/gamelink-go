@@ -102,3 +102,7 @@ func NewFbError(message string, codes ...int) *Error {
 func NewInvalidError(message string, codes ...int) *Error {
 	return newError(InvalidDomain, message, codes...)
 }
+
+func NewNotFoundError(message string, codes ...int) *Error {
+	return newError(NotFoundDomain, message, codes...)
+}

@@ -129,18 +129,17 @@ func GenerateStoreAuthToken(userId int64, rc *redis.Client) (string, *graceful.E
 	return authToken, nil
 }
 
-func CheckAuthToken(token string, rc *redis.Client) (uint64, *graceful.Error) {
+func CheckAuthToken(token string, rc *redis.Client) (int64, *graceful.Error) {
 	log.Debug("storage.CheckAuthToken")
 	idStr, err := rc.Get(authRedisKeyPref + token).Result()
 	if err != nil {
 		if err == redis.Nil {
-			//TODO: вот может про слежующую строку и подумать когда говорим про особый класс ошибок "не найдено", объеденить его с ошибками из социалочки
-			return 0, graceful.NewInvalidError("key does not exists")
+			return 0, graceful.NewNotFoundError("key does not exists")
 		} else {
 			return 0, graceful.NewRedisError(err.Error())
 		}
 	}
-	id, err := strconv.ParseUint(idStr, 10, 64)
+	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		return 0, graceful.NewParsingError(err.Error())
 	}

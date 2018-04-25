@@ -18,44 +18,40 @@ const (
 	userIdValueKey = "userId"
 )
 
-func (a *App) authMiddleware(ctx iris.Context) {
-	log.Debug("app.authMiddleware")
-	var sendError = func(status int, err *graceful.Error) {
-		log.WithError(err).WithFields(log.Fields{
-			"remote": ctx.RemoteAddr(),
-			"path":   ctx.Path(),
-			"method": ctx.Method(),
-		}).Error("check auth failed")
-		ctx.ResponseWriter().WriteHeader(status)
-		if config.IsDevelopmentEnv() && err != nil {
-			ctx.JSON(J{"error": err.Error()})
-		}
-	}
+func (a *App) authMiddleware2(ctx iris.Context) {
+	log.Debug("app.authMiddleware2")
+	var status = http.StatusUnauthorized
+	var err *graceful.Error
+	var userId int64
 	token := ctx.GetHeader("Authorization")
 	if token == "" {
-		sendError(http.StatusUnauthorized, graceful.NewInvalidError("missing authorization header"))
-		return
+		status = http.StatusUnauthorized
+		err = graceful.NewInvalidError("missing authorization header")
+		goto sendErrorOrNext
 	}
-	if userId, err := storage.CheckAuthToken(token, a.Redis); err != nil {
+	if userId, err = storage.CheckAuthToken(token, a.Redis); err != nil {
 		switch err.Domain() {
-		case graceful.InvalidDomain:
-			sendError(http.StatusUnauthorized, err)
+		case graceful.NotFoundDomain:
+			status = http.StatusUnauthorized
 		default:
-			sendError(http.StatusInternalServerError, err)
+			status = http.StatusInternalServerError
 		}
-		return
+		goto sendErrorOrNext
 	} else {
+		log.WithFields(log.Fields{"remote": ctx.RemoteAddr(),
+			"user_id": userId}).Debug("authorized")
 		ctx.Values().Set(userIdValueKey, userId)
-		if config.IsDevelopmentEnv() {
-			log.WithFields(log.Fields{
-				"remote": ctx.RemoteAddr(),
-				"path":   ctx.Path(),
-				"method": ctx.Method(),
-				"userId": userId,
-			}).Info("new request")
-		}
+	}
+sendErrorOrNext:
+	if err == nil {
 		ctx.Next()
-		return
+	} else {
+		log.WithField("remote", ctx.RemoteAddr()).WithError(err).Error("unauthorized")
+		ctx.ResponseWriter().WriteHeader(status)
+		if config.IsDevelopmentEnv() {
+			ctx.JSON(J{"error": err.Error()})
+		}
+		ctx.StopExecution()
 	}
 }
 
@@ -80,7 +76,6 @@ func (a *App) registerLogin2(ctx iris.Context) {
 	}
 	socialId, name, err = social.GetSocialUserInfo(tokenSource, token)
 	if err != nil {
-		log.WithError(err).Error("get social user info failed")
 		switch err.Domain() {
 		case graceful.NotFoundDomain:
 			status = http.StatusUnauthorized //пример использования супер домена ошибок "не найдено"
@@ -91,22 +86,23 @@ func (a *App) registerLogin2(ctx iris.Context) {
 	}
 	userId, err = storage.CheckRegister(tokenSource, socialId, name, a.MySql)
 	if err != nil {
-		log.WithError(err).Error("db operations failed")
 		status = http.StatusInternalServerError
 		goto sendResponce
 	}
-	authToken, err = storage.GenerateStoreAuthToken(int64(userId), a.Redis) //TODO: фейковая конвертация для того чтобы собирался проект! убрать ее!
+	authToken, err = storage.GenerateStoreAuthToken(userId, a.Redis)
 	if err != nil {
-		log.WithError(err).Error("store token failed")
 		status = http.StatusInternalServerError
 		goto sendResponce
 	}
-	log.WithField("token", authToken).Debug("store token ok")
+	log.WithField("token", authToken).Debug("register or login ok")
 sendResponce:
 	ctx.ResponseWriter().WriteHeader(status)
-	if config.IsDevelopmentEnv() && err != nil {
-		ctx.JSON(J{"error": err.Error()})
-	} else if err == nil {
+	if err == nil {
 		ctx.JSON(J{"token": authToken})
+	} else {
+		log.WithError(err).Error("register or login failed")
+		if config.IsDevelopmentEnv() {
+			ctx.JSON(J{"error": err.Error()})
+		}
 	}
 }

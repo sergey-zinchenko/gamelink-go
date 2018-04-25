@@ -43,12 +43,12 @@ func (a *App) Run() error {
 	}
 	users := i.Party("users")
 	{
-		users.Use(a.authMiddleware)
+		users.Use(a.authMiddleware2)
 		users.Get("/", a.getUser)
 	}
 	instances := i.Party("instances")
 	{
-		instances.Use(a.authMiddleware)
+		instances.Use(a.authMiddleware2)
 	}
 	return i.Run(iris.Addr(config.ServerAddress))
 }
