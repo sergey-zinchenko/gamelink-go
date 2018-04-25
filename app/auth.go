@@ -62,9 +62,9 @@ func (a *App) authMiddleware(ctx iris.Context) {
 func (a *App) registerLogin2(ctx iris.Context) {
 	log.Debug("app.registerLogin2")
 	var socialId, name, token, authToken string
-	var userId uint64
+	var userId int64
 	var tokenSource social.TokenSource
-	var status int = http.StatusOK
+	var status = http.StatusOK
 	var err *graceful.Error = nil
 	qs := ctx.Request().URL.Query()
 	if vk, fb := qs["vk"], qs["fb"]; vk != nil && len(vk) == 1 && fb == nil {
@@ -80,6 +80,7 @@ func (a *App) registerLogin2(ctx iris.Context) {
 	}
 	socialId, name, err = social.GetSocialUserInfo(tokenSource, token)
 	if err != nil {
+		log.WithError(err).Error("get social user info failed")
 		switch err.Domain() {
 		case graceful.NotFoundDomain:
 			status = http.StatusUnauthorized //пример использования супер домена ошибок "не найдено"
@@ -90,6 +91,7 @@ func (a *App) registerLogin2(ctx iris.Context) {
 	}
 	userId, err = storage.CheckRegister(tokenSource, socialId, name, a.MySql)
 	if err != nil {
+		log.WithError(err).Error("db operations failed")
 		status = http.StatusInternalServerError
 		goto sendResponce
 	}
@@ -107,83 +109,4 @@ sendResponce:
 	} else if err == nil {
 		ctx.JSON(J{"token": authToken})
 	}
-}
-
-func (a *App) registerLogin(ctx iris.Context) {
-	var sendError = func(status int, err *graceful.Error, ctx iris.Context) {
-		log.Debug("register login failed")
-		ctx.ResponseWriter().WriteHeader(status)
-		if config.IsDevelopmentEnv() && err != nil {
-			ctx.JSON(J{"error": err.Error()})
-		}
-	}
-	log.Debug("app.registerLogin")
-	qs := ctx.Request().URL.Query()
-	vk := qs["vk"]
-	fb := qs["fb"]
-	var userId int64
-	var err *graceful.Error
-	if vk != nil && len(vk) == 1 && fb == nil {
-		log.WithField("vk_token", vk[0]).Debug("token received")
-		userId, err = storage.VkCheckRegister(vk[0], a.MySql)
-		if err != nil {
-			var status int
-			switch err.Domain() {
-			case graceful.VkDomain:
-				if hasCode, code := err.Code(); !hasCode {
-					status = http.StatusInternalServerError
-				} else {
-					switch code {
-					case 15:
-						status = http.StatusUnauthorized
-					default:
-						status = http.StatusInternalServerError
-					}
-				}
-			case graceful.InvalidDomain:
-				status = http.StatusUnauthorized
-			default:
-				status = http.StatusInternalServerError
-			}
-			sendError(status, err, ctx)
-			return
-		}
-	} else if fb != nil && len(fb) == 1 && vk == nil {
-		log.WithField("fb_token", fb[0]).Debug("token received")
-		userId, err = storage.FbCheckRegister(fb[0], a.MySql)
-		if err != nil {
-			var status int
-			switch err.Domain() {
-			case graceful.FbDomain:
-				if hasCode, code := err.Code(); !hasCode {
-					status = http.StatusInternalServerError
-				} else {
-					switch code {
-					case 102, 190:
-						status = http.StatusUnauthorized
-					default:
-						status = http.StatusInternalServerError
-					}
-				}
-			case graceful.InvalidDomain:
-				status = http.StatusUnauthorized
-			default:
-				status = http.StatusInternalServerError
-			}
-			sendError(status, err, ctx)
-			return
-		}
-	} else {
-		sendError(http.StatusBadRequest, nil, ctx)
-		return
-	}
-	authToken, err := storage.GenerateStoreAuthToken(userId, a.Redis)
-	if err != nil {
-		log.WithError(err).Error("store token failed")
-		sendError(http.StatusInternalServerError, err, ctx)
-		return
-	}
-	log.WithField("token", authToken).Debug("store token ok")
-	ctx.ResponseWriter().WriteHeader(http.StatusOK)
-	ctx.JSON(J{"token": authToken})
 }

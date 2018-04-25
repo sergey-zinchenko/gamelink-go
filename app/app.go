@@ -39,7 +39,7 @@ func (a *App) Run() error {
 	i := iris.New()
 	auth := i.Party("/auth")
 	{
-		auth.Get("/", a.registerLogin)
+		auth.Get("/", a.registerLogin2)
 	}
 	users := i.Party("users")
 	{
