@@ -43,9 +43,7 @@ func (a *App) authMiddleware2(ctx iris.Context) {
 		ctx.Values().Set(userIdValueKey, userId)
 	}
 sendErrorOrNext:
-	if err == nil {
-		ctx.Next()
-	} else {
+	if err != nil {
 		log.WithField("remote", ctx.RemoteAddr()).WithError(err).Error("unauthorized")
 		ctx.ResponseWriter().WriteHeader(status)
 		if config.IsDevelopmentEnv() {
@@ -53,6 +51,7 @@ sendErrorOrNext:
 		}
 		ctx.StopExecution()
 	}
+	ctx.Next()
 }
 
 func (a *App) registerLogin2(ctx iris.Context) {
