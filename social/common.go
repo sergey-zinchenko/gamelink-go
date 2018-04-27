@@ -24,13 +24,8 @@ type (
 )
 
 const (
-	InvalidOrUnsuccessCode            = iota
-	WrongApplicationOrEmptyUserIdCode
-)
-
-const (
 	FbSource TokenSource = iota
-	VKSource TokenSource = iota
+	VKSource
 )
 
 func GetSocialUserInfo(source TokenSource, token string) (string, string, *graceful.Error) {
