@@ -111,8 +111,6 @@ func CheckRegister(source social.TokenSource, socialId, name string, db *sql.DB)
 	}
 	log.Debug("commit ok")
 	return userId, nil
-
-	return 0, nil //TODO: placeholder
 }
 
 func GenerateStoreAuthToken(userId int64, rc *redis.Client) (string, *graceful.Error) {

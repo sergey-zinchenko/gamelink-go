@@ -4,7 +4,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/kataras/iris"
 	"net/http"
-	"gamelink-go/config"
 	"gamelink-go/graceful"
 	"gamelink-go/storage"
 	"gamelink-go/social"
@@ -44,12 +43,9 @@ func (a *App) authMiddleware2(ctx iris.Context) {
 	}
 sendErrorOrNext:
 	if err != nil {
-		log.WithField("remote", ctx.RemoteAddr()).WithError(err).Error("unauthorized")
-		ctx.ResponseWriter().WriteHeader(status)
-		if config.IsDevelopmentEnv() {
-			ctx.JSON(J{"error": err.Error()})
-		}
-		ctx.StopExecution()
+		ctx.StatusCode(status)
+		ctx.Values().Set("error", err)
+		return
 	}
 	ctx.Next()
 }
@@ -95,13 +91,10 @@ func (a *App) registerLogin2(ctx iris.Context) {
 	}
 	log.WithField("token", authToken).Debug("register or login ok")
 sendResponce:
-	ctx.ResponseWriter().WriteHeader(status)
+	ctx.StatusCode(status)
 	if err == nil {
 		ctx.JSON(J{"token": authToken})
 	} else {
-		log.WithError(err).Error("register or login failed")
-		if config.IsDevelopmentEnv() {
-			ctx.JSON(J{"error": err.Error()})
-		}
+		ctx.Values().Set("error", err)
 	}
 }

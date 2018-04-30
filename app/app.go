@@ -41,14 +41,16 @@ func (a *App) Run() error {
 	{
 		auth.Get("/", a.registerLogin2)
 	}
-	users := i.Party("users")
+	users := i.Party("users", a.authMiddleware2)
 	{
-		users.Use(a.authMiddleware2)
 		users.Get("/", a.getUser)
 	}
-	instances := i.Party("instances")
-	{
-		instances.Use(a.authMiddleware2)
-	}
+	i.OnAnyErrorCode(func(ctx iris.Context) {
+		if config.IsDevelopmentEnv() {
+			if err := ctx.Values().Get("error"); err != nil {
+				ctx.JSON(J{"error": err.(error).Error()})
+			}
+		}
+	})
 	return i.Run(iris.Addr(config.ServerAddress))
 }

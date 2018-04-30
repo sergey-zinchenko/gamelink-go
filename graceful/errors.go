@@ -11,8 +11,6 @@ type (
 	}
 )
 
-//TODO: Предложение! надо сделать отдельную правильную ошибку для ненайденного пользователя.
-
 const (
 	VkDomain      DomainCode = iota + 1
 	NetworkDomain
