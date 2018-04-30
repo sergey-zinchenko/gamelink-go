@@ -19,7 +19,7 @@ const (
 
 func (a *App) authMiddleware2(ctx iris.Context) {
 	log.Debug("app.authMiddleware2")
-	var status = http.StatusUnauthorized
+	var status int
 	var err *graceful.Error
 	var userId int64
 	token := ctx.GetHeader("Authorization")
