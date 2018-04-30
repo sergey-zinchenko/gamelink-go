@@ -75,7 +75,7 @@ func register(source social.TokenSource, socialId, name string, tx *sql.Tx) (int
 }
 
 func CheckRegister(source social.TokenSource, socialId, name string, db *sql.DB) (int64, *graceful.Error) {
-	log.Debug("stoarage.CheckRegister")
+	log.Debug("storage.CheckRegister")
 
 	var transaction = func(tx *sql.Tx) (int64, *graceful.Error) {
 		log.Debug("stoarage.checkregister.transaction")
@@ -115,9 +115,10 @@ func CheckRegister(source social.TokenSource, socialId, name string, db *sql.DB)
 
 func GenerateStoreAuthToken(userId int64, rc *redis.Client) (string, *graceful.Error) {
 	log.Debug("stoarage.GenerateStoreAuthToken")
-	authToken := common.RandStringBytes(20)
-	authKey := authRedisKeyPref + authToken
+	var authToken string
 	for ok := false; !ok; {
+		authToken := common.RandStringBytes(20)
+		authKey := authRedisKeyPref + authToken
 		var err error
 		ok, err = rc.SetNX(authKey, userId, time.Hour).Result()
 		if err != nil {
