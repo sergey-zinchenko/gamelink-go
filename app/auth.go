@@ -9,16 +9,12 @@ import (
 	"gamelink-go/social"
 )
 
-type (
-	J map[string]interface{}
-)
-
 const (
 	userIdCtxKey = "userId"
 )
 
-func (a *App) authMiddleware2(ctx iris.Context) {
-	log.Debug("app.authMiddleware2")
+func (a *App) authMiddleware(ctx iris.Context) {
+	log.Debug("app.authMiddleware")
 	var status int
 	var err *graceful.Error
 	var userId int64
@@ -50,8 +46,8 @@ sendErrorOrNext:
 	ctx.Next()
 }
 
-func (a *App) registerLogin2(ctx iris.Context) {
-	log.Debug("app.registerLogin2")
+func (a *App) registerLogin(ctx iris.Context) {
+	log.Debug("app.registerLogin")
 	var socialId, name, token, authToken string
 	var userId int64
 	var tokenSource social.TokenSource

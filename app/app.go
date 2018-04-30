@@ -12,10 +12,14 @@ const (
 	errorCtxKey = "error"
 )
 
-type App struct {
-	Redis *redis.Client
-	MySql *sql.DB
-}
+type (
+	J map[string]interface{}
+
+	App struct {
+		Redis *redis.Client
+		MySql *sql.DB
+	}
+)
 
 func NewApp() (a *App, err error) {
 	a = new(App)
@@ -43,9 +47,9 @@ func (a *App) Run() error {
 	i := iris.New()
 	auth := i.Party("/auth")
 	{
-		auth.Get("/", a.registerLogin2)
+		auth.Get("/", a.registerLogin)
 	}
-	users := i.Party("users", a.authMiddleware2)
+	users := i.Party("users", a.authMiddleware)
 	{
 		users.Get("/", a.getUser)
 	}
