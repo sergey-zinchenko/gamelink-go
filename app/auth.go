@@ -14,7 +14,7 @@ type (
 )
 
 const (
-	userIdValueKey = "userId"
+	userIdCtxKey = "userId"
 )
 
 func (a *App) authMiddleware2(ctx iris.Context) {
@@ -39,12 +39,12 @@ func (a *App) authMiddleware2(ctx iris.Context) {
 	} else {
 		log.WithFields(log.Fields{"remote": ctx.RemoteAddr(),
 			"user_id": userId}).Debug("authorized")
-		ctx.Values().Set(userIdValueKey, userId)
+		ctx.Values().Set(userIdCtxKey, userId)
 	}
 sendErrorOrNext:
 	if err != nil {
 		ctx.StatusCode(status)
-		ctx.Values().Set("error", err)
+		ctx.Values().Set(errorCtxKey, err)
 		return
 	}
 	ctx.Next()
@@ -95,6 +95,6 @@ sendResponce:
 	if err == nil {
 		ctx.JSON(J{"token": authToken})
 	} else {
-		ctx.Values().Set("error", err)
+		ctx.Values().Set(errorCtxKey, err)
 	}
 }

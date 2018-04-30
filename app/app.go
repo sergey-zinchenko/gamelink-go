@@ -8,6 +8,10 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
+const (
+	errorCtxKey = "error"
+)
+
 type App struct {
 	Redis *redis.Client
 	MySql *sql.DB
@@ -47,7 +51,7 @@ func (a *App) Run() error {
 	}
 	i.OnAnyErrorCode(func(ctx iris.Context) {
 		if config.IsDevelopmentEnv() {
-			if err := ctx.Values().Get("error"); err != nil {
+			if err := ctx.Values().Get(errorCtxKey); err != nil {
 				ctx.JSON(J{"error": err.(error).Error()})
 			}
 		}
