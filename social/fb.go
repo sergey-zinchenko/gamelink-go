@@ -1,16 +1,17 @@
 package social
 
 import (
-	"net/http"
-	"gamelink-go/config"
 	"encoding/json"
+	"gamelink-go/config"
 	"gamelink-go/graceful"
-	"net/url"
 	log "github.com/sirupsen/logrus"
+	"net/http"
+	"net/url"
 	"path"
 )
 
 type (
+	//FbToken - Class to get information about Facebook user tokens
 	FbToken struct {
 		token string
 	}
@@ -21,6 +22,7 @@ type (
 	}
 )
 
+//NewFbToken - FbToken constructor, actually does nothing
 func NewFbToken(token string) *FbToken {
 	return &FbToken{token}
 }
@@ -29,8 +31,8 @@ func (fb FbToken) debugToken() (string, *graceful.Error) {
 	type (
 		fbDebugTokenData struct {
 			IsValid bool   `json:"is_valid"`
-			AppId   string `json:"app_id"`
-			UserId  string `json:"user_id"`
+			AppID   string `json:"app_id"`
+			UserID  string `json:"user_id"`
 		}
 
 		fbDebugTokenResponse struct {
@@ -44,7 +46,7 @@ func (fb FbToken) debugToken() (string, *graceful.Error) {
 		return "", graceful.NewNetworkError(err.Error())
 	}
 	q := req.URL.Query()
-	q.Add("access_token", config.FaceBookAppId+"|"+config.FaceBookAppSecret)
+	q.Add("access_token", config.FaceBookAppID+"|"+config.FaceBookAppSecret)
 	q.Add("input_token", fb.token)
 	req.URL.RawQuery = q.Encode()
 	resp, err := client.Do(req)
@@ -68,17 +70,17 @@ func (fb FbToken) debugToken() (string, *graceful.Error) {
 	if !f.Data.IsValid {
 		return "", graceful.NewNotFoundError("bad is_valid flag")
 	}
-	if f.Data.AppId != config.FaceBookAppId || f.Data.UserId == "" {
+	if f.Data.AppID != config.FaceBookAppID || f.Data.UserID == "" {
 		return "", graceful.NewInvalidError("invalid response format app_id or user_id")
 	}
-	return f.Data.UserId, nil
+	return f.Data.UserID, nil
 }
 
-func (fb FbToken) get(userId string) (string, *graceful.Error) {
+func (fb FbToken) get(userID string) (string, *graceful.Error) {
 	type (
 		fbGetResponse struct {
 			Name  string   `json:"name"`
-			Id    string   `json:"id"`
+			ID    string   `json:"id"`
 			Error *fbError `json:"error"`
 		}
 	)
@@ -87,7 +89,7 @@ func (fb FbToken) get(userId string) (string, *graceful.Error) {
 	if err != nil {
 		return "", graceful.NewNetworkError(err.Error())
 	}
-	u.Path = path.Join(u.Path, userId)
+	u.Path = path.Join(u.Path, userID)
 	req, err := http.NewRequest("GET", u.String(), nil)
 	if err != nil {
 		return "", graceful.NewNetworkError(err.Error())
@@ -109,12 +111,13 @@ func (fb FbToken) get(userId string) (string, *graceful.Error) {
 	if f.Error != nil {
 		return "", graceful.NewFbError(f.Error.Message, f.Error.Code)
 	}
-	if f.Id != userId {
+	if f.ID != userID {
 		return "", graceful.NewInvalidError("user id not match")
 	}
 	return f.Name, nil
 }
 
+//GetUserInfo - method to get user information (name and identifier) of a valid user token and returns error (d = NotFound) if invalid
 func (fb FbToken) GetUserInfo() (string, string, *graceful.Error) {
 	log.Debug("fb.GetUserInfo")
 	id, err := fb.debugToken()

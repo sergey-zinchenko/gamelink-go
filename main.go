@@ -2,8 +2,8 @@ package main
 
 import (
 	"gamelink-go/app"
-	log "github.com/sirupsen/logrus"
 	"gamelink-go/config"
+	log "github.com/sirupsen/logrus"
 )
 
 func init() {

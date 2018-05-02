@@ -1,30 +1,30 @@
 package app
 
 import (
-	log "github.com/sirupsen/logrus"
-	"github.com/kataras/iris"
-	"net/http"
 	"gamelink-go/graceful"
-	"gamelink-go/storage"
 	"gamelink-go/social"
+	"gamelink-go/storage"
+	"github.com/kataras/iris"
+	log "github.com/sirupsen/logrus"
+	"net/http"
 )
 
 const (
-	userIdCtxKey = "userId"
+	userIDCtxKey = "userId"
 )
 
 func (a *App) authMiddleware(ctx iris.Context) {
 	log.Debug("app.authMiddleware")
 	var status int
 	var err *graceful.Error
-	var userId int64
+	var userID int64
 	token := ctx.GetHeader("Authorization")
 	if token == "" {
 		status = http.StatusUnauthorized
 		err = graceful.NewInvalidError("missing authorization header")
 		goto sendErrorOrNext
 	}
-	if userId, err = storage.CheckAuthToken(token, a.Redis); err != nil {
+	if userID, err = storage.CheckAuthToken(token, a.Redis); err != nil {
 		switch err.Domain() {
 		case graceful.NotFoundDomain:
 			status = http.StatusUnauthorized
@@ -34,8 +34,8 @@ func (a *App) authMiddleware(ctx iris.Context) {
 		goto sendErrorOrNext
 	} else {
 		log.WithFields(log.Fields{"remote": ctx.RemoteAddr(),
-			"user_id": userId}).Debug("authorized")
-		ctx.Values().Set(userIdCtxKey, userId)
+			"user_id": userID}).Debug("authorized")
+		ctx.Values().Set(userIDCtxKey, userID)
 	}
 sendErrorOrNext:
 	if err != nil {
@@ -48,11 +48,11 @@ sendErrorOrNext:
 
 func (a *App) registerLogin(ctx iris.Context) {
 	log.Debug("app.registerLogin")
-	var socialId, name, token, authToken string
-	var userId int64
+	var socialID, name, token, authToken string
+	var userID int64
 	var tokenSource social.TokenSource
 	var status = http.StatusOK
-	var err *graceful.Error = nil
+	var err *graceful.Error
 	qs := ctx.Request().URL.Query()
 	if vk, fb := qs["vk"], qs["fb"]; vk != nil && len(vk) == 1 && fb == nil {
 		token = vk[0]
@@ -65,7 +65,7 @@ func (a *App) registerLogin(ctx iris.Context) {
 		err = graceful.NewInvalidError("query without vk or fb token")
 		goto sendResponce
 	}
-	socialId, name, err = social.GetSocialUserInfo(tokenSource, token)
+	socialID, name, err = social.GetSocialUserInfo(tokenSource, token)
 	if err != nil {
 		switch err.Domain() {
 		case graceful.NotFoundDomain:
@@ -75,12 +75,12 @@ func (a *App) registerLogin(ctx iris.Context) {
 		}
 		goto sendResponce
 	}
-	userId, err = storage.CheckRegister(tokenSource, socialId, name, a.MySql)
+	userID, err = storage.CheckRegister(tokenSource, socialID, name, a.MySQL)
 	if err != nil {
 		status = http.StatusInternalServerError
 		goto sendResponce
 	}
-	authToken, err = storage.GenerateStoreAuthToken(userId, a.Redis)
+	authToken, err = storage.GenerateStoreAuthToken(userID, a.Redis)
 	if err != nil {
 		status = http.StatusInternalServerError
 		goto sendResponce
@@ -89,7 +89,7 @@ func (a *App) registerLogin(ctx iris.Context) {
 sendResponce:
 	ctx.StatusCode(status)
 	if err == nil {
-		ctx.JSON(J{"token": authToken})
+		ctx.JSON(j{"token": authToken})
 	} else {
 		ctx.Values().Set(errorCtxKey, err)
 	}

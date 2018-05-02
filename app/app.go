@@ -1,11 +1,11 @@
 package app
 
 import (
-	"github.com/kataras/iris"
+	"database/sql"
 	"gamelink-go/config"
 	"github.com/go-redis/redis"
-	"database/sql"
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/go-sql-driver/mysql" //That blank import is required to add mysql driver to the app
+	"github.com/kataras/iris"
 )
 
 const (
@@ -13,22 +13,26 @@ const (
 )
 
 type (
-	J map[string]interface{}
+	//Type to define json objects faster
+	j map[string]interface{}
 
+	//App structure - connects databases with the middleware and handlers of router
 	App struct {
 		Redis *redis.Client
-		MySql *sql.DB
+		MySQL *sql.DB
 	}
 )
 
+//NewApp - You can construct and initialize App (application) object with that function
+//databases connections will be established and tested at the end of this function execution
 func NewApp() (a *App, err error) {
 	a = new(App)
-	if a.MySql, err = sql.Open("mysql", config.MysqlDsn); err != nil {
+	if a.MySQL, err = sql.Open("mysql", config.MysqlDsn); err != nil {
 		a = nil
 		return
 	}
-	a.MySql.SetMaxIdleConns(10)
-	if err = a.MySql.Ping(); err != nil {
+	a.MySQL.SetMaxIdleConns(10)
+	if err = a.MySQL.Ping(); err != nil {
 		a = nil
 		return
 	}
@@ -43,20 +47,25 @@ func NewApp() (a *App, err error) {
 	return
 }
 
+//Run - This function will initialize router for the application and try to start listening clients
 func (a *App) Run() error {
 	i := iris.New()
 	auth := i.Party("/auth")
 	{
 		auth.Get("/", a.registerLogin)
 	}
-	users := i.Party("users", a.authMiddleware)
+	users := i.Party("/users", a.authMiddleware)
 	{
 		users.Get("/", a.getUser)
 	}
+	//service := i.Party("/service")
+	//{
+	//
+	//}
 	i.OnAnyErrorCode(func(ctx iris.Context) {
 		if config.IsDevelopmentEnv() {
 			if err := ctx.Values().Get(errorCtxKey); err != nil {
-				ctx.JSON(J{"error": err.(error).Error()})
+				ctx.JSON(j{"error": err.(error).Error()})
 			}
 		}
 	})
