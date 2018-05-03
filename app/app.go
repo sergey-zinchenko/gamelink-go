@@ -18,8 +18,8 @@ type (
 
 	//App structure - connects databases with the middleware and handlers of router
 	App struct {
-		Redis *redis.Client
-		MySQL *sql.DB
+		redis *redis.Client
+		mySQL *sql.DB
 		iris  *iris.Application
 	}
 )
@@ -27,26 +27,26 @@ type (
 //ConnectDataBases - tries to connect to all databases required to function of the app. Method can be recalled.
 func (a *App) ConnectDataBases() error {
 	var err error
-	if a.MySQL == nil {
-		if a.MySQL, err = sql.Open("mysql", config.MysqlDsn); err != nil {
+	if a.mySQL == nil {
+		if a.mySQL, err = sql.Open("mysql", config.MysqlDsn); err != nil {
 			return err
 		}
-		a.MySQL.SetMaxIdleConns(10)
-		if err = a.MySQL.Ping(); err != nil {
-			a.MySQL.Close() //TODO: нужно проверить правильная ли это вообще мысль
-			a.MySQL = nil
+		a.mySQL.SetMaxIdleConns(10)
+		if err = a.mySQL.Ping(); err != nil {
+			a.mySQL.Close() //TODO: нужно проверить правильная ли это вообще мысль
+			a.mySQL = nil
 			return err
 		}
 	}
-	if a.Redis == nil {
-		a.Redis = redis.NewClient(&redis.Options{
+	if a.redis == nil {
+		a.redis = redis.NewClient(&redis.Options{
 			Addr:     config.RedisAddr,
 			Password: config.RedisPassword,
 			DB:       config.RedisDb,
 		})
-		if _, err = a.Redis.Ping().Result(); err != nil {
-			a.Redis.Close() //TODO: нужно проверить правильная ли это вообще мысль
-			a.Redis = nil
+		if _, err = a.redis.Ping().Result(); err != nil {
+			a.redis.Close() //TODO: нужно проверить правильная ли это вообще мысль
+			a.redis = nil
 			return err
 		}
 	}

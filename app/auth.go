@@ -31,7 +31,7 @@ func (a *App) authMiddleware(ctx iris.Context) {
 		err = graceful.NewInvalidError("missing authorization header")
 		goto sendErrorOrNext
 	}
-	if userID, err = checkAuthToken(token, a.Redis); err != nil {
+	if userID, err = checkAuthToken(token, a.redis); err != nil {
 		switch err.Domain() {
 		case graceful.NotFoundDomain:
 			status = http.StatusUnauthorized
@@ -82,12 +82,12 @@ func (a *App) registerLogin(ctx iris.Context) {
 		}
 		goto sendResponce
 	}
-	userID, err = checkRegister(tokenSource, socialID, name, a.MySQL)
+	userID, err = checkRegister(tokenSource, socialID, name, a.mySQL)
 	if err != nil {
 		status = http.StatusInternalServerError
 		goto sendResponce
 	}
-	authToken, err = generateStoreAuthToken(userID, a.Redis)
+	authToken, err = generateStoreAuthToken(userID, a.redis)
 	if err != nil {
 		status = http.StatusInternalServerError
 		goto sendResponce
