@@ -56,7 +56,8 @@ func GetEnvironment() string {
 //IsDevelopmentEnv - this function try to get mode environment and check it is development
 func IsDevelopmentEnv() bool { return GetEnvironment() == devMode }
 
-func init() {
+//LoadEnvironment - function to load env file and get all required variables from the os environment
+func LoadEnvironment() {
 	wd, err := os.Getwd()
 	if err != nil {
 		log.Fatal(err.Error())

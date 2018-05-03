@@ -7,6 +7,7 @@ import (
 )
 
 func init() {
+	config.LoadEnvironment()
 	if config.IsDevelopmentEnv() {
 		log.SetLevel(log.DebugLevel)
 	} else {
@@ -15,7 +16,8 @@ func init() {
 }
 
 func main() {
-	if a, err := app.NewApp(); err != nil {
+	a := app.NewApp()
+	if err := a.ConnectDataBases(); err != nil {
 		log.Fatal(err.Error())
 	} else if err = a.Run(); err != nil {
 		log.Fatal(err.Error())

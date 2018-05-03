@@ -13,6 +13,13 @@ const (
 	userIDCtxKey = "userId"
 )
 
+var (
+	checkAuthToken         = storage.CheckAuthToken
+	getSocialUserInfo      = social.GetSocialUserInfo
+	checkRegister          = storage.CheckRegister
+	generateStoreAuthToken = storage.GenerateStoreAuthToken
+)
+
 func (a *App) authMiddleware(ctx iris.Context) {
 	log.Debug("app.authMiddleware")
 	var status int
@@ -24,7 +31,7 @@ func (a *App) authMiddleware(ctx iris.Context) {
 		err = graceful.NewInvalidError("missing authorization header")
 		goto sendErrorOrNext
 	}
-	if userID, err = storage.CheckAuthToken(token, a.Redis); err != nil {
+	if userID, err = checkAuthToken(token, a.Redis); err != nil {
 		switch err.Domain() {
 		case graceful.NotFoundDomain:
 			status = http.StatusUnauthorized
@@ -65,7 +72,7 @@ func (a *App) registerLogin(ctx iris.Context) {
 		err = graceful.NewInvalidError("query without vk or fb token")
 		goto sendResponce
 	}
-	socialID, name, err = social.GetSocialUserInfo(tokenSource, token)
+	socialID, name, err = getSocialUserInfo(tokenSource, token)
 	if err != nil {
 		switch err.Domain() {
 		case graceful.NotFoundDomain:
@@ -75,12 +82,12 @@ func (a *App) registerLogin(ctx iris.Context) {
 		}
 		goto sendResponce
 	}
-	userID, err = storage.CheckRegister(tokenSource, socialID, name, a.MySQL)
+	userID, err = checkRegister(tokenSource, socialID, name, a.MySQL)
 	if err != nil {
 		status = http.StatusInternalServerError
 		goto sendResponce
 	}
-	authToken, err = storage.GenerateStoreAuthToken(userID, a.Redis)
+	authToken, err = generateStoreAuthToken(userID, a.Redis)
 	if err != nil {
 		status = http.StatusInternalServerError
 		goto sendResponce
