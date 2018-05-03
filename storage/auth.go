@@ -119,7 +119,7 @@ func GenerateStoreAuthToken(userId int64, rc *redis.Client) (string, *graceful.E
 	log.Debug("stoarage.GenerateStoreAuthToken")
 	var authToken string
 	for ok := false; !ok; {
-		authToken := common.RandStringBytes(20)
+		authToken = common.RandStringBytes(20)
 		authKey := authRedisKeyPref + authToken
 		var err error
 		ok, err = rc.SetNX(authKey, userId, time.Hour).Result()
