@@ -34,7 +34,7 @@ func (a *App) authMiddleware(ctx iris.Context) {
 	}
 	if userID, err = checkAuthToken(token, a.redis); err != nil {
 		switch err.(type) {
-		case graceful.GracefulUnauthorizedError:
+		case graceful.UnauthorizedError:
 			status = http.StatusUnauthorized
 		default:
 			status = http.StatusInternalServerError
@@ -76,7 +76,7 @@ func (a *App) registerLogin(ctx iris.Context) {
 	socialID, name, err = getSocialUserInfo(tokenSource, token)
 	if err != nil {
 		switch err.(type) {
-		case graceful.GracefulUnauthorizedError:
+		case graceful.UnauthorizedError:
 			status = http.StatusUnauthorized //пример использования супер домена ошибок "не найдено"
 		default:
 			status = http.StatusInternalServerError

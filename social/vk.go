@@ -133,7 +133,7 @@ func (vk VkToken) checkToken() (userID string, err error) {
 		if f.Error != nil {
 			switch f.Error.Code {
 			case 15:
-				err = &graceful.GracefulUnauthorizedError{}
+				err = &graceful.UnauthorizedError{}
 			case 28: //обработка {"error":"d=vk; c=[28]; m=Application authorization failed: refresh service token"}
 				serviceKey.Reset()
 				fallthrough
@@ -146,7 +146,7 @@ func (vk VkToken) checkToken() (userID string, err error) {
 		return
 	}
 	if f.Response.Success != 1 {
-		err = &graceful.GracefulUnauthorizedError{}
+		err = &graceful.UnauthorizedError{}
 		return
 	}
 	if f.Response.UserID == 0 {

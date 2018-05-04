@@ -61,13 +61,13 @@ func (fb FbToken) debugToken() (string, error) {
 	if f.Error != nil {
 		switch f.Error.Code {
 		case 102, 190:
-			return "", &graceful.GracefulUnauthorizedError{}
+			return "", &graceful.UnauthorizedError{}
 		default:
 			return "", graceful.NewFbError(f.Error.Message, f.Error.Code)
 		}
 	}
 	if !f.Data.IsValid {
-		return "", &graceful.GracefulUnauthorizedError{}
+		return "", &graceful.UnauthorizedError{}
 	}
 	if f.Data.AppID != config.FaceBookAppID || f.Data.UserID == "" {
 		return "", errors.New("invalid response format app_id or user_id")

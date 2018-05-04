@@ -137,7 +137,7 @@ func CheckAuthToken(token string, rc *redis.Client) (int64, error) {
 	idStr, err := rc.Get(authRedisKeyPref + token).Result()
 	if err != nil {
 		if err == redis.Nil {
-			return 0, &graceful.GracefulUnauthorizedError{}
+			return 0, &graceful.UnauthorizedError{}
 		}
 		return 0, err
 	}
