@@ -11,85 +11,10 @@ import (
 	"time"
 )
 
-type (
-	//TokenSource - type for enumeration of all possible sources (social networks) of the token for login & register procedure fo the system
-	TokenSource int
-)
-
-const (
-	//fbSource - mark given token as Facebook token
-	fbSource TokenSource = iota
-	//vkSource - mark given token as Vkontakte token
-	vkSource
-)
-
-const (
-	authRedisKeyPref = "auth:"
-)
-
-func check(source TokenSource, socialID string, tx *sql.Tx) (bool, int64, error) {
-	log.Debug("stoarage.check")
-	var stmt *sql.Stmt
-	var err error
-	switch source {
-	case vkSource:
-		stmt, err = tx.Prepare("SELECT `id` FROM `users` u WHERE u.`vk_id` = ?")
-	case fbSource:
-		stmt, err = tx.Prepare("SELECT `id` FROM `users` u WHERE u.`fb_id` = ?")
-	default:
-		return false, 0, errors.New("invalid token source")
-	}
-	if err != nil {
-		return false, 0, err
-	}
-	defer stmt.Close()
-	rows, err := stmt.Query(socialID)
-	if err != nil {
-		return false, 0, err
-	}
-	defer rows.Close()
-	registered := rows.Next()
-	var userID int64
-	if registered {
-		err = rows.Scan(&userID)
-		if err != nil {
-			return true, 0, err
-		}
-	}
-	return registered, userID, nil
-}
-
-func register(source TokenSource, socialID, name string, tx *sql.Tx) (int64, error) {
-	log.Debug("stoarage.register")
-	var stmt *sql.Stmt
-	var err error
-	switch source {
-	case vkSource:
-		stmt, err = tx.Prepare("INSERT INTO `users` (`vk_id`, `name`) VALUES (?, ?)")
-	case fbSource:
-		stmt, err = tx.Prepare("INSERT INTO `users` (`fb_id`, `name`) VALUES (?, ?)")
-	default:
-		return 0, errors.New("invalid token source")
-	}
-	if err != nil {
-		return 0, err
-	}
-	defer stmt.Close()
-	res, err := stmt.Exec(socialID, name)
-	if err != nil {
-		return 0, err
-	}
-	userID, err := res.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-	return userID, nil
-}
-
 //CheckRegister - function to check if user with given identifier of the given source is registered and if not register. Returns our identifier from the database.
 func CheckRegister(token social.ThirdPartyToken, db *sql.DB) (int64, error) {
 	log.Debug("storage.CheckRegister")
-	var transaction = func(source TokenSource, socialID, name string, tx *sql.Tx) (int64, error) {
+	var transaction = func(source tokenSource, socialID, name string, tx *sql.Tx) (int64, error) {
 		log.Debug("stoarage.checkregister.transaction")
 		registered, userID, err := check(source, socialID, tx)
 		if err != nil {
@@ -106,7 +31,7 @@ func CheckRegister(token social.ThirdPartyToken, db *sql.DB) (int64, error) {
 		}
 		return userID, nil
 	}
-	var source TokenSource
+	var source tokenSource
 	switch token.(type) {
 	case social.VkToken:
 		source = vkSource
