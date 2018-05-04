@@ -110,6 +110,9 @@ func (token FbToken) get(userID string) (string, error) {
 
 //UserInfo - method to get user information (name and identifier) of a valid user token and returns error (d = NotFound) if invalid
 func (token FbToken) UserInfo() (string, string, error) {
+	if token == "" {
+		return "", "", graceful.UnauthorizedError{}
+	}
 	id, err := token.debugToken()
 	if err != nil {
 		return "", "", err
