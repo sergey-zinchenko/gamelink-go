@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"gamelink-go/config"
+	"gamelink-go/graceful"
 	"net/http"
 	"net/url"
 	"path"
@@ -53,13 +54,13 @@ func (token FbToken) debugToken() (string, error) {
 	if f.Error != nil {
 		switch f.Error.Code {
 		case 102, 190:
-			return "", &UnauthorizedError{}
+			return "", &graceful.UnauthorizedError{}
 		default:
 			return "", NewFbError(f.Error.Message, f.Error.Code)
 		}
 	}
 	if !f.Data.IsValid {
-		return "", &UnauthorizedError{}
+		return "", &graceful.UnauthorizedError{}
 	}
 	if f.Data.AppID != config.FaceBookAppID || f.Data.UserID == "" {
 		return "", errors.New("invalid response format app_id or user_id")

@@ -15,25 +15,25 @@ type (
 	}
 )
 
-//NewDBS - DBS constructor. Connections to all databases will be established here.
-func NewDBS() (*DBS, error) {
-	mySQL, err := sql.Open("mysql", config.MysqlDsn)
+//Connect - Connections to all databases will be established here.
+func (dbs *DBS) Connect() (err error) {
+	dbs.mySQL, err = sql.Open("mysql", config.MysqlDsn)
 	if err != nil {
-		return nil, err
+		return
 	}
-	if err = mySQL.Ping(); err != nil {
-		mySQL.Close() //i dont know about correctness
-		return nil, err
+	if err = dbs.mySQL.Ping(); err != nil {
+		dbs.mySQL.Close() //i dont know about correctness
+		return
 	}
-	rc := redis.NewClient(&redis.Options{
+	dbs.rc = redis.NewClient(&redis.Options{
 		Addr:     config.RedisAddr,
 		Password: config.RedisPassword,
 		DB:       config.RedisDb,
 	})
-	if _, err = rc.Ping().Result(); err != nil {
-		rc.Close()    //i dont know about correctness
-		mySQL.Close() //i dont know about correctness
-		return nil, err
+	if _, err = dbs.rc.Ping().Result(); err != nil {
+		dbs.rc.Close()    //i dont know about correctness
+		dbs.mySQL.Close() //i dont know about correctness
+		return
 	}
-	return &DBS{rc, mySQL}, nil
+	return
 }

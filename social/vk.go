@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"gamelink-go/config"
+	"gamelink-go/graceful"
 	"net/http"
 	"sync"
 )
@@ -125,7 +126,7 @@ func (token VkToken) checkToken() (userID string, err error) {
 		if f.Error != nil {
 			switch f.Error.Code {
 			case 15:
-				err = &UnauthorizedError{}
+				err = &graceful.UnauthorizedError{}
 			case 28: //обработка {"error":"d=vk; c=[28]; m=Application authorization failed: refresh service token"}
 				serviceKey.Reset()
 				fallthrough
@@ -138,7 +139,7 @@ func (token VkToken) checkToken() (userID string, err error) {
 		return
 	}
 	if f.Response.Success != 1 {
-		err = &UnauthorizedError{}
+		err = &graceful.UnauthorizedError{}
 		return
 	}
 	if f.Response.UserID == 0 {

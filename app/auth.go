@@ -2,23 +2,20 @@ package app
 
 import (
 	"errors"
+	"gamelink-go/graceful"
 	"gamelink-go/social"
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
-	log "github.com/sirupsen/logrus"
 	"net/http"
 	"net/url"
 )
 
 const (
-	userIDCtxKey = "userId"
+	userCtxKey = "user"
 )
 
 var (
-	checkAuthToken         = storage.CheckAuthToken
-	checkRegister          = storage.CheckRegister
-	generateStoreAuthToken = storage.GenerateStoreAuthToken
-	tokenFromValues        = func(query url.Values) social.ThirdPartyToken {
+	tokenFromValues = func(query url.Values) social.ThirdPartyToken {
 		if vk, fb := query["vk"], query["fb"]; vk != nil && len(vk) == 1 && fb == nil {
 			return social.VkToken(vk[0])
 		} else if fb != nil && len(fb) == 1 && vk == nil {
@@ -29,71 +26,68 @@ var (
 )
 
 func (a *App) authMiddleware(ctx iris.Context) {
-	log.Debug("app.authMiddleware")
 	var status int
 	var err error
-	var userID int64
+	var user *storage.User
+	defer func() {
+		if err != nil {
+			ctx.StatusCode(status)
+			ctx.Values().Set(errorCtxKey, err)
+			return
+		}
+		ctx.Next()
+	}()
 	token := ctx.GetHeader("Authorization")
 	if token == "" {
 		status = http.StatusUnauthorized
 		err = errors.New("missing authorization header")
-		goto sendErrorOrNext
+		return
 	}
-	if userID, err = checkAuthToken(token, a.redis); err != nil {
+	user, err = a.dbs.AuthorizedUser(token)
+	if err != nil {
 		switch err.(type) {
-		case social.UnauthorizedError:
+		case graceful.UnauthorizedError:
 			status = http.StatusUnauthorized
 		default:
 			status = http.StatusInternalServerError
 		}
-		goto sendErrorOrNext
-	} else {
-		log.WithFields(log.Fields{"remote": ctx.RemoteAddr(),
-			"user_id": userID}).Debug("authorized")
-		ctx.Values().Set(userIDCtxKey, userID)
-	}
-sendErrorOrNext:
-	if err != nil {
-		ctx.StatusCode(status)
-		ctx.Values().Set(errorCtxKey, err)
 		return
 	}
-	ctx.Next()
+	ctx.Values().Set(userCtxKey, user)
 }
 
 func (a *App) registerLogin(ctx iris.Context) {
-	log.Debug("app.registerLogin")
 	var authToken string
-	var userID int64
+	var user *storage.User
 	var status = http.StatusOK
 	var err error
+	defer func() {
+		ctx.StatusCode(status)
+		if err == nil {
+			ctx.JSON(j{"token": authToken})
+		} else {
+			ctx.Values().Set(errorCtxKey, err)
+		}
+	}()
 	thirdPartyToken := tokenFromValues(ctx.Request().URL.Query())
 	if thirdPartyToken == nil {
 		status = http.StatusBadRequest
 		err = errors.New("query without vk or fb token")
-		goto sendResponce
+		return
 	}
-	userID, err = checkRegister(thirdPartyToken, a.mySQL)
+	user, err = a.dbs.ThirdPartyUser(thirdPartyToken)
 	if err != nil {
 		switch err.(type) {
-		case social.UnauthorizedError:
+		case graceful.UnauthorizedError:
 			status = http.StatusUnauthorized //пример использования супер домена ошибок "не найдено"
 		default:
 			status = http.StatusInternalServerError
 		}
-		goto sendResponce
+		return
 	}
-	authToken, err = generateStoreAuthToken(userID, a.redis)
+	authToken, err = user.AuthToken()
 	if err != nil {
 		status = http.StatusInternalServerError
-		goto sendResponce
-	}
-	log.WithField("token", authToken).Debug("register or login ok")
-sendResponce:
-	ctx.StatusCode(status)
-	if err == nil {
-		ctx.JSON(j{"token": authToken})
-	} else {
-		ctx.Values().Set(errorCtxKey, err)
+		return
 	}
 }

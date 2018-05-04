@@ -5,6 +5,6 @@ import (
 )
 
 func (a *App) getUser(ctx iris.Context) {
-	userID := ctx.Values().Get(userIDCtxKey).(int64)
+	userID := ctx.Values().Get(userCtxKey).(int64)
 	ctx.JSON(j{"userID": userID})
 }

@@ -15,9 +15,6 @@ type (
 	FbError struct {
 		messageCodes
 	}
-	//UnauthorizedError - class needed to handle unauthorized cases gracefully, separate from other serious errors.
-	UnauthorizedError struct {
-	}
 )
 
 //NewVkError - construct VkError in comfort way
@@ -28,11 +25,6 @@ func NewVkError(message string, codes ...int) error {
 //NewFbError - construct VkError in comfort way
 func NewFbError(message string, codes ...int) error {
 	return &FbError{messageCodes{message, codes}}
-}
-
-//Error - function required by error interface; It returns default message.
-func (gu UnauthorizedError) Error() string {
-	return "unauthorized"
 }
 
 //Error - function required be standard error interface. It is common fow some classes in the module.
