@@ -1,7 +1,7 @@
 package social
 
 import (
-	"gamelink-go/graceful"
+	"errors"
 	"net/http"
 	"time"
 )
@@ -22,7 +22,7 @@ type (
 	//IUserInfoGetter - common interface for classes which can be used to obtain information of validity and user info of the third party tokens
 	IUserInfoGetter interface {
 		//GetUserInfo - get user info or error (d = NotFound if token is invalid or obsolete)
-		GetUserInfo() (string, string, *graceful.Error)
+		GetUserInfo() (string, string, error)
 	}
 )
 
@@ -34,7 +34,7 @@ const (
 )
 
 //GetSocialUserInfo - common function to get information about given token from source
-func GetSocialUserInfo(source TokenSource, token string) (string, string, *graceful.Error) {
+func GetSocialUserInfo(source TokenSource, token string) (string, string, error) {
 	var u IUserInfoGetter
 	switch source {
 	case FbSource:
@@ -42,7 +42,7 @@ func GetSocialUserInfo(source TokenSource, token string) (string, string, *grace
 	case VKSource:
 		u = NewVkToken(token)
 	default:
-		return "", "", graceful.NewInvalidError("invalid token source")
+		return "", "", errors.New("invalid token source")
 	}
 	return u.GetUserInfo()
 }

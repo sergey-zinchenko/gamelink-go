@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"gamelink-go/graceful"
 	"gamelink-go/social"
 	"gamelink-go/storage"
@@ -23,17 +24,17 @@ var (
 func (a *App) authMiddleware(ctx iris.Context) {
 	log.Debug("app.authMiddleware")
 	var status int
-	var err *graceful.Error
+	var err error
 	var userID int64
 	token := ctx.GetHeader("Authorization")
 	if token == "" {
 		status = http.StatusUnauthorized
-		err = graceful.NewInvalidError("missing authorization header")
+		err = errors.New("missing authorization header")
 		goto sendErrorOrNext
 	}
 	if userID, err = checkAuthToken(token, a.redis); err != nil {
-		switch err.Domain() {
-		case graceful.NotFoundDomain:
+		switch err.(type) {
+		case graceful.GracefulUnauthorizedError:
 			status = http.StatusUnauthorized
 		default:
 			status = http.StatusInternalServerError
@@ -59,7 +60,7 @@ func (a *App) registerLogin(ctx iris.Context) {
 	var userID int64
 	var tokenSource social.TokenSource
 	var status = http.StatusOK
-	var err *graceful.Error
+	var err error
 	qs := ctx.Request().URL.Query()
 	if vk, fb := qs["vk"], qs["fb"]; vk != nil && len(vk) == 1 && fb == nil {
 		token = vk[0]
@@ -69,13 +70,13 @@ func (a *App) registerLogin(ctx iris.Context) {
 		tokenSource = social.FbSource
 	} else {
 		status = http.StatusBadRequest
-		err = graceful.NewInvalidError("query without vk or fb token")
+		err = errors.New("query without vk or fb token")
 		goto sendResponce
 	}
 	socialID, name, err = getSocialUserInfo(tokenSource, token)
 	if err != nil {
-		switch err.Domain() {
-		case graceful.NotFoundDomain:
+		switch err.(type) {
+		case graceful.GracefulUnauthorizedError:
 			status = http.StatusUnauthorized //пример использования супер домена ошибок "не найдено"
 		default:
 			status = http.StatusInternalServerError
