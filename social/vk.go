@@ -21,9 +21,20 @@ type (
 		Code    int    `json:"error_code"`
 		Message string `json:"error_msg"`
 	}
+
+	vkServiceKey struct {
+		key   string // d89af8ced89af8ced8c556b0d7d8f849a3dd89ad89af8ce8276b5b3e2191dc8068556cc for test 4.05 15:15
+		rwl   sync.RWMutex
+		state int32
+	}
 )
 
 var serviceKey vkServiceKey
+
+const (
+	stateDoingNothing = iota
+	stateRequest
+)
 
 func init() {
 	err := serviceKey.Request()
@@ -31,17 +42,6 @@ func init() {
 		log.WithError(err).Fatal("cant initialize service key")
 	}
 }
-
-type vkServiceKey struct {
-	key   string // d89af8ced89af8ced8c556b0d7d8f849a3dd89ad89af8ce8276b5b3e2191dc8068556cc for test 4.05 15:15
-	rwl   sync.RWMutex
-	state int32
-}
-
-const (
-	stateDoingNothing = iota
-	stateRequest
-)
 
 func (k *vkServiceKey) Request() *graceful.Error {
 	if atomic.CompareAndSwapInt32(&k.state, stateDoingNothing, stateRequest) {
