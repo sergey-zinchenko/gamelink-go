@@ -9,6 +9,7 @@ import (
 	"github.com/kataras/iris"
 	log "github.com/sirupsen/logrus"
 	"net/http"
+	"net/url"
 )
 
 const (
@@ -19,6 +20,14 @@ var (
 	checkAuthToken         = storage.CheckAuthToken
 	checkRegister          = storage.CheckRegister
 	generateStoreAuthToken = storage.GenerateStoreAuthToken
+	queryToUserInfoGetter  = func(query url.Values) common.IUserInfoGetter {
+		if vk, fb := query["vk"], query["fb"]; vk != nil && len(vk) == 1 && fb == nil {
+			return social.VkToken(vk[0])
+		} else if fb != nil && len(fb) == 1 && vk == nil {
+			return social.FbToken(fb[0])
+		}
+		return nil
+	}
 )
 
 func (a *App) authMiddleware(ctx iris.Context) {
@@ -57,16 +66,11 @@ sendErrorOrNext:
 func (a *App) registerLogin(ctx iris.Context) {
 	log.Debug("app.registerLogin")
 	var authToken string
-	var thirdPartyToken common.IUserInfoGetter
 	var userID int64
 	var status = http.StatusOK
 	var err error
-	qs := ctx.Request().URL.Query()
-	if vk, fb := qs["vk"], qs["fb"]; vk != nil && len(vk) == 1 && fb == nil {
-		thirdPartyToken = social.VkToken(vk[0])
-	} else if fb != nil && len(fb) == 1 && vk == nil {
-		thirdPartyToken = social.FbToken(fb[0])
-	} else {
+	thirdPartyToken := queryToUserInfoGetter(ctx.Request().URL.Query())
+	if thirdPartyToken == nil {
 		status = http.StatusBadRequest
 		err = errors.New("query without vk or fb token")
 		goto sendResponce
