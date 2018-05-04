@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"gamelink-go/config"
-	"gamelink-go/graceful"
 	"net/http"
 	"sync"
 )
@@ -67,7 +66,7 @@ func (sk *VkServiceKey) Key() (string, error) {
 		return "", err
 	}
 	if f.Error != "" {
-		return "", graceful.NewVkError(f.ErrorDescription)
+		return "", NewVkError(f.ErrorDescription)
 	}
 	if f.AccessToken == "" {
 		return "", errors.New("empty access_token")
@@ -126,12 +125,12 @@ func (token VkToken) checkToken() (userID string, err error) {
 		if f.Error != nil {
 			switch f.Error.Code {
 			case 15:
-				err = &graceful.UnauthorizedError{}
+				err = &UnauthorizedError{}
 			case 28: //обработка {"error":"d=vk; c=[28]; m=Application authorization failed: refresh service token"}
 				serviceKey.Reset()
 				fallthrough
 			default:
-				err = graceful.NewVkError(f.Error.Message, f.Error.Code)
+				err = NewVkError(f.Error.Message, f.Error.Code)
 			}
 		}
 	}
@@ -139,7 +138,7 @@ func (token VkToken) checkToken() (userID string, err error) {
 		return
 	}
 	if f.Response.Success != 1 {
-		err = &graceful.UnauthorizedError{}
+		err = &UnauthorizedError{}
 		return
 	}
 	if f.Response.UserID == 0 {
@@ -183,7 +182,7 @@ func (token VkToken) get(userID string) (string, error) {
 		return "", err
 	}
 	if f.Error != nil {
-		return "", graceful.NewVkError(f.Error.Message, f.Error.Code)
+		return "", NewVkError(f.Error.Message, f.Error.Code)
 	}
 	if len(f.Response) != 1 || fmt.Sprint(f.Response[0].ID) != userID {
 		return "", errors.New("user id not match or empty response")
@@ -191,8 +190,8 @@ func (token VkToken) get(userID string) (string, error) {
 	return f.Response[0].FirstName + " " + f.Response[0].LastName, nil
 }
 
-//GetUserInfo - method to check validity and get user information about the token if it valid. Returns NotFound error if token is not valid
-func (token VkToken) GetUserInfo() (string, string, error) {
+//UserInfo - method to check validity and get user information about the token if it valid. Returns NotFound error if token is not valid
+func (token VkToken) UserInfo() (string, string, error) {
 	id, err := token.checkToken()
 	if err != nil {
 		return "", "", err

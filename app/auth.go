@@ -2,8 +2,6 @@ package app
 
 import (
 	"errors"
-	"gamelink-go/common"
-	"gamelink-go/graceful"
 	"gamelink-go/social"
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
@@ -20,7 +18,7 @@ var (
 	checkAuthToken         = storage.CheckAuthToken
 	checkRegister          = storage.CheckRegister
 	generateStoreAuthToken = storage.GenerateStoreAuthToken
-	queryToUserInfoGetter  = func(query url.Values) common.IUserInfoGetter {
+	tokenFromValues        = func(query url.Values) social.ThirdPartyToken {
 		if vk, fb := query["vk"], query["fb"]; vk != nil && len(vk) == 1 && fb == nil {
 			return social.VkToken(vk[0])
 		} else if fb != nil && len(fb) == 1 && vk == nil {
@@ -43,7 +41,7 @@ func (a *App) authMiddleware(ctx iris.Context) {
 	}
 	if userID, err = checkAuthToken(token, a.redis); err != nil {
 		switch err.(type) {
-		case graceful.UnauthorizedError:
+		case social.UnauthorizedError:
 			status = http.StatusUnauthorized
 		default:
 			status = http.StatusInternalServerError
@@ -69,7 +67,7 @@ func (a *App) registerLogin(ctx iris.Context) {
 	var userID int64
 	var status = http.StatusOK
 	var err error
-	thirdPartyToken := queryToUserInfoGetter(ctx.Request().URL.Query())
+	thirdPartyToken := tokenFromValues(ctx.Request().URL.Query())
 	if thirdPartyToken == nil {
 		status = http.StatusBadRequest
 		err = errors.New("query without vk or fb token")
@@ -78,7 +76,7 @@ func (a *App) registerLogin(ctx iris.Context) {
 	userID, err = checkRegister(thirdPartyToken, a.mySQL)
 	if err != nil {
 		switch err.(type) {
-		case graceful.UnauthorizedError:
+		case social.UnauthorizedError:
 			status = http.StatusUnauthorized //пример использования супер домена ошибок "не найдено"
 		default:
 			status = http.StatusInternalServerError

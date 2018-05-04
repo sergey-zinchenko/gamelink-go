@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"gamelink-go/common"
-	"gamelink-go/graceful"
 	"gamelink-go/social"
 	"github.com/go-redis/redis"
 	log "github.com/sirupsen/logrus"
@@ -88,7 +87,7 @@ func register(source TokenSource, socialID, name string, tx *sql.Tx) (int64, err
 }
 
 //CheckRegister - function to check if user with given identifier of the given source is registered and if not register. Returns our identifier from the database.
-func CheckRegister(token common.IUserInfoGetter, db *sql.DB) (int64, error) {
+func CheckRegister(token social.ThirdPartyToken, db *sql.DB) (int64, error) {
 	log.Debug("storage.CheckRegister")
 	var transaction = func(source TokenSource, socialID, name string, tx *sql.Tx) (int64, error) {
 		log.Debug("stoarage.checkregister.transaction")
@@ -116,7 +115,7 @@ func CheckRegister(token common.IUserInfoGetter, db *sql.DB) (int64, error) {
 	default:
 		return 0, errors.New("unknown third party token type")
 	}
-	socialID, name, err := token.GetUserInfo()
+	socialID, name, err := token.UserInfo()
 	if err != nil {
 		return 0, err
 	}
@@ -139,7 +138,7 @@ func CheckRegister(token common.IUserInfoGetter, db *sql.DB) (int64, error) {
 	return userID, nil
 }
 
-//GenerateStoreAuthToken - function to generate and save into redis new token (our authorization token) for given user identifier (random string)
+//GenerateStoreAuthToken - function to generate and save into rc new token (our authorization token) for given user identifier (random string)
 func GenerateStoreAuthToken(userID int64, rc *redis.Client) (string, error) {
 	log.Debug("stoarage.GenerateStoreAuthToken")
 	var authToken string
@@ -161,7 +160,7 @@ func CheckAuthToken(token string, rc *redis.Client) (int64, error) {
 	idStr, err := rc.Get(authRedisKeyPref + token).Result()
 	if err != nil {
 		if err == redis.Nil {
-			return 0, &graceful.UnauthorizedError{}
+			return 0, &social.UnauthorizedError{}
 		}
 		return 0, err
 	}

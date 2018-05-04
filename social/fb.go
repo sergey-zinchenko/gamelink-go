@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"gamelink-go/config"
-	"gamelink-go/graceful"
 	"net/http"
 	"net/url"
 	"path"
@@ -54,13 +53,13 @@ func (token FbToken) debugToken() (string, error) {
 	if f.Error != nil {
 		switch f.Error.Code {
 		case 102, 190:
-			return "", &graceful.UnauthorizedError{}
+			return "", &UnauthorizedError{}
 		default:
-			return "", graceful.NewFbError(f.Error.Message, f.Error.Code)
+			return "", NewFbError(f.Error.Message, f.Error.Code)
 		}
 	}
 	if !f.Data.IsValid {
-		return "", &graceful.UnauthorizedError{}
+		return "", &UnauthorizedError{}
 	}
 	if f.Data.AppID != config.FaceBookAppID || f.Data.UserID == "" {
 		return "", errors.New("invalid response format app_id or user_id")
@@ -100,7 +99,7 @@ func (token FbToken) get(userID string) (string, error) {
 		return "", err
 	}
 	if f.Error != nil {
-		return "", graceful.NewFbError(f.Error.Message, f.Error.Code)
+		return "", NewFbError(f.Error.Message, f.Error.Code)
 	}
 	if f.ID != userID {
 		return "", errors.New("user id not match")
@@ -108,8 +107,8 @@ func (token FbToken) get(userID string) (string, error) {
 	return f.Name, nil
 }
 
-//GetUserInfo - method to get user information (name and identifier) of a valid user token and returns error (d = NotFound) if invalid
-func (token FbToken) GetUserInfo() (string, string, error) {
+//UserInfo - method to get user information (name and identifier) of a valid user token and returns error (d = NotFound) if invalid
+func (token FbToken) UserInfo() (string, string, error) {
 	id, err := token.debugToken()
 	if err != nil {
 		return "", "", err
