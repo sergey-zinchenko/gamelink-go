@@ -1,11 +1,9 @@
 package app
 
 import (
-	"github.com/kataras/iris"
 	"gamelink-go/config"
-	"github.com/go-redis/redis"
-	"database/sql"
-	_ "github.com/go-sql-driver/mysql"
+	"gamelink-go/storage"
+	"github.com/kataras/iris"
 )
 
 const (
@@ -13,52 +11,50 @@ const (
 )
 
 type (
-	J map[string]interface{}
+	//Type to define json objects faster
+	j map[string]interface{}
 
+	//App structure - connects databases with the middleware and handlers of router
 	App struct {
-		Redis *redis.Client
-		MySql *sql.DB
+		dbs  *storage.DBS
+		iris *iris.Application
 	}
 )
 
-func NewApp() (a *App, err error) {
-	a = new(App)
-	if a.MySql, err = sql.Open("mysql", config.MysqlDsn); err != nil {
-		a = nil
-		return
-	}
-	a.MySql.SetMaxIdleConns(10)
-	if err = a.MySql.Ping(); err != nil {
-		a = nil
-		return
-	}
-	a.Redis = redis.NewClient(&redis.Options{
-		Addr:     config.RedisAddr,
-		Password: config.RedisPassword,
-		DB:       config.RedisDb,
-	})
-	if _, err = a.Redis.Ping().Result(); err != nil {
-		a = nil
-	}
-	return
+//ConnectDataBases - tries to connect to all databases required to function of the app. Method can be recalled.
+func (a *App) ConnectDataBases() error {
+	return a.dbs.Connect()
 }
 
-func (a *App) Run() error {
-	i := iris.New()
-	auth := i.Party("/auth")
+//NewApp - You can construct and initialize App (application) object with that function
+//router will be configured but not database connections
+func NewApp() (a *App) {
+	a = new(App)
+	a.iris = iris.New()
+	a.dbs = &storage.DBS{}
+	auth := a.iris.Party("/auth")
 	{
 		auth.Get("/", a.registerLogin)
 	}
-	users := i.Party("users", a.authMiddleware)
+	users := a.iris.Party("/users", a.authMiddleware)
 	{
 		users.Get("/", a.getUser)
 	}
-	i.OnAnyErrorCode(func(ctx iris.Context) {
+	//service := i.Party("/service")
+	//{
+	//
+	//}
+	a.iris.OnAnyErrorCode(func(ctx iris.Context) {
 		if config.IsDevelopmentEnv() {
 			if err := ctx.Values().Get(errorCtxKey); err != nil {
-				ctx.JSON(J{"error": err.(error).Error()})
+				ctx.JSON(j{"error": err.(error).Error()})
 			}
 		}
 	})
-	return i.Run(iris.Addr(config.ServerAddress))
+	return
+}
+
+//Run - This function will initialize router for the application and try to start listening clients
+func (a *App) Run() error {
+	return a.iris.Run(iris.Addr(config.ServerAddress))
 }

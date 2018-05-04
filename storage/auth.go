@@ -1,146 +1,159 @@
 package storage
 
 import (
-	"gamelink-go/graceful"
-	"github.com/go-redis/redis"
-	"time"
 	"database/sql"
-	"gamelink-go/social"
-	log "github.com/sirupsen/logrus"
-	"strconv"
+	"errors"
 	"gamelink-go/common"
+	"gamelink-go/graceful"
+	"gamelink-go/social"
+	"github.com/go-redis/redis"
+	"strconv"
+	"time"
+)
+
+type (
+	//tokenSource - type for enumeration of all possible sources (social networks) of the token for login & register procedure fo the system
+	tokenSource int
+)
+
+const (
+	//fbSource - mark given token as Facebook token
+	fbSource tokenSource = iota
+	//vkSource - mark given token as Vkontakte token
+	vkSource
 )
 
 const (
 	authRedisKeyPref = "auth:"
 )
 
-func check(source social.TokenSource, socialId string, tx *sql.Tx) (bool, int64, *graceful.Error) {
-	log.Debug("stoarage.check")
+func check(source tokenSource, socialID string, tx *sql.Tx) (bool, int64, error) {
 	var stmt *sql.Stmt
 	var err error
 	switch source {
-	case social.VKSource:
+	case vkSource:
 		stmt, err = tx.Prepare("SELECT `id` FROM `users` u WHERE u.`vk_id` = ?")
-	case social.FbSource:
+	case fbSource:
 		stmt, err = tx.Prepare("SELECT `id` FROM `users` u WHERE u.`fb_id` = ?")
 	default:
-		return false, 0, graceful.NewInvalidError("invalid token source")
+		return false, 0, errors.New("invalid token source")
 	}
 	if err != nil {
-		return false, 0, graceful.NewMySqlError(err.Error())
+		return false, 0, err
 	}
 	defer stmt.Close()
-	rows, err := stmt.Query(socialId)
+	rows, err := stmt.Query(socialID)
 	if err != nil {
-		return false, 0, graceful.NewMySqlError(err.Error())
+		return false, 0, err
 	}
 	defer rows.Close()
 	registered := rows.Next()
-	var userId int64
+	var userID int64
 	if registered {
-		err = rows.Scan(&userId)
+		err = rows.Scan(&userID)
 		if err != nil {
-			return true, 0, graceful.NewMySqlError(err.Error())
+			return true, 0, err
 		}
 	}
-	return registered, userId, nil
+	return registered, userID, nil
 }
 
-func register(source social.TokenSource, socialId, name string, tx *sql.Tx) (int64, *graceful.Error) {
-	log.Debug("stoarage.register")
+func register(source tokenSource, socialID, name string, tx *sql.Tx) (int64, error) {
 	var stmt *sql.Stmt
 	var err error
 	switch source {
-	case social.VKSource:
+	case vkSource:
 		stmt, err = tx.Prepare("INSERT INTO `users` (`vk_id`, `name`) VALUES (?, ?)")
-	case social.FbSource:
+	case fbSource:
 		stmt, err = tx.Prepare("INSERT INTO `users` (`fb_id`, `name`) VALUES (?, ?)")
 	default:
-		return 0, graceful.NewInvalidError("invalid token source")
+		return 0, errors.New("invalid token source")
 	}
 	if err != nil {
-		return 0, graceful.NewMySqlError(err.Error())
-	}
-	defer stmt.Close()
-	res, err := stmt.Exec(socialId, name)
-	if err != nil {
-		return 0, graceful.NewMySqlError(err.Error())
-	}
-	userId, err := res.LastInsertId()
-	if err != nil {
-		return 0, graceful.NewMySqlError(err.Error())
-	}
-	return userId, nil
-}
-
-func CheckRegister(source social.TokenSource, socialId, name string, db *sql.DB) (int64, *graceful.Error) {
-	log.Debug("storage.CheckRegister")
-
-	var transaction = func(tx *sql.Tx) (int64, *graceful.Error) {
-		log.Debug("stoarage.checkregister.transaction")
-		registered, userId, err := check(source, socialId, tx)
-		if err != nil {
-			log.WithError(err).Debug("db check user failed")
-			return 0, err
-		}
-		log.Debug("check user ok")
-		if !registered {
-			if userId, err = register(source, socialId, name, tx); err != nil {
-				log.WithError(err).Debug("db register user failed")
-				return 0, err
-			}
-			log.Debug("register user ok")
-		}
-		return userId, nil
-	}
-	tx, e := db.Begin()
-	if e != nil {
-		return 0, graceful.NewMySqlError(e.Error())
-	}
-	userId, err := transaction(tx)
-	if err != nil {
-		tx.Rollback()
 		return 0, err
 	}
-	log.WithField("userId", userId).Debug("transaction ok")
-	e = tx.Commit()
-	if e != nil {
-		log.Debug("commit failed")
-		return 0, graceful.NewMySqlError(e.Error())
+	defer stmt.Close()
+	res, err := stmt.Exec(socialID, name)
+	if err != nil {
+		return 0, err
 	}
-	log.Debug("commit ok")
-	return userId, nil
+	userID, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	return userID, nil
 }
 
-func GenerateStoreAuthToken(userId int64, rc *redis.Client) (string, *graceful.Error) {
-	log.Debug("stoarage.GenerateStoreAuthToken")
-	var authToken string
-	for ok := false; !ok; {
-		authToken := common.RandStringBytes(20)
-		authKey := authRedisKeyPref + authToken
-		var err error
-		ok, err = rc.SetNX(authKey, userId, time.Hour).Result()
-		if err != nil {
-			return "", graceful.NewRedisError(err.Error())
-		}
-	}
-	return authToken, nil
-}
-
-func CheckAuthToken(token string, rc *redis.Client) (int64, *graceful.Error) {
-	log.Debug("storage.CheckAuthToken")
-	idStr, err := rc.Get(authRedisKeyPref + token).Result()
+//AuthorizedUser - function to check our own authorization token from header. Returns user or nil if not valid token.
+func (dbs DBS) AuthorizedUser(token string) (*User, error) {
+	idStr, err := dbs.rc.Get(authRedisKeyPref + token).Result()
 	if err != nil {
 		if err == redis.Nil {
-			return 0, graceful.NewNotFoundError("key does not exists")
-		} else {
-			return 0, graceful.NewRedisError(err.Error())
+			return nil, &graceful.UnauthorizedError{}
 		}
+		return nil, err
 	}
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		return 0, graceful.NewParsingError(err.Error())
+		return nil, err
 	}
-	return id, nil
+	return &User{id, &dbs}, nil
+}
+
+//ThirdPartyUser - function to login or register user using his third party token
+func (dbs DBS) ThirdPartyUser(token social.ThirdPartyToken) (*User, error) {
+	var transaction = func(source tokenSource, socialID, name string, tx *sql.Tx) (int64, error) {
+		registered, userID, err := check(source, socialID, tx)
+		if err != nil {
+			return 0, err
+		}
+		if !registered {
+			if userID, err = register(source, socialID, name, tx); err != nil {
+				return 0, err
+			}
+		}
+		return userID, nil
+	}
+	var source tokenSource
+	switch token.(type) {
+	case social.VkToken:
+		source = vkSource
+	case social.FbToken:
+		source = fbSource
+	default:
+		return nil, errors.New("unknown third party token type")
+	}
+	socialID, name, err := token.UserInfo()
+	if err != nil {
+		return nil, err
+	}
+	tx, err := dbs.mySQL.Begin()
+	if err != nil {
+		return nil, err
+	}
+	userID, err := transaction(source, socialID, name, tx)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return nil, err
+	}
+	return &User{userID, &dbs}, nil
+}
+
+//AuthToken - Function to generate and store auth token in rc.
+func (u User) AuthToken() (string, error) {
+	var authToken string
+	for ok := false; !ok; {
+		authToken = common.RandStringBytes(20)
+		authKey := authRedisKeyPref + authToken
+		var err error
+		ok, err = u.dbs.rc.SetNX(authKey, u.ID(), time.Hour).Result()
+		if err != nil {
+			return "", err
+		}
+	}
+	return authToken, nil
 }

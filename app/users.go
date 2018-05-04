@@ -1,10 +1,11 @@
 package app
 
 import (
+	"gamelink-go/storage"
 	"github.com/kataras/iris"
 )
 
 func (a *App) getUser(ctx iris.Context) {
-	userId := ctx.Values().Get(userIdCtxKey).(int64)
-	ctx.JSON(J{"userId": userId})
+	user := ctx.Values().Get(userCtxKey).(*storage.User)
+	ctx.JSON(j{"userID": user.ID()})
 }
