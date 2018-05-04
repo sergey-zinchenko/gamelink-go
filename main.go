@@ -7,6 +7,7 @@ import (
 )
 
 func init() {
+	config.LoadEnvironment()
 	if config.IsDevelopmentEnv() {
 		log.SetLevel(log.DebugLevel)
 	} else {

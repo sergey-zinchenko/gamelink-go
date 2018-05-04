@@ -8,24 +8,17 @@ import (
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"sync"
-	"sync/atomic"
 )
 
 type (
-	//VkToken - Class to get information and check validity about Vkontakte user tokens
-	VkToken struct {
-		token string
-	}
-
 	vkError struct {
 		Code    int    `json:"error_code"`
 		Message string `json:"error_msg"`
 	}
 
-	vkServiceKey struct {
-		key   string // d89af8ced89af8ced8c556b0d7d8f849a3dd89ad89af8ce8276b5b3e2191dc8068556cc for test 4.05 15:15
-		rwm   sync.RWMutex
-		state int32
+	//VkToken - Class to get information and check validity about Vkontakte user tokens
+	VkToken struct {
+		token string
 	}
 
 	//VkServiceKey - structure for store and request vk service key
@@ -35,60 +28,53 @@ type (
 	}
 )
 
-var serviceKey vkServiceKey
+var serviceKey VkServiceKey
 
 const (
-	stateDoingNothing = iota
-	stateRequest
+	maxRetries = 10
 )
-
-func init() {
-	err := serviceKey.Request()
-	if err != nil {
-		log.WithError(err).Fatal("cant initialize service key")
-	}
-}
 
 //Key - method returns stored service key and request it from server if needed
 func (sk *VkServiceKey) Key() (string, *graceful.Error) {
 	sk.m.Lock()
 	defer sk.m.Unlock()
-	if sk.key == "" {
-		type (
-			vkAccessTokenResponse struct {
-				AccessToken      string `json:"access_token"`
-				Error            string `json:"error"`
-				ErrorDescription string `json:"error_description"`
-			}
-		)
-		req, err := http.NewRequest("GET", "https://oauth.vk.com/access_token", nil)
-		if err != nil {
-			return "", graceful.NewNetworkError(err.Error())
-		}
-		q := req.URL.Query()
-		q.Add("client_id", config.VkontakteAppID)
-		q.Add("client_secret", config.VkontakteAppSecret)
-		q.Add("v", "5.68")
-		q.Add("grant_type", "client_credentials")
-		req.URL.RawQuery = q.Encode()
-		resp, err := client.Do(req)
-		if err != nil {
-			return "", graceful.NewNetworkError(err.Error())
-		}
-		defer resp.Body.Close()
-		var f vkAccessTokenResponse
-		err = json.NewDecoder(resp.Body).Decode(&f)
-		if err != nil {
-			return "", graceful.NewParsingError(err.Error())
-		}
-		if f.Error != "" {
-			return "", graceful.NewVkError(f.ErrorDescription)
-		}
-		if f.AccessToken == "" {
-			return "", graceful.NewInvalidError("empty access_token")
-		}
-		sk.key = f.AccessToken
+	if sk.key != "" {
+		return sk.key, nil
 	}
+	type (
+		vkAccessTokenResponse struct {
+			AccessToken      string `json:"access_token"`
+			Error            string `json:"error"`
+			ErrorDescription string `json:"error_description"`
+		}
+	)
+	req, err := http.NewRequest("GET", "https://oauth.vk.com/access_token", nil)
+	if err != nil {
+		return "", graceful.NewNetworkError(err.Error())
+	}
+	q := req.URL.Query()
+	q.Add("client_id", config.VkontakteAppID)
+	q.Add("client_secret", config.VkontakteAppSecret)
+	q.Add("v", "5.68")
+	q.Add("grant_type", "client_credentials")
+	req.URL.RawQuery = q.Encode()
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", graceful.NewNetworkError(err.Error())
+	}
+	defer resp.Body.Close()
+	var f vkAccessTokenResponse
+	err = json.NewDecoder(resp.Body).Decode(&f)
+	if err != nil {
+		return "", graceful.NewParsingError(err.Error())
+	}
+	if f.Error != "" {
+		return "", graceful.NewVkError(f.ErrorDescription)
+	}
+	if f.AccessToken == "" {
+		return "", graceful.NewInvalidError("empty access_token")
+	}
+	sk.key = f.AccessToken
 	return sk.key, nil
 }
 
@@ -97,22 +83,6 @@ func (sk *VkServiceKey) Reset() {
 	sk.m.Lock()
 	defer sk.m.Unlock()
 	sk.key = ""
-}
-
-func (k *vkServiceKey) Request() *graceful.Error {
-	if atomic.CompareAndSwapInt32(&k.state, stateDoingNothing, stateRequest) {
-		defer atomic.StoreInt32(&k.state, stateDoingNothing)
-		k.rwm.Lock()
-		defer k.rwm.Unlock()
-
-	}
-	return nil
-}
-
-func (k *vkServiceKey) Key() string {
-	k.rwm.RLock()
-	defer k.rwm.RUnlock()
-	return k.key
 }
 
 //NewVkToken - VkToken constructor
@@ -134,15 +104,19 @@ func (vk VkToken) checkToken() (userID string, ge *graceful.Error) {
 	)
 	log.Debug("vk.checkToken")
 	var f vkCheckTokenResponse
-	for i := 0; i < 10; i++ {
-		ge = nil
+	for i := 0; i < maxRetries; i++ {
+		var accessToken string
+		accessToken, ge = serviceKey.Key()
+		if ge != nil {
+			break
+		}
 		req, err := http.NewRequest("GET", "https://api.vk.com/method/secure.checkToken", nil)
 		if err != nil {
 			ge = graceful.NewNetworkError(err.Error())
 			break
 		}
 		q := req.URL.Query()
-		q.Add("access_token", serviceKey.Key())
+		q.Add("access_token", accessToken)
 		q.Add("client_secret", config.VkontakteAppSecret)
 		q.Add("token", vk.token)
 		q.Add("v", "5.68")
@@ -152,8 +126,8 @@ func (vk VkToken) checkToken() (userID string, ge *graceful.Error) {
 			ge = graceful.NewNetworkError(err.Error())
 			break
 		}
-		defer resp.Body.Close()
 		err = json.NewDecoder(resp.Body).Decode(&f)
+		resp.Body.Close() //defer replacement due to resource leak
 		if err != nil {
 			ge = graceful.NewParsingError(err.Error())
 			break
@@ -163,10 +137,7 @@ func (vk VkToken) checkToken() (userID string, ge *graceful.Error) {
 			case 15:
 				ge = graceful.NewNotFoundError(f.Error.Message, f.Error.Code)
 			case 28: //обработка {"error":"d=vk; c=[28]; m=Application authorization failed: refresh service token"}
-				ge = serviceKey.Request()
-				if ge != nil {
-					break
-				}
+				serviceKey.Reset()
 				fallthrough
 			default:
 				ge = graceful.NewVkError(f.Error.Message, f.Error.Code)
