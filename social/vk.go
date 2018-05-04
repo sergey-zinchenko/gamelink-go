@@ -110,11 +110,10 @@ func (vk VkToken) checkToken() (userID string, ge *graceful.Error) {
 			Error    *vkError         `json:"error"`
 		}
 	)
-	var f vkCheckTokenResponse
 	log.Debug("vk.checkToken")
+	var f vkCheckTokenResponse
 	for i := 0; i < 10; i++ {
 		ge = nil
-
 		req, err := http.NewRequest("GET", "https://api.vk.com/method/secure.checkToken", nil)
 		if err != nil {
 			ge = graceful.NewNetworkError(err.Error())
