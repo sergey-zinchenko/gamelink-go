@@ -24,8 +24,14 @@ type (
 
 	vkServiceKey struct {
 		key   string // d89af8ced89af8ced8c556b0d7d8f849a3dd89ad89af8ce8276b5b3e2191dc8068556cc for test 4.05 15:15
-		rwl   sync.RWMutex
+		rwm   sync.RWMutex
 		state int32
+	}
+
+	//VkServiceKey - structure for store and request vk service key
+	VkServiceKey struct {
+		key string
+		m   sync.Mutex
 	}
 )
 
@@ -43,11 +49,11 @@ func init() {
 	}
 }
 
-func (k *vkServiceKey) Request() *graceful.Error {
-	if atomic.CompareAndSwapInt32(&k.state, stateDoingNothing, stateRequest) {
-		defer atomic.StoreInt32(&k.state, stateDoingNothing)
-		k.rwl.Lock()
-		defer k.rwl.Unlock()
+//Key - method returns stored service key and request it from server if needed
+func (sk *VkServiceKey) Key() (string, *graceful.Error) {
+	sk.m.Lock()
+	defer sk.m.Unlock()
+	if sk.key == "" {
 		type (
 			vkAccessTokenResponse struct {
 				AccessToken      string `json:"access_token"`
@@ -57,7 +63,7 @@ func (k *vkServiceKey) Request() *graceful.Error {
 		)
 		req, err := http.NewRequest("GET", "https://oauth.vk.com/access_token", nil)
 		if err != nil {
-			return graceful.NewNetworkError(err.Error())
+			return "", graceful.NewNetworkError(err.Error())
 		}
 		q := req.URL.Query()
 		q.Add("client_id", config.VkontakteAppID)
@@ -67,29 +73,45 @@ func (k *vkServiceKey) Request() *graceful.Error {
 		req.URL.RawQuery = q.Encode()
 		resp, err := client.Do(req)
 		if err != nil {
-			return graceful.NewNetworkError(err.Error())
+			return "", graceful.NewNetworkError(err.Error())
 		}
 		defer resp.Body.Close()
 		var f vkAccessTokenResponse
 		err = json.NewDecoder(resp.Body).Decode(&f)
 		if err != nil {
-			return graceful.NewParsingError(err.Error())
+			return "", graceful.NewParsingError(err.Error())
 		}
 		if f.Error != "" {
-			return graceful.NewVkError(f.ErrorDescription)
+			return "", graceful.NewVkError(f.ErrorDescription)
 		}
 		if f.AccessToken == "" {
-			return graceful.NewInvalidError("empty access_token")
+			return "", graceful.NewInvalidError("empty access_token")
 		}
+		sk.key = f.AccessToken
+	}
+	return sk.key, nil
+}
 
-		k.key = f.AccessToken
+//Reset - method removes stored service key and new one will be requested from server on next Key() call
+func (sk *VkServiceKey) Reset() {
+	sk.m.Lock()
+	defer sk.m.Unlock()
+	sk.key = ""
+}
+
+func (k *vkServiceKey) Request() *graceful.Error {
+	if atomic.CompareAndSwapInt32(&k.state, stateDoingNothing, stateRequest) {
+		defer atomic.StoreInt32(&k.state, stateDoingNothing)
+		k.rwm.Lock()
+		defer k.rwm.Unlock()
+
 	}
 	return nil
 }
 
 func (k *vkServiceKey) Key() string {
-	k.rwl.RLock()
-	defer k.rwl.RUnlock()
+	k.rwm.RLock()
+	defer k.rwm.RUnlock()
 	return k.key
 }
 
