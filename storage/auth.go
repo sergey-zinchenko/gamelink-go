@@ -5,6 +5,7 @@ import (
 	"errors"
 	"gamelink-go/common"
 	"gamelink-go/graceful"
+	"gamelink-go/social"
 	"github.com/go-redis/redis"
 	log "github.com/sirupsen/logrus"
 	"strconv"
@@ -17,10 +18,10 @@ type (
 )
 
 const (
-	//FbSource - mark given token as Facebook token
-	FbSource TokenSource = iota
-	//VKSource - mark given token as Vkontakte token
-	VKSource
+	//fbSource - mark given token as Facebook token
+	fbSource TokenSource = iota
+	//vkSource - mark given token as Vkontakte token
+	vkSource
 )
 
 const (
@@ -32,9 +33,9 @@ func check(source TokenSource, socialID string, tx *sql.Tx) (bool, int64, error)
 	var stmt *sql.Stmt
 	var err error
 	switch source {
-	case VKSource:
+	case vkSource:
 		stmt, err = tx.Prepare("SELECT `id` FROM `users` u WHERE u.`vk_id` = ?")
-	case FbSource:
+	case fbSource:
 		stmt, err = tx.Prepare("SELECT `id` FROM `users` u WHERE u.`fb_id` = ?")
 	default:
 		return false, 0, errors.New("invalid token source")
@@ -64,9 +65,9 @@ func register(source TokenSource, socialID, name string, tx *sql.Tx) (int64, err
 	var stmt *sql.Stmt
 	var err error
 	switch source {
-	case VKSource:
+	case vkSource:
 		stmt, err = tx.Prepare("INSERT INTO `users` (`vk_id`, `name`) VALUES (?, ?)")
-	case FbSource:
+	case fbSource:
 		stmt, err = tx.Prepare("INSERT INTO `users` (`fb_id`, `name`) VALUES (?, ?)")
 	default:
 		return 0, errors.New("invalid token source")
@@ -87,10 +88,9 @@ func register(source TokenSource, socialID, name string, tx *sql.Tx) (int64, err
 }
 
 //CheckRegister - function to check if user with given identifier of the given source is registered and if not register. Returns our identifier from the database.
-func CheckRegister(source TokenSource, socialID, name string, db *sql.DB) (int64, error) {
+func CheckRegister(token common.IUserInfoGetter, db *sql.DB) (int64, error) {
 	log.Debug("storage.CheckRegister")
-
-	var transaction = func(tx *sql.Tx) (int64, error) {
+	var transaction = func(source TokenSource, socialID, name string, tx *sql.Tx) (int64, error) {
 		log.Debug("stoarage.checkregister.transaction")
 		registered, userID, err := check(source, socialID, tx)
 		if err != nil {
@@ -107,11 +107,24 @@ func CheckRegister(source TokenSource, socialID, name string, db *sql.DB) (int64
 		}
 		return userID, nil
 	}
+	var source TokenSource
+	switch token.(type) {
+	case social.VkToken:
+		source = vkSource
+	case social.FbToken:
+		source = fbSource
+	default:
+		return 0, errors.New("unknown third party token type")
+	}
+	socialID, name, err := token.GetUserInfo()
+	if err != nil {
+		return 0, err
+	}
 	tx, err := db.Begin()
 	if err != nil {
 		return 0, err
 	}
-	userID, err := transaction(tx)
+	userID, err := transaction(source, socialID, name, tx)
 	if err != nil {
 		tx.Rollback()
 		return 0, err

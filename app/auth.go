@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"gamelink-go/common"
 	"gamelink-go/graceful"
 	"gamelink-go/social"
 	"gamelink-go/storage"
@@ -55,23 +56,22 @@ sendErrorOrNext:
 
 func (a *App) registerLogin(ctx iris.Context) {
 	log.Debug("app.registerLogin")
-	var socialID, name, authToken string
+	var authToken string
+	var thirdPartyToken common.IUserInfoGetter
 	var userID int64
-	var tokenSource storage.TokenSource
 	var status = http.StatusOK
 	var err error
 	qs := ctx.Request().URL.Query()
 	if vk, fb := qs["vk"], qs["fb"]; vk != nil && len(vk) == 1 && fb == nil {
-		tokenSource = storage.VKSource
-		socialID, name, err = social.VkToken(vk[0]).GetUserInfo()
+		thirdPartyToken = social.VkToken(vk[0])
 	} else if fb != nil && len(fb) == 1 && vk == nil {
-		tokenSource = storage.FbSource
-		socialID, name, err = social.FbToken(fb[0]).GetUserInfo()
+		thirdPartyToken = social.FbToken(fb[0])
 	} else {
 		status = http.StatusBadRequest
 		err = errors.New("query without vk or fb token")
 		goto sendResponce
 	}
+	userID, err = checkRegister(thirdPartyToken, a.mySQL)
 	if err != nil {
 		switch err.(type) {
 		case graceful.UnauthorizedError:
@@ -79,11 +79,6 @@ func (a *App) registerLogin(ctx iris.Context) {
 		default:
 			status = http.StatusInternalServerError
 		}
-		goto sendResponce
-	}
-	userID, err = checkRegister(tokenSource, socialID, name, a.mySQL)
-	if err != nil {
-		status = http.StatusInternalServerError
 		goto sendResponce
 	}
 	authToken, err = generateStoreAuthToken(userID, a.redis)
