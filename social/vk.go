@@ -17,9 +17,7 @@ type (
 	}
 
 	//VkToken - Class to get information and check validity about Vkontakte user tokens
-	VkToken struct {
-		token string
-	}
+	VkToken string
 
 	//VkServiceKey - structure for store and request vk service key
 	VkServiceKey struct {
@@ -85,12 +83,7 @@ func (sk *VkServiceKey) Reset() {
 	sk.key = ""
 }
 
-//NewVkToken - VkToken constructor
-func NewVkToken(token string) *VkToken {
-	return &VkToken{token}
-}
-
-func (vk VkToken) checkToken() (userID string, err error) {
+func (token VkToken) checkToken() (userID string, err error) {
 	type (
 		vkCheckTokenData struct {
 			Success int   `json:"success"`
@@ -117,7 +110,7 @@ func (vk VkToken) checkToken() (userID string, err error) {
 		q := req.URL.Query()
 		q.Add("access_token", accessToken)
 		q.Add("client_secret", config.VkontakteAppSecret)
-		q.Add("token", vk.token)
+		q.Add("token", string(token))
 		q.Add("v", "5.68")
 		req.URL.RawQuery = q.Encode()
 		var resp *http.Response
@@ -157,7 +150,7 @@ func (vk VkToken) checkToken() (userID string, err error) {
 	return
 }
 
-func (vk VkToken) get(userID string) (string, error) {
+func (token VkToken) get(userID string) (string, error) {
 	type (
 		vkUsersGetData struct {
 			FirstName string `json:"first_name"`
@@ -199,12 +192,12 @@ func (vk VkToken) get(userID string) (string, error) {
 }
 
 //GetUserInfo - method to check validity and get user information about the token if it valid. Returns NotFound error if token is not valid
-func (vk VkToken) GetUserInfo() (string, string, error) {
-	id, err := vk.checkToken()
+func (token VkToken) GetUserInfo() (string, string, error) {
+	id, err := token.checkToken()
 	if err != nil {
 		return "", "", err
 	}
-	name, err := vk.get(id)
+	name, err := token.get(id)
 	if err != nil {
 		return id, "", err
 	}

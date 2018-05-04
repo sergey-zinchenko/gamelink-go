@@ -5,25 +5,36 @@ import (
 	"errors"
 	"gamelink-go/common"
 	"gamelink-go/graceful"
-	"gamelink-go/social"
 	"github.com/go-redis/redis"
 	log "github.com/sirupsen/logrus"
 	"strconv"
 	"time"
 )
 
+type (
+	//TokenSource - type for enumeration of all possible sources (social networks) of the token for login & register procedure fo the system
+	TokenSource int
+)
+
+const (
+	//FbSource - mark given token as Facebook token
+	FbSource TokenSource = iota
+	//VKSource - mark given token as Vkontakte token
+	VKSource
+)
+
 const (
 	authRedisKeyPref = "auth:"
 )
 
-func check(source social.TokenSource, socialID string, tx *sql.Tx) (bool, int64, error) {
+func check(source TokenSource, socialID string, tx *sql.Tx) (bool, int64, error) {
 	log.Debug("stoarage.check")
 	var stmt *sql.Stmt
 	var err error
 	switch source {
-	case social.VKSource:
+	case VKSource:
 		stmt, err = tx.Prepare("SELECT `id` FROM `users` u WHERE u.`vk_id` = ?")
-	case social.FbSource:
+	case FbSource:
 		stmt, err = tx.Prepare("SELECT `id` FROM `users` u WHERE u.`fb_id` = ?")
 	default:
 		return false, 0, errors.New("invalid token source")
@@ -48,14 +59,14 @@ func check(source social.TokenSource, socialID string, tx *sql.Tx) (bool, int64,
 	return registered, userID, nil
 }
 
-func register(source social.TokenSource, socialID, name string, tx *sql.Tx) (int64, error) {
+func register(source TokenSource, socialID, name string, tx *sql.Tx) (int64, error) {
 	log.Debug("stoarage.register")
 	var stmt *sql.Stmt
 	var err error
 	switch source {
-	case social.VKSource:
+	case VKSource:
 		stmt, err = tx.Prepare("INSERT INTO `users` (`vk_id`, `name`) VALUES (?, ?)")
-	case social.FbSource:
+	case FbSource:
 		stmt, err = tx.Prepare("INSERT INTO `users` (`fb_id`, `name`) VALUES (?, ?)")
 	default:
 		return 0, errors.New("invalid token source")
@@ -76,7 +87,7 @@ func register(source social.TokenSource, socialID, name string, tx *sql.Tx) (int
 }
 
 //CheckRegister - function to check if user with given identifier of the given source is registered and if not register. Returns our identifier from the database.
-func CheckRegister(source social.TokenSource, socialID, name string, db *sql.DB) (int64, error) {
+func CheckRegister(source TokenSource, socialID, name string, db *sql.DB) (int64, error) {
 	log.Debug("storage.CheckRegister")
 
 	var transaction = func(tx *sql.Tx) (int64, error) {

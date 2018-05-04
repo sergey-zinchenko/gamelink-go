@@ -12,9 +12,7 @@ import (
 
 type (
 	//FbToken - Class to get information about Facebook user tokens
-	FbToken struct {
-		token string
-	}
+	FbToken string
 
 	fbError struct {
 		Message string `json:"message"`
@@ -22,12 +20,7 @@ type (
 	}
 )
 
-//NewFbToken - FbToken constructor, actually does nothing
-func NewFbToken(token string) *FbToken {
-	return &FbToken{token}
-}
-
-func (fb FbToken) debugToken() (string, error) {
+func (token FbToken) debugToken() (string, error) {
 	type (
 		fbDebugTokenData struct {
 			IsValid bool   `json:"is_valid"`
@@ -46,7 +39,7 @@ func (fb FbToken) debugToken() (string, error) {
 	}
 	q := req.URL.Query()
 	q.Add("access_token", config.FaceBookAppID+"|"+config.FaceBookAppSecret)
-	q.Add("input_token", fb.token)
+	q.Add("input_token", string(token))
 	req.URL.RawQuery = q.Encode()
 	resp, err := client.Do(req)
 	if err != nil {
@@ -75,7 +68,7 @@ func (fb FbToken) debugToken() (string, error) {
 	return f.Data.UserID, nil
 }
 
-func (fb FbToken) get(userID string) (string, error) {
+func (token FbToken) get(userID string) (string, error) {
 	type (
 		fbGetResponse struct {
 			Name  string   `json:"name"`
@@ -94,7 +87,7 @@ func (fb FbToken) get(userID string) (string, error) {
 	}
 	q := req.URL.Query()
 	q.Add("fields", "id, name")
-	q.Add("access_token", fb.token)
+	q.Add("access_token", string(token))
 	req.URL.RawQuery = q.Encode()
 	resp, err := client.Do(req)
 	if err != nil {
@@ -116,12 +109,12 @@ func (fb FbToken) get(userID string) (string, error) {
 }
 
 //GetUserInfo - method to get user information (name and identifier) of a valid user token and returns error (d = NotFound) if invalid
-func (fb FbToken) GetUserInfo() (string, string, error) {
-	id, err := fb.debugToken()
+func (token FbToken) GetUserInfo() (string, string, error) {
+	id, err := token.debugToken()
 	if err != nil {
 		return "", "", err
 	}
-	name, err := fb.get(id)
+	name, err := token.get(id)
 	if err != nil {
 		return id, "", err
 	}

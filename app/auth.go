@@ -16,7 +16,6 @@ const (
 
 var (
 	checkAuthToken         = storage.CheckAuthToken
-	getSocialUserInfo      = social.GetSocialUserInfo
 	checkRegister          = storage.CheckRegister
 	generateStoreAuthToken = storage.GenerateStoreAuthToken
 )
@@ -56,24 +55,23 @@ sendErrorOrNext:
 
 func (a *App) registerLogin(ctx iris.Context) {
 	log.Debug("app.registerLogin")
-	var socialID, name, token, authToken string
+	var socialID, name, authToken string
 	var userID int64
-	var tokenSource social.TokenSource
+	var tokenSource storage.TokenSource
 	var status = http.StatusOK
 	var err error
 	qs := ctx.Request().URL.Query()
 	if vk, fb := qs["vk"], qs["fb"]; vk != nil && len(vk) == 1 && fb == nil {
-		token = vk[0]
-		tokenSource = social.VKSource
+		tokenSource = storage.VKSource
+		socialID, name, err = social.VkToken(vk[0]).GetUserInfo()
 	} else if fb != nil && len(fb) == 1 && vk == nil {
-		token = fb[0]
-		tokenSource = social.FbSource
+		tokenSource = storage.FbSource
+		socialID, name, err = social.FbToken(fb[0]).GetUserInfo()
 	} else {
 		status = http.StatusBadRequest
 		err = errors.New("query without vk or fb token")
 		goto sendResponce
 	}
-	socialID, name, err = getSocialUserInfo(tokenSource, token)
 	if err != nil {
 		switch err.(type) {
 		case graceful.UnauthorizedError:
