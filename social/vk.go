@@ -24,6 +24,8 @@ type (
 		key string
 		m   sync.Mutex
 	}
+
+	vkIdentifier string
 )
 
 var serviceKey VkServiceKey
@@ -31,6 +33,14 @@ var serviceKey VkServiceKey
 const (
 	maxRetries = 10
 )
+
+func (i vkIdentifier) Name() string {
+	return "vk_id"
+}
+
+func (i vkIdentifier) Value() string {
+	return string(i)
+}
 
 //Key - method returns stored service key and request it from server if needed
 func (sk *VkServiceKey) Key() (string, error) {
@@ -192,17 +202,17 @@ func (token VkToken) get(userID string) (string, error) {
 }
 
 //UserInfo - method to check validity and get user information about the token if it valid. Returns NotFound error if token is not valid
-func (token VkToken) UserInfo() (string, string, error) {
+func (token VkToken) UserInfo() (ThirdPartyID, string, error) {
 	if token == "" {
-		return "", "", graceful.UnauthorizedError{}
+		return nil, "", graceful.UnauthorizedError{}
 	}
 	id, err := token.checkToken()
 	if err != nil {
-		return "", "", err
+		return nil, "", err
 	}
 	name, err := token.get(id)
 	if err != nil {
-		return id, "", err
+		return vkIdentifier(id), "", err
 	}
-	return id, name, nil
+	return vkIdentifier(id), name, nil
 }

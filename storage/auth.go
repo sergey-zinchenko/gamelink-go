@@ -3,7 +3,6 @@ package storage
 import (
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"gamelink-go/common"
 	"gamelink-go/graceful"
@@ -40,8 +39,8 @@ func (s tokenSource) String() string {
 	}
 }
 
-func check(source tokenSource, socialID string, tx *sql.Tx) (bool, int64, error) {
-	queryString := fmt.Sprintf("SELECT `id` FROM `users` u WHERE u.`%s` = ?", source)
+func check(socialID social.ThirdPartyID, tx *sql.Tx) (bool, int64, error) {
+	queryString := fmt.Sprintf("SELECT `id` FROM `users` u WHERE u.`%s` = ?", socialID.Name())
 	stmt, err := tx.Prepare(queryString)
 	if err != nil {
 		return false, 0, err
@@ -63,12 +62,12 @@ func check(source tokenSource, socialID string, tx *sql.Tx) (bool, int64, error)
 	return registered, userID, nil
 }
 
-func register(source tokenSource, socialID, name string, tx *sql.Tx) (int64, error) {
+func register(socialID social.ThirdPartyID, name string, tx *sql.Tx) (int64, error) {
 	stmt, err := tx.Prepare("INSERT INTO `users` (`data`) VALUES (?)")
 	if err != nil {
 		return 0, err
 	}
-	b, err := json.Marshal(map[string]interface{}{source.String(): socialID, "name": name})
+	b, err := json.Marshal(map[string]interface{}{socialID.Name(): socialID, "name": name})
 	if err != nil {
 		return 0, err
 	}
@@ -102,26 +101,17 @@ func (dbs DBS) AuthorizedUser(token string) (*User, error) {
 
 //ThirdPartyUser - function to login or register user using his third party token
 func (dbs DBS) ThirdPartyUser(token social.ThirdPartyToken) (*User, error) {
-	var transaction = func(source tokenSource, socialID, name string, tx *sql.Tx) (int64, error) {
-		registered, userID, err := check(source, socialID, tx)
+	var transaction = func(socialID social.ThirdPartyID, name string, tx *sql.Tx) (int64, error) {
+		registered, userID, err := check(socialID, tx)
 		if err != nil {
 			return 0, err
 		}
 		if !registered {
-			if userID, err = register(source, socialID, name, tx); err != nil {
+			if userID, err = register(socialID, name, tx); err != nil {
 				return 0, err
 			}
 		}
 		return userID, nil
-	}
-	var source tokenSource
-	switch token.(type) {
-	case social.VkToken:
-		source = vkSource
-	case social.FbToken:
-		source = fbSource
-	default:
-		return nil, errors.New("unknown third party token type")
 	}
 	socialID, name, err := token.UserInfo()
 	if err != nil {
@@ -131,7 +121,7 @@ func (dbs DBS) ThirdPartyUser(token social.ThirdPartyToken) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
-	userID, err := transaction(source, socialID, name, tx)
+	userID, err := transaction(socialID, name, tx)
 	if err != nil {
 		tx.Rollback()
 		return nil, err

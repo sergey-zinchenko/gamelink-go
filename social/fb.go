@@ -18,7 +18,17 @@ type (
 		Message string `json:"message"`
 		Code    int    `json:"code"`
 	}
+
+	fbIdentifier string
 )
+
+func (i fbIdentifier) Name() string {
+	return "fb_id"
+}
+
+func (i fbIdentifier) Value() string {
+	return string(i)
+}
 
 func (token FbToken) debugToken() (string, error) {
 	type (
@@ -109,17 +119,17 @@ func (token FbToken) get(userID string) (string, error) {
 }
 
 //UserInfo - method to get user information (name and identifier) of a valid user token and returns error (d = NotFound) if invalid
-func (token FbToken) UserInfo() (string, string, error) {
+func (token FbToken) UserInfo() (ThirdPartyID, string, error) {
 	if token == "" {
-		return "", "", graceful.UnauthorizedError{}
+		return nil, "", graceful.UnauthorizedError{}
 	}
 	id, err := token.debugToken()
 	if err != nil {
-		return "", "", err
+		return nil, "", err
 	}
 	name, err := token.get(id)
 	if err != nil {
-		return id, "", err
+		return fbIdentifier(id), "", err
 	}
-	return id, name, nil
+	return fbIdentifier(id), name, nil
 }
