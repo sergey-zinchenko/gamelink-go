@@ -2,7 +2,9 @@ package storage
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"gamelink-go/common"
 	"gamelink-go/graceful"
 	"gamelink-go/social"
@@ -27,17 +29,20 @@ const (
 	authRedisKeyPref = "auth:"
 )
 
-func check(source tokenSource, socialID string, tx *sql.Tx) (bool, int64, error) {
-	var stmt *sql.Stmt
-	var err error
-	switch source {
-	case vkSource:
-		stmt, err = tx.Prepare("SELECT `id` FROM `users` u WHERE u.`vk_id` = ?")
+func (s tokenSource) String() string {
+	switch s {
 	case fbSource:
-		stmt, err = tx.Prepare("SELECT `id` FROM `users` u WHERE u.`fb_id` = ?")
+		return "fb_id"
+	case vkSource:
+		return "vk_id"
 	default:
-		return false, 0, errors.New("invalid token source")
+		return "unknown_id"
 	}
+}
+
+func check(source tokenSource, socialID string, tx *sql.Tx) (bool, int64, error) {
+	queryString := fmt.Sprintf("SELECT `id` FROM `users` u WHERE u.`%s` = ?", source)
+	stmt, err := tx.Prepare(queryString)
 	if err != nil {
 		return false, 0, err
 	}
@@ -59,21 +64,16 @@ func check(source tokenSource, socialID string, tx *sql.Tx) (bool, int64, error)
 }
 
 func register(source tokenSource, socialID, name string, tx *sql.Tx) (int64, error) {
-	var stmt *sql.Stmt
-	var err error
-	switch source {
-	case vkSource:
-		stmt, err = tx.Prepare("INSERT INTO `users` (`vk_id`, `name`) VALUES (?, ?)")
-	case fbSource:
-		stmt, err = tx.Prepare("INSERT INTO `users` (`fb_id`, `name`) VALUES (?, ?)")
-	default:
-		return 0, errors.New("invalid token source")
+	stmt, err := tx.Prepare("INSERT INTO `users` (`data`) VALUES (?)")
+	if err != nil {
+		return 0, err
 	}
+	b, err := json.Marshal(map[string]interface{}{source.String(): socialID, "name": name})
 	if err != nil {
 		return 0, err
 	}
 	defer stmt.Close()
-	res, err := stmt.Exec(socialID, name)
+	res, err := stmt.Exec(b)
 	if err != nil {
 		return 0, err
 	}
