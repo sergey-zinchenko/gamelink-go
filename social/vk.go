@@ -193,6 +193,9 @@ func (token VkToken) get(userID string) (string, error) {
 
 //UserInfo - method to check validity and get user information about the token if it valid. Returns NotFound error if token is not valid
 func (token VkToken) UserInfo() (string, string, error) {
+	if token == "" {
+		return "", "", graceful.UnauthorizedError{}
+	}
 	id, err := token.checkToken()
 	if err != nil {
 		return "", "", err
