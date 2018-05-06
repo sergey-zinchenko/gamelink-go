@@ -12,32 +12,9 @@ import (
 	"time"
 )
 
-type (
-	//tokenSource - type for enumeration of all possible sources (social networks) of the token for login & register procedure fo the system
-	tokenSource int
-)
-
-const (
-	//fbSource - mark given token as Facebook token
-	fbSource tokenSource = iota
-	//vkSource - mark given token as Vkontakte token
-	vkSource
-)
-
 const (
 	authRedisKeyPref = "auth:"
 )
-
-func (s tokenSource) String() string {
-	switch s {
-	case fbSource:
-		return "fb_id"
-	case vkSource:
-		return "vk_id"
-	default:
-		return "unknown_id"
-	}
-}
 
 func check(socialID social.ThirdPartyID, tx *sql.Tx) (bool, int64, error) {
 	queryString := fmt.Sprintf("SELECT `id` FROM `users` u WHERE u.`%s` = ?", socialID.Name())

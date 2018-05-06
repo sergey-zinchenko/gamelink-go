@@ -86,11 +86,13 @@ func (sk *VkServiceKey) Key() (string, error) {
 	return sk.key, nil
 }
 
-//Reset - method removes stored service key and new one will be requested from server on next Key() call
-func (sk *VkServiceKey) Reset() {
+//Obsolete - method removes stored service key if it is the same as parameter and new one will be requested from server on next Key() call
+func (sk *VkServiceKey) Obsolete(old string) {
 	sk.m.Lock()
 	defer sk.m.Unlock()
-	sk.key = ""
+	if sk.key == old {
+		sk.key = ""
+	}
 }
 
 func (token VkToken) checkToken() (userID string, err error) {
@@ -138,7 +140,7 @@ func (token VkToken) checkToken() (userID string, err error) {
 			case 15:
 				err = &graceful.UnauthorizedError{}
 			case 28: //обработка {"error":"d=vk; c=[28]; m=Application authorization failed: refresh service token"}
-				serviceKey.Reset()
+				serviceKey.Obsolete(accessToken)
 				fallthrough
 			default:
 				err = NewVkError(f.Error.Message, f.Error.Code)
