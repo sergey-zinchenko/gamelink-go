@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"gamelink-go/common"
 	"gamelink-go/graceful"
@@ -62,6 +63,9 @@ func register(socialID social.ThirdPartyID, name string, tx *sql.Tx) (int64, err
 
 //AuthorizedUser - function to check our own authorization token from header. Returns user or nil if not valid token.
 func (dbs DBS) AuthorizedUser(token string) (*User, error) {
+	if dbs.rc == nil {
+		return nil, errors.New("databases not initialized")
+	}
 	idStr, err := dbs.rc.Get(authRedisKeyPref + token).Result()
 	if err != nil {
 		if err == redis.Nil {
@@ -78,6 +82,9 @@ func (dbs DBS) AuthorizedUser(token string) (*User, error) {
 
 //ThirdPartyUser - function to login or register user using his third party token
 func (dbs DBS) ThirdPartyUser(token social.ThirdPartyToken) (*User, error) {
+	if dbs.mySQL == nil {
+		return nil, errors.New("databases not initialized")
+	}
 	var transaction = func(socialID social.ThirdPartyID, name string, tx *sql.Tx) (int64, error) {
 		registered, userID, err := check(socialID, tx)
 		if err != nil {
@@ -112,6 +119,9 @@ func (dbs DBS) ThirdPartyUser(token social.ThirdPartyToken) (*User, error) {
 
 //AuthToken - Function to generate and store auth token in rc.
 func (u User) AuthToken() (string, error) {
+	if u.dbs.rc == nil {
+		return "", errors.New("databases not initialized")
+	}
 	var authToken string
 	for ok := false; !ok; {
 		authToken = common.RandStringBytes(20)

@@ -26,9 +26,11 @@ var (
 )
 
 func (a *App) authMiddleware(ctx iris.Context) {
-	var status int
-	var err error
-	var user *storage.User
+	var (
+		status int
+		err    error
+		user   *storage.User
+	)
 	defer func() {
 		if err != nil {
 			ctx.StatusCode(status)
@@ -57,10 +59,12 @@ func (a *App) authMiddleware(ctx iris.Context) {
 }
 
 func (a *App) registerLogin(ctx iris.Context) {
-	var authToken string
-	var user *storage.User
-	var status = http.StatusOK
-	var err error
+	var (
+		authToken string
+		user      *storage.User
+		status    = http.StatusOK
+		err       error
+	)
 	defer func() {
 		ctx.StatusCode(status)
 		if err == nil {

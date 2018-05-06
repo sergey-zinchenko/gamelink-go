@@ -20,6 +20,9 @@ func (u User) ID() int64 {
 
 //Data - returns user's field data from database
 func (u User) Data() (map[string]interface{}, error) {
+	if u.dbs.mySQL == nil {
+		return nil, errors.New("databases not initialized")
+	}
 	stmt, err := u.dbs.mySQL.Prepare("SELECT `data` FROM `users` WHERE `id` = ?")
 	if err != nil {
 		return nil, err
