@@ -53,10 +53,9 @@ func (u User) Data() (map[string]interface{}, error) {
 
 // UpdateData - update user data
 func (u *User) UpdateData(userID int64, oldData map[string]interface{}, newData map[string]interface{}) error {
+	delete(newData, "fb_id")
+	delete(newData, "vk_id")
 	for k, v := range newData {
-		if k == "fb_id" || k == "vk_id" {
-			continue
-		}
 		oldData[k] = v
 	}
 	var transaction = func(userID int64, Data *map[string]interface{}, tx *sql.Tx) error {
@@ -144,6 +143,42 @@ func (u *User) DeleteData(userID int64, queryValues url.Values, Data map[string]
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+//AddSocialAcc - allow user to add one more social media account
+func (u *User) AddSocialAcc(userID int64, queryValues url.Values) error {
+	var social string
+	if vk, fb := queryValues["vk"], queryValues["fb"]; vk != nil && len(vk) == 1 && fb == nil {
+		social = "vk_id"
+	} else if fb != nil && len(fb) == 1 && vk == nil {
+		social = "fb_id"
+	}
+	stmt, err := u.dbs.mySQL.Prepare("SELECT ? FROM `users` WHERE `id` = ?")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	rows, err := stmt.Query(social, userID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	var socialID string
+	dbToken := rows.Next()
+	if dbToken {
+		err = rows.Scan(&socialID)
+		if err != nil {
+			return err
+		}
+	}
+	if socialID != "" {
+		err = errors.New("Bad request")
+		return err
+	}
+
+	// Теперь, если id этой соцсети в базе пуст, нужно добавить адишник этой соцсети
+
 	return nil
 }
 

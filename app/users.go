@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
 	"net/http"
@@ -59,6 +60,22 @@ func (a *App) deleteUserInfo(ctx iris.Context) {
 	err = user.DeleteData(userID, queryValues, Data)
 	if err != nil {
 		ctx.Values().Set("error", "deleting user info db error. "+err.Error())
+		ctx.StatusCode(iris.StatusInternalServerError)
+	}
+}
+
+func (a *App) addAnotherSocialAcc(ctx iris.Context) {
+	var err error
+	user := ctx.Values().Get(userCtxKey).(*storage.User)
+	userID := user.ID()
+	queryValues := ctx.Request().URL.Query()
+	if err != nil {
+		err = errors.New("Bad request")
+		return
+	}
+	err = user.AddSocialAcc(userID, queryValues)
+	if err != nil {
+		ctx.Values().Set("error", "adding social account error. "+err.Error())
 		ctx.StatusCode(iris.StatusInternalServerError)
 	}
 }
