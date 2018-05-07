@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
+	"net/url"
 )
 
 type (
@@ -53,25 +53,18 @@ func (u User) Data() (map[string]interface{}, error) {
 
 // UpdateData - update user data
 func (u *User) UpdateData(userID int64, oldData map[string]interface{}, newData map[string]interface{}) error {
-	for ok := range oldData {
-		for nk := range newData {
-			if nk == "fb_id" || nk == "vk_id" {
-				continue
-			}
-			if nk == ok {
-				oldData[ok] = newData[nk]
-			}
-			oldData[nk] = newData[nk]
+	for k, v := range newData {
+		if k == "fb_id" || k == "vk_id" {
+			continue
 		}
+		oldData[k] = v
 	}
-	fmt.Println(oldData)
 	var transaction = func(userID int64, Data *map[string]interface{}, tx *sql.Tx) error {
-		stmt, err := tx.Prepare("UPDATE `users` SET `data`=(?) WHERE `id`=(?)")
+		stmt, err := tx.Prepare("UPDATE `users` SET `data`=? WHERE `id`=?")
 		if err != nil {
 			return err
 		}
 		b, err := json.Marshal(Data)
-		fmt.Println(b)
 		if err != nil {
 			return err
 		}
@@ -87,6 +80,62 @@ func (u *User) UpdateData(userID int64, oldData map[string]interface{}, newData 
 		return err
 	}
 	err = transaction(userID, &oldData, tx)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// DeleteData - delete user data
+func (u *User) DeleteData(userID int64, queryValues url.Values, Data map[string]interface{}) error {
+	var flag string
+	var query string
+	if len(queryValues) == 0 {
+		query = "DELETE FROM `users` WHERE `id`=?"
+		flag = "user_delete"
+	} else {
+		for _, v := range queryValues["data"] {
+			if v == "fb_id" || v == "vk_id" {
+				continue
+			}
+			delete(Data, v)
+		}
+		query = "UPDATE `users` SET `data`=? WHERE `id`=?"
+		flag = "data_delete"
+	}
+	var transaction = func(userID int64, Data *map[string]interface{}, query string, tx *sql.Tx) error {
+		stmt, err := tx.Prepare(query)
+		if err != nil {
+			return err
+		}
+		defer stmt.Close()
+		switch flag {
+		case "user_delete":
+			_, err = stmt.Exec(userID)
+		case "data_delete":
+			b, err := json.Marshal(Data)
+			if err != nil {
+				return err
+			}
+			_, err = stmt.Exec(b, userID)
+		default:
+			return errors.New("delete data error")
+		}
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	tx, err := u.dbs.mySQL.Begin()
+	if err != nil {
+		return err
+	}
+	err = transaction(userID, &Data, query, tx)
 	if err != nil {
 		tx.Rollback()
 		return err

@@ -39,3 +39,26 @@ func (a *App) updateUserInfo(ctx iris.Context) {
 		ctx.StatusCode(iris.StatusInternalServerError)
 	}
 }
+
+func (a *App) deleteUserInfo(ctx iris.Context) {
+	var err error
+	user := ctx.Values().Get(userCtxKey).(*storage.User)
+	userID := user.ID()
+	Data, err := user.Data()
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.Values().Set(errorCtxKey, err)
+		return
+	}
+	queryValues := ctx.Request().URL.Query()
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.Values().Set(errorCtxKey, err)
+		return
+	}
+	err = user.DeleteData(userID, queryValues, Data)
+	if err != nil {
+		ctx.Values().Set("error", "deleting user info db error. "+err.Error())
+		ctx.StatusCode(iris.StatusInternalServerError)
+	}
+}
