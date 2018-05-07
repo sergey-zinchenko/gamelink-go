@@ -20,6 +20,7 @@ func (a *App) getUser(ctx iris.Context) {
 func (a *App) updateUserInfo(ctx iris.Context) {
 	var newData map[string]interface{}
 	user := ctx.Values().Get(userCtxKey).(*storage.User) //Вот тут явно криво, как бы вытащить данные методом getUser?
+	userID := user.ID()
 	oldData, err := user.Data()
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
@@ -32,5 +33,9 @@ func (a *App) updateUserInfo(ctx iris.Context) {
 		ctx.StatusCode(iris.StatusInternalServerError)
 		return
 	}
-	user.UpdateData(oldData, newData)
+	err = user.UpdateData(userID, oldData, newData)
+	if err != nil {
+		ctx.Values().Set("error", "updating user info db error. "+err.Error())
+		ctx.StatusCode(iris.StatusInternalServerError)
+	}
 }

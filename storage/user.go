@@ -1,8 +1,10 @@
 package storage
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 )
 
 type (
@@ -50,12 +52,50 @@ func (u User) Data() (map[string]interface{}, error) {
 }
 
 // UpdateData - update user data
-func (u *User) UpdateData(oldData map[string]interface{}, newData map[string]interface{}) {
-	for k := range newData {
-		if k == "fb_id" || k == "vk_id" {
-			delete(newData, k)
+func (u *User) UpdateData(userID int64, oldData map[string]interface{}, newData map[string]interface{}) error {
+	for ok := range oldData {
+		for nk := range newData {
+			if nk == "fb_id" || nk == "vk_id" {
+				continue
+			}
+			if nk == ok {
+				oldData[ok] = newData[nk]
+			}
+			oldData[nk] = newData[nk]
 		}
 	}
+	fmt.Println(oldData)
+	var transaction = func(userID int64, Data *map[string]interface{}, tx *sql.Tx) error {
+		stmt, err := tx.Prepare("UPDATE `users` SET `data`=(?) WHERE `id`=(?)")
+		if err != nil {
+			return err
+		}
+		b, err := json.Marshal(Data)
+		fmt.Println(b)
+		if err != nil {
+			return err
+		}
+		defer stmt.Close()
+		_, err = stmt.Exec(b, userID)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	tx, err := u.dbs.mySQL.Begin()
+	if err != nil {
+		return err
+	}
+	err = transaction(userID, &oldData, tx)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 //TODO: Нужно создать обработчик для загрузки информации о зарегистрированном пользователе.
@@ -68,7 +108,7 @@ func (u *User) UpdateData(oldData map[string]interface{}, newData map[string]int
 
 //TODO: Нужно создать обработчик для удаления полей из инфы о пользователе или всего пользователя
 //http method delete for path /users
-//если вызван DELET /users/ с валидным  Authorization и в URL query нет параметров то нужно снести всего пользователя целиком - вызвать DELETE в базе по идшнику.
+//если вызван DELETE /users/ с валидным  Authorization и в URL query нет параметров то нужно снести всего пользователя целиком - вызвать DELETE в базе по идшнику.
 //если в URL Query содержит массив data - i.e DELETE /users?data=field1&data=field2 то нужно удалить поля с этими именами в json из поля data в базе.
 //само собой нельзя грохать fb_id и vk_id
 //так же как и в предыдущем кейсе делать через транзакции без тригеров
