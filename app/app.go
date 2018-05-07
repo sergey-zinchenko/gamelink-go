@@ -39,6 +39,7 @@ func NewApp() (a *App) {
 	users := a.iris.Party("/users", a.authMiddleware)
 	{
 		users.Get("/", a.getUser)
+		users.Post("/", a.updateUserInfo)
 	}
 	//service := i.Party("/service")
 	//{
