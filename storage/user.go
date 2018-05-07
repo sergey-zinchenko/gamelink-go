@@ -49,6 +49,15 @@ func (u User) Data() (map[string]interface{}, error) {
 	return data, nil
 }
 
+// UpdateData - update user data
+func (u *User) UpdateData(oldData map[string]interface{}, newData map[string]interface{}) {
+	for k := range newData {
+		if k == "fb_id" || k == "vk_id" {
+			delete(newData, k)
+		}
+	}
+}
+
 //TODO: Нужно создать обработчик для загрузки информации о зарегистрированном пользователе.
 //http method post for path /users
 //Можно грузить произвольный JSON
