@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"gamelink-go/social"
 	"net/url"
 )
 
@@ -148,36 +149,80 @@ func (u *User) DeleteData(userID int64, queryValues url.Values, Data map[string]
 
 //AddSocialAcc - allow user to add one more social media account
 func (u *User) AddSocialAcc(userID int64, queryValues url.Values) error {
-	var social string
-	if vk, fb := queryValues["vk"], queryValues["fb"]; vk != nil && len(vk) == 1 && fb == nil {
-		social = "vk_id"
-	} else if fb != nil && len(fb) == 1 && vk == nil {
-		social = "fb_id"
-	}
-	stmt, err := u.dbs.mySQL.Prepare("SELECT ? FROM `users` WHERE `id` = ?")
+	var socialSource string
+	var (
+		tokenFromValues = func(query url.Values) social.ThirdPartyToken {
+			if vk, fb := query["vk"], query["fb"]; vk != nil && len(vk) == 1 && fb == nil {
+				socialSource = "vk_id"
+				return social.VkToken(vk[0])
+			} else if fb != nil && len(fb) == 1 && vk == nil {
+				socialSource = "fb_id"
+				return social.FbToken(fb[0])
+			}
+			return nil
+		}
+	)
+	token := tokenFromValues(queryValues)
+	stmt, err := u.dbs.mySQL.Prepare("SELECT `data` FROM `users` WHERE `id` = ?")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
-	rows, err := stmt.Query(social, userID)
+	rows, err := stmt.Query(u.ID())
 	if err != nil {
 		return err
 	}
 	defer rows.Close()
-	var socialID string
-	dbToken := rows.Next()
-	if dbToken {
-		err = rows.Scan(&socialID)
+	var bytes []byte
+	if !rows.Next() {
+		return err
+	}
+	err = rows.Scan(&bytes)
+	if err != nil {
+		return err
+	}
+	var data map[string]interface{}
+	err = json.Unmarshal(bytes, &data)
+	if err != nil {
+		return err
+	}
+	if _, ok := data[socialSource]; ok {
+		return err
+	}
+	ID, _, err := token.UserInfo()
+	if err != nil {
+		return err
+	}
+	data[socialSource] = ID
+	var transaction = func(userID int64, data *map[string]interface{}, tx *sql.Tx) error {
+		stmt, err := tx.Prepare("UPDATE `users` SET `data`=? WHERE `id`=?")
 		if err != nil {
 			return err
 		}
+		b, err := json.Marshal(data)
+		if err != nil {
+			return err
+		}
+		defer stmt.Close()
+		_, err = stmt.Exec(b, userID)
+		if err != nil {
+			return err
+		}
+		return nil
 	}
-	if socialID != "" {
-		err = errors.New("Bad request")
+	tx, err := u.dbs.mySQL.Begin()
+	if err != nil {
 		return err
 	}
-
-	// Теперь, если id этой соцсети в базе пуст, нужно добавить адишник этой соцсети
+	err = transaction(userID, &data, tx)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

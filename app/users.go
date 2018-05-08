@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
 	"net/http"
@@ -20,7 +19,7 @@ func (a *App) getUser(ctx iris.Context) {
 
 func (a *App) updateUserInfo(ctx iris.Context) {
 	var newData map[string]interface{}
-	user := ctx.Values().Get(userCtxKey).(*storage.User) //Вот тут явно криво, как бы вытащить данные методом getUser?
+	user := ctx.Values().Get(userCtxKey).(*storage.User)
 	userID := user.ID()
 	oldData, err := user.Data()
 	if err != nil {
@@ -70,12 +69,12 @@ func (a *App) addAnotherSocialAcc(ctx iris.Context) {
 	userID := user.ID()
 	queryValues := ctx.Request().URL.Query()
 	if err != nil {
-		err = errors.New("Bad request")
+		ctx.Values().Set("error", "bad request ."+err.Error())
 		return
 	}
 	err = user.AddSocialAcc(userID, queryValues)
 	if err != nil {
-		ctx.Values().Set("error", "adding social account error. "+err.Error())
+		//ctx.Values().Set("error", "adding social account error. ")
 		ctx.StatusCode(iris.StatusInternalServerError)
 	}
 }
