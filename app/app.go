@@ -39,6 +39,9 @@ func NewApp() (a *App) {
 	users := a.iris.Party("/users", a.authMiddleware)
 	{
 		users.Get("/", a.getUser)
+		users.Post("/", a.updateUserInfo)
+		users.Delete("/", a.deleteUserInfo)
+		users.Get("/auth", a.addAnotherSocialAcc)
 	}
 	//service := i.Party("/service")
 	//{
