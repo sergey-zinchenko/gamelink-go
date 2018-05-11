@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	C "gamelink-go/common"
+	"gamelink-go/graceful"
+	"gamelink-go/social"
+	"net/url"
 )
 
 type (
@@ -82,6 +85,15 @@ func (u *User) txDelete(tx *sql.Tx) error {
 	return err
 }
 
+func (u *User) tokenFromValues(fields url.Values) social.ThirdPartyToken {
+	if vk, fb := fields["vk"], fields["fb"]; vk != nil && len(vk) == 1 && fb == nil {
+		return social.VkToken(vk[0])
+	} else if fb != nil && len(fb) == 1 && vk == nil {
+		return social.FbToken(fb[0])
+	}
+	return nil
+}
+
 func (u *User) logout() error {
 	return nil
 }
@@ -157,6 +169,49 @@ func (u *User) Delete(fields []string) (C.J, error) {
 		return nil, err
 	}
 	updData, err := transaction(fields, tx)
+	if err != nil {
+		if e := tx.Rollback(); e != nil {
+			return nil, err
+		}
+		return nil, err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return nil, err
+	}
+	return updData, nil
+}
+
+// AddSocial - allow
+func (u *User) AddSocial(fields url.Values) (C.J, error) {
+	var transaction = func(ID social.ThirdPartyID, tx *sql.Tx) (C.J, error) {
+		data, err := u.txData(tx)
+		if err != nil {
+			return nil, err
+		}
+		if _, ok := data[ID.Name()]; ok {
+			return nil, graceful.BadRequestError{Message: "account already exist"}
+		}
+		data[ID.Name()] = ID.Value()
+		err = u.txUpdate(data, tx)
+		if err != nil {
+			return nil, err
+		}
+		return data, nil
+	}
+	tx, err := u.dbs.mySQL.Begin()
+	if err != nil {
+		return nil, err
+	}
+	token := u.tokenFromValues(fields)
+	if token == nil {
+		return nil, graceful.BadRequestError{Message: "invalid token"}
+	}
+	ID, _, err := token.UserInfo()
+	if err != nil {
+		return nil, err
+	}
+	updData, err := transaction(ID, tx)
 	if err != nil {
 		if e := tx.Rollback(); e != nil {
 			return nil, err

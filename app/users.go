@@ -57,13 +57,18 @@ func (a *App) delete(ctx iris.Context) {
 	}
 }
 
-//func (a *App) addSocial(ctx iris.Context) {
-//	var (
-//		err  error
-//		data map[string]interface{}
-//	)
-//	defer func() {
-//		handleError(err, ctx)
-//	}()
-//	user := ctx.Values().Get(userCtxKey).(*storage.User)
-//}
+func (a *App) addSocial(ctx iris.Context) {
+	var (
+		err  error
+		data map[string]interface{}
+	)
+	defer func() {
+		handleError(err, ctx)
+	}()
+	user := ctx.Values().Get(userCtxKey).(*storage.User)
+	data, err = user.AddSocial(ctx.Request().URL.Query())
+	if err != nil {
+		return
+	}
+	ctx.JSON(data)
+}
