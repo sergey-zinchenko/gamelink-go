@@ -19,17 +19,18 @@ const (
 
 func check(socialID social.ThirdPartyID, tx *sql.Tx) (bool, int64, error) {
 	queryString := fmt.Sprintf("SELECT `id` FROM `users` u WHERE u.`%s` = ?", socialID.Name())
-	stmt, err := tx.Prepare(queryString)
+	stmt, err := tx.Prepare(queryString) //TODO: do not use Prepare and close in one func
 	if err != nil {
 		return false, 0, err
 	}
 	defer stmt.Close()
-	rows, err := stmt.Query(socialID)
+	rows, err := stmt.Query(socialID) //TODO: QueryRow + sql.ErrNoRows
 	if err != nil {
 		return false, 0, err
 	}
 	defer rows.Close()
 	registered := rows.Next()
+	//TODO: rows.Err()
 	var userID int64
 	if registered {
 		err = rows.Scan(&userID)

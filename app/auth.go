@@ -5,7 +5,6 @@ import (
 	"gamelink-go/social"
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
-	"net/http"
 	"net/url"
 )
 
@@ -30,15 +29,7 @@ func (a *App) authMiddleware(ctx iris.Context) {
 		user *storage.User
 	)
 	defer func() {
-		if err != nil {
-			if sc, hasCode := err.(graceful.StatusCode); hasCode {
-				ctx.StatusCode(sc.StatusCode())
-			} else {
-				ctx.StatusCode(http.StatusInternalServerError)
-			}
-			ctx.Values().Set(errorCtxKey, err)
-			return
-		}
+		handleError(err, ctx)
 		ctx.Next()
 	}()
 	token := ctx.GetHeader("Authorization")
@@ -59,18 +50,7 @@ func (a *App) registerLogin(ctx iris.Context) {
 		user      *storage.User
 		err       error
 	)
-	defer func() {
-		if err == nil {
-			ctx.JSON(j{"token": authToken})
-		} else {
-			if sc, hasCode := err.(graceful.StatusCode); hasCode {
-				ctx.StatusCode(sc.StatusCode())
-			} else {
-				ctx.StatusCode(http.StatusInternalServerError)
-			}
-			ctx.Values().Set(errorCtxKey, err)
-		}
-	}()
+	defer handleError(err, ctx)
 	thirdPartyToken := tokenFromValues(ctx.Request().URL.Query())
 	if thirdPartyToken == nil {
 		err = graceful.BadRequestError{Message: "query without vk or fb token"}
@@ -84,4 +64,5 @@ func (a *App) registerLogin(ctx iris.Context) {
 	if err != nil {
 		return
 	}
+	ctx.JSON(j{"token": authToken})
 }
