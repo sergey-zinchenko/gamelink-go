@@ -69,7 +69,7 @@ func (dbs DBS) AuthorizedUser(token string) (*User, error) {
 	idStr, err := dbs.rc.Get(authRedisKeyPref + token).Result()
 	if err != nil {
 		if err == redis.Nil {
-			return nil, &graceful.UnauthorizedError{}
+			return nil, &graceful.UnauthorizedError{Message: "key does not exists in redis"}
 		}
 		return nil, err
 	}
