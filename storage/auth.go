@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"gamelink-go/common"
+	C "gamelink-go/common"
 	"gamelink-go/graceful"
 	"gamelink-go/social"
 	"github.com/go-redis/redis"
@@ -125,7 +125,7 @@ func (u User) AuthToken() (string, error) {
 	}
 	var authToken string
 	for ok := false; !ok; {
-		authToken = common.RandStringBytes(20)
+		authToken = C.RandStringBytes(20)
 		authKey := authRedisKeyPref + authToken
 		var err error
 		ok, err = u.dbs.rc.SetNX(authKey, u.ID(), time.Hour).Result()
