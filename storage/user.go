@@ -1,8 +1,11 @@
 package storage
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
+	"gamelink-go/social"
+	"net/url"
 )
 
 type (
@@ -49,6 +52,181 @@ func (u User) Data() (map[string]interface{}, error) {
 	return data, nil
 }
 
+// UpdateData - update user data
+func (u *User) UpdateData(userID int64, oldData map[string]interface{}, newData map[string]interface{}) error {
+	delete(newData, "fb_id")
+	delete(newData, "vk_id")
+	for k, v := range newData {
+		oldData[k] = v
+	}
+	var transaction = func(userID int64, Data *map[string]interface{}, tx *sql.Tx) error {
+		stmt, err := tx.Prepare("UPDATE `users` SET `data`=? WHERE `id`=?")
+		if err != nil {
+			return err
+		}
+		b, err := json.Marshal(Data)
+		if err != nil {
+			return err
+		}
+		defer stmt.Close()
+		_, err = stmt.Exec(b, userID)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	tx, err := u.dbs.mySQL.Begin()
+	if err != nil {
+		return err
+	}
+	err = transaction(userID, &oldData, tx)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// DeleteData - delete user data
+func (u *User) DeleteData(userID int64, queryValues url.Values, Data map[string]interface{}) error {
+	var flag string
+	var query string
+	if len(queryValues) == 0 {
+		query = "DELETE FROM `users` WHERE `id`=?"
+		flag = "user_delete"
+	} else {
+		for _, v := range queryValues["data"] {
+			if v == "fb_id" || v == "vk_id" {
+				continue
+			}
+			delete(Data, v)
+		}
+		query = "UPDATE `users` SET `data`=? WHERE `id`=?"
+		flag = "data_delete"
+	}
+	var transaction = func(userID int64, Data *map[string]interface{}, query string, tx *sql.Tx) error {
+		stmt, err := tx.Prepare(query)
+		if err != nil {
+			return err
+		}
+		defer stmt.Close()
+		switch flag {
+		case "user_delete":
+			_, err = stmt.Exec(userID)
+		case "data_delete":
+			b, err := json.Marshal(Data)
+			if err != nil {
+				return err
+			}
+			_, err = stmt.Exec(b, userID)
+		default:
+			return errors.New("delete data error")
+		}
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	tx, err := u.dbs.mySQL.Begin()
+	if err != nil {
+		return err
+	}
+	err = transaction(userID, &Data, query, tx)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+//AddSocialAcc - allow user to add one more social media account
+func (u *User) AddSocialAcc(userID int64, queryValues url.Values) error {
+	var socialSource string
+	var (
+		tokenFromValues = func(query url.Values) social.ThirdPartyToken {
+			if vk, fb := query["vk"], query["fb"]; vk != nil && len(vk) == 1 && fb == nil {
+				socialSource = "vk_id"
+				return social.VkToken(vk[0])
+			} else if fb != nil && len(fb) == 1 && vk == nil {
+				socialSource = "fb_id"
+				return social.FbToken(fb[0])
+			}
+			return nil
+		}
+	)
+	token := tokenFromValues(queryValues)
+	stmt, err := u.dbs.mySQL.Prepare("SELECT `data` FROM `users` WHERE `id` = ?")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	rows, err := stmt.Query(u.ID())
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	var bytes []byte
+	if !rows.Next() {
+		return err
+	}
+	err = rows.Scan(&bytes)
+	if err != nil {
+		return err
+	}
+	var data map[string]interface{}
+	err = json.Unmarshal(bytes, &data)
+	if err != nil {
+		return err
+	}
+	if _, ok := data[socialSource]; ok {
+		return err
+	}
+	ID, _, err := token.UserInfo()
+	if err != nil {
+		return err
+	}
+	data[socialSource] = ID
+	var transaction = func(userID int64, data *map[string]interface{}, tx *sql.Tx) error {
+		stmt, err := tx.Prepare("UPDATE `users` SET `data`=? WHERE `id`=?")
+		if err != nil {
+			return err
+		}
+		b, err := json.Marshal(data)
+		if err != nil {
+			return err
+		}
+		defer stmt.Close()
+		_, err = stmt.Exec(b, userID)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	tx, err := u.dbs.mySQL.Begin()
+	if err != nil {
+		return err
+	}
+	err = transaction(userID, &data, tx)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 //TODO: Нужно создать обработчик для загрузки информации о зарегистрированном пользователе.
 //http method post for path /users
 //Можно грузить произвольный JSON
@@ -59,7 +237,7 @@ func (u User) Data() (map[string]interface{}, error) {
 
 //TODO: Нужно создать обработчик для удаления полей из инфы о пользователе или всего пользователя
 //http method delete for path /users
-//если вызван DELET /users/ с валидным  Authorization и в URL query нет параметров то нужно снести всего пользователя целиком - вызвать DELETE в базе по идшнику.
+//если вызван DELETE /users/ с валидным  Authorization и в URL query нет параметров то нужно снести всего пользователя целиком - вызвать DELETE в базе по идшнику.
 //если в URL Query содержит массив data - i.e DELETE /users?data=field1&data=field2 то нужно удалить поля с этими именами в json из поля data в базе.
 //само собой нельзя грохать fb_id и vk_id
 //так же как и в предыдущем кейсе делать через транзакции без тригеров
