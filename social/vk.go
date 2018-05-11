@@ -138,7 +138,7 @@ func (token VkToken) checkToken() (userID string, err error) {
 		if f.Error != nil {
 			switch f.Error.Code {
 			case 15:
-				err = &graceful.UnauthorizedError{}
+				err = &graceful.UnauthorizedError{Message: fmt.Sprintf("%d:%s", f.Error.Code, f.Error.Message)}
 			case 28: //обработка {"error":"d=vk; c=[28]; m=Application authorization failed: refresh service token"}
 				serviceKey.Obsolete(accessToken)
 				fallthrough
@@ -151,7 +151,7 @@ func (token VkToken) checkToken() (userID string, err error) {
 		return
 	}
 	if f.Response.Success != 1 {
-		err = &graceful.UnauthorizedError{}
+		err = &graceful.UnauthorizedError{Message: "incorrect success flag"}
 		return
 	}
 	if f.Response.UserID == 0 {
@@ -206,7 +206,7 @@ func (token VkToken) get(userID string) (string, error) {
 //UserInfo - method to check validity and get user information about the token if it valid. Returns NotFound error if token is not valid
 func (token VkToken) UserInfo() (ThirdPartyID, string, error) {
 	if token == "" {
-		return nil, "", graceful.UnauthorizedError{}
+		return nil, "", graceful.UnauthorizedError{Message: "empty token"}
 	}
 	id, err := token.checkToken()
 	if err != nil {

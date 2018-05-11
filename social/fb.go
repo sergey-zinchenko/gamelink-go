@@ -3,6 +3,7 @@ package social
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"gamelink-go/config"
 	"gamelink-go/graceful"
 	"net/http"
@@ -64,13 +65,13 @@ func (token FbToken) debugToken() (string, error) {
 	if f.Error != nil {
 		switch f.Error.Code {
 		case 102, 190:
-			return "", &graceful.UnauthorizedError{}
+			return "", &graceful.UnauthorizedError{Message: fmt.Sprintf("%d:%s", f.Error.Code, f.Error.Message)}
 		default:
 			return "", NewFbError(f.Error.Message, f.Error.Code)
 		}
 	}
 	if !f.Data.IsValid {
-		return "", &graceful.UnauthorizedError{}
+		return "", &graceful.UnauthorizedError{"wrong is_valid flag"}
 	}
 	if f.Data.AppID != config.FaceBookAppID || f.Data.UserID == "" {
 		return "", errors.New("invalid response format app_id or user_id")
@@ -121,7 +122,7 @@ func (token FbToken) get(userID string) (string, error) {
 //UserInfo - method to get user information (name and identifier) of a valid user token and returns error (d = NotFound) if invalid
 func (token FbToken) UserInfo() (ThirdPartyID, string, error) {
 	if token == "" {
-		return nil, "", graceful.UnauthorizedError{}
+		return nil, "", graceful.UnauthorizedError{Message: "empty token"}
 	}
 	id, err := token.debugToken()
 	if err != nil {

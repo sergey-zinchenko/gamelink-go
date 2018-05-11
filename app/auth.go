@@ -50,7 +50,9 @@ func (a *App) registerLogin(ctx iris.Context) {
 		user      *storage.User
 		err       error
 	)
-	defer handleError(err, ctx)
+	defer func() {
+		handleError(err, ctx)
+	}()
 	thirdPartyToken := tokenFromValues(ctx.Request().URL.Query())
 	if thirdPartyToken == nil {
 		err = graceful.BadRequestError{Message: "query without vk or fb token"}
