@@ -1,8 +1,10 @@
 package storage
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
+	C "gamelink-go/common"
 )
 
 type (
@@ -19,7 +21,7 @@ func (u User) ID() int64 {
 }
 
 //Data - returns user's field data from database
-func (u User) Data() (map[string]interface{}, error) {
+func (u User) Data() (C.J, error) {
 	if u.dbs.mySQL == nil {
 		return nil, errors.New("databases not initialized")
 	}
@@ -41,7 +43,7 @@ func (u User) Data() (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	var data map[string]interface{}
+	var data C.J
 	err = json.Unmarshal(bytes, &data)
 	if err != nil {
 		return nil, err
@@ -49,20 +51,124 @@ func (u User) Data() (map[string]interface{}, error) {
 	return data, nil
 }
 
-//TODO: Нужно создать обработчик для загрузки информации о зарегистрированном пользователе.
-//http method post for path /users
-//Можно грузить произвольный JSON
-//В нем не должно быть полей vk_id, fb_id - их надо удалять из входящих данных
-//Обработка должна быть не по тригеру (удали его из бд), а с использованием транзакции
-//схему организации транзакции посмотри в ThirdPartyUser
-//Сначала грузишь json c инфой из базы (data) потом объединяешь его с тем что получен в теле запроса и пишешь это братно через метод update
+func (u *User) txData(tx *sql.Tx) (C.J, error) {
+	var bytes []byte
+	err := tx.QueryRow("SELECT `data` FROM `users` u WHERE u.`id`=?", u.ID()).Scan(&bytes)
+	if err != nil {
+		return nil, err
+	}
+	var data C.J
+	err = json.Unmarshal(bytes, &data)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
 
-//TODO: Нужно создать обработчик для удаления полей из инфы о пользователе или всего пользователя
-//http method delete for path /users
-//если вызван DELET /users/ с валидным  Authorization и в URL query нет параметров то нужно снести всего пользователя целиком - вызвать DELETE в базе по идшнику.
-//если в URL Query содержит массив data - i.e DELETE /users?data=field1&data=field2 то нужно удалить поля с этими именами в json из поля data в базе.
-//само собой нельзя грохать fb_id и vk_id
-//так же как и в предыдущем кейсе делать через транзакции без тригеров
+func (u *User) txUpdate(data C.J, tx *sql.Tx) error {
+	upd, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec("UPDATE `users` u SET u.`data`=? WHERE u.id=?", upd, u.ID())
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (u *User) txDelete(tx *sql.Tx) error {
+	_, err := tx.Exec("DELETE FROM `users` WHERE `id`=?", u.ID())
+	return err
+}
+
+func (u *User) logout() error {
+	return nil
+}
+
+//Update - allow user update data
+func (u *User) Update(data C.J) (C.J, error) {
+	var transaction = func(upd C.J, tx *sql.Tx) (C.J, error) {
+		data, err := u.txData(tx)
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range upd {
+			data[k] = v
+		}
+		err = u.txUpdate(data, tx)
+		if err != nil {
+			return nil, err
+		}
+		return data, nil
+	}
+	delete(data, "fb_id")
+	delete(data, "vk_id")
+	tx, err := u.dbs.mySQL.Begin()
+	if err != nil {
+		return nil, err
+	}
+	data, err = transaction(data, tx)
+	if err != nil {
+		if e := tx.Rollback(); e != nil {
+			return nil, e
+		}
+		return nil, err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+// Delete - allow user delete data about him or delete account
+func (u *User) Delete(fields []string) (C.J, error) {
+	var transaction = func(fields []string, tx *sql.Tx) (C.J, error) {
+		if len(fields) != 0 {
+			data, err := u.txData(tx)
+			if err != nil {
+				return nil, err
+			}
+			for _, v := range fields {
+				if v == "fb_id" || v == "vk_id" {
+					continue
+				}
+				delete(data, v)
+			}
+			err = u.txUpdate(data, tx)
+			if err != nil {
+				return nil, err
+			}
+			return data, nil
+		}
+		err := u.txDelete(tx)
+		if err != nil {
+			return nil, err
+		}
+		err = u.logout() // Redis Call - Delete tokens from Redis
+		if err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
+	tx, err := u.dbs.mySQL.Begin()
+	if err != nil {
+		return nil, err
+	}
+	updData, err := transaction(fields, tx)
+	if err != nil {
+		if e := tx.Rollback(); e != nil {
+			return nil, err
+		}
+		return nil, err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return nil, err
+	}
+	return updData, nil
+}
 
 //TODO: Нужно создать обраюотчик для добавление аторизации по второй социалке для зарегистрированного пользователя
 //Пользователь зарегистрированный через vk ожет захотеть добавить авторизацию через fb и наоборот
