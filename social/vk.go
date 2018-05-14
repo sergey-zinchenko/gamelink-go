@@ -204,17 +204,17 @@ func (token VkToken) get(userID string) (string, error) {
 }
 
 //UserInfo - method to check validity and get user information about the token if it valid. Returns NotFound error if token is not valid
-func (token VkToken) UserInfo() (ThirdPartyID, string, error) {
+func (token VkToken) UserInfo() (ThirdPartyID, string, []string, error) {
 	if token == "" {
-		return nil, "", graceful.UnauthorizedError{Message: "empty token"}
+		return nil, "", nil, graceful.UnauthorizedError{Message: "empty token"}
 	}
 	id, err := token.checkToken()
 	if err != nil {
-		return nil, "", err
+		return nil, "", nil, err
 	}
 	name, err := token.get(id)
 	if err != nil {
-		return vkIdentifier(id), "", err
+		return vkIdentifier(id), "", nil, err
 	}
-	return vkIdentifier(id), name, nil
+	return vkIdentifier(id), name, nil, nil
 }
