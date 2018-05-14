@@ -181,6 +181,7 @@ func (token VkToken) get(userID string) (string, error) {
 	}
 	q := req.URL.Query()
 	q.Add("fields", "sex,bdate,city,country")
+	q.Add("access_token", string(token))
 	q.Add("user_ids", userID)
 	q.Add("v", "5.68")
 	req.URL.RawQuery = q.Encode()
