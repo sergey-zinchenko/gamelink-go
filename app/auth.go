@@ -1,6 +1,7 @@
 package app
 
 import (
+	C "gamelink-go/common"
 	"gamelink-go/graceful"
 	"gamelink-go/social"
 	"gamelink-go/storage"
@@ -71,5 +72,5 @@ func (a *App) registerLogin(ctx iris.Context) {
 	if err != nil {
 		return
 	}
-	ctx.JSON(j{"token": authToken})
+	ctx.JSON(C.J{"token": authToken})
 }

@@ -1,6 +1,7 @@
 package app
 
 import (
+	C "gamelink-go/common"
 	"gamelink-go/graceful"
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
@@ -18,7 +19,7 @@ func (a *App) getUser(ctx iris.Context) {
 
 func (a *App) postUser(ctx iris.Context) {
 	var (
-		data, updated map[string]interface{}
+		data, updated C.J
 		err           error
 	)
 	defer func() {
@@ -41,7 +42,7 @@ func (a *App) postUser(ctx iris.Context) {
 func (a *App) deleteUser(ctx iris.Context) {
 	var (
 		err  error
-		data map[string]interface{}
+		data C.J
 	)
 	defer func() {
 		if err != nil {
@@ -63,7 +64,7 @@ func (a *App) deleteUser(ctx iris.Context) {
 func (a *App) addAuth(ctx iris.Context) {
 	var (
 		err  error
-		data map[string]interface{}
+		data C.J
 	)
 	defer func() {
 		if err != nil {

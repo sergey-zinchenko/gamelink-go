@@ -31,7 +31,7 @@ func check(socialID social.ThirdPartyID, tx *sql.Tx) (bool, int64, error) {
 }
 
 func register(socialID social.ThirdPartyID, name string, tx *sql.Tx) (int64, error) {
-	b, err := json.Marshal(map[string]interface{}{socialID.Name(): socialID, "name": name})
+	b, err := json.Marshal(C.J{socialID.Name(): socialID, "name": name})
 	if err != nil {
 		return 0, err
 	}
