@@ -38,7 +38,7 @@ func (a *App) postUser(ctx iris.Context) {
 	ctx.JSON(updated)
 }
 
-func (a *App) delete(ctx iris.Context) {
+func (a *App) deleteUser(ctx iris.Context) {
 	var (
 		err  error
 		data map[string]interface{}

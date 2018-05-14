@@ -40,7 +40,7 @@ func NewApp() (a *App) {
 	{
 		users.Get("/", a.getUser)
 		users.Post("/", a.postUser)
-		users.Delete("/", a.delete)
+		users.Delete("/", a.deleteUser)
 		users.Get("/addAuth", a.addAuth)
 	}
 	//service := i.Party("/service")
