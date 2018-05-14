@@ -207,7 +207,7 @@ func (u *User) AddSocial(fields url.Values) (C.J, error) {
 	if token == nil {
 		return nil, graceful.BadRequestError{Message: "invalid token"}
 	}
-	ID, _, err := token.UserInfo()
+	ID, _, _, err := token.UserInfo()
 	if err != nil {
 		return nil, err
 	}
@@ -224,11 +224,3 @@ func (u *User) AddSocial(fields url.Values) (C.J, error) {
 	}
 	return updData, nil
 }
-
-//TODO: Нужно создать обраюотчик для добавление аторизации по второй социалке для зарегистрированного пользователя
-//Пользователь зарегистрированный через vk ожет захотеть добавить авторизацию через fb и наоборот
-//http method GET for path /users/auth
-//URL какого-то такого вида /users/auth?fb=sometoken
-//само собой только для авторизованных пользователей
-//через транзакции
-//возможные ситуации такие: у пользователя уже задан токен такой социалки или есть другая заптсь о пользователе с такой социалкой - вернуть Bad Request.

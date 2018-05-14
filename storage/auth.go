@@ -98,9 +98,14 @@ func (dbs DBS) ThirdPartyUser(token social.ThirdPartyToken) (*User, error) {
 		}
 		return userID, nil
 	}
-	socialID, name, err := token.UserInfo()
+	socialID, name, friendsIds, err := token.UserInfo()
 	if err != nil {
 		return nil, err
+	}
+	// Вопрос в том, когда завершается горутина? Если при завершении функции, в которой вызвана, не все данные попадуn в таблицу.
+	// Идея была сделать процес фоном и быстрее залогинить пользователя чтоб он не ждал пока база запишет друзей
+	if friendsIds != nil {
+		go dbs.SyncFriends(friendsIds, socialID.Value())
 	}
 	tx, err := dbs.mySQL.Begin()
 	if err != nil {
@@ -134,4 +139,39 @@ func (u User) AuthToken() (string, error) {
 		}
 	}
 	return authToken, nil
+}
+
+//SyncFriends - add user friends to table friends
+func (dbs DBS) SyncFriends(friendsIds []string, ID string) error {
+	var transaction = func(friendsIds []string, ID string, tx *sql.Tx) error {
+		for _, v := range friendsIds {
+			//err := tx.QueryRow("SELECT `user_id` FROM `friends` f WHERE f.`user_id`=? AND f.`friend_id`=?", ID, v) // Вызывает ошибку busy buffer
+			//if err != nil {
+			stmt, err := tx.Prepare("INSERT INTO `friends` (`user_id`, `friend_id`) VALUES (?,?)")
+			if err != nil {
+				return err
+			}
+			defer stmt.Close()
+			_, err = stmt.Exec(ID, v)
+			if err != nil {
+				return err
+			}
+			//}
+		}
+		return nil
+	}
+	tx, err := dbs.mySQL.Begin()
+	if err != nil {
+		return err
+	}
+	err = transaction(friendsIds, ID, tx)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
 }
