@@ -25,25 +25,15 @@ func (u User) ID() int64 {
 
 //Data - returns user's field data from database
 func (u User) Data() (C.J, error) {
+	var bytes []byte
 	if u.dbs.mySQL == nil {
 		return nil, errors.New("databases not initialized")
 	}
-	stmt, err := u.dbs.mySQL.Prepare("SELECT `data` FROM `users` WHERE `id` = ?")
+	err := u.dbs.mySQL.QueryRow("SELECT `data` FROM `users` WHERE `id` = ?", u.ID()).Scan()
 	if err != nil {
-		return nil, err
-	}
-	defer stmt.Close()
-	rows, err := stmt.Query(u.ID())
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var bytes []byte
-	if !rows.Next() {
-		return nil, errors.New("user not found")
-	}
-	err = rows.Scan(&bytes)
-	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.New("user not found")
+		}
 		return nil, err
 	}
 	var data C.J
