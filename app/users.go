@@ -1,6 +1,7 @@
 package app
 
 import (
+	"gamelink-go/graceful"
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
 	"net/http"
@@ -70,7 +71,12 @@ func (a *App) addSocial(ctx iris.Context) {
 		}
 	}()
 	user := ctx.Values().Get(userCtxKey).(*storage.User)
-	data, err = user.AddSocial(ctx.Request().URL.Query())
+	token := tokenFromValues(ctx.Request().URL.Query())
+	if token == nil {
+		err = graceful.BadRequestError{Message: "invalid token"}
+		return
+	}
+	data, err = user.AddSocial(token)
 	if err != nil {
 		return
 	}
