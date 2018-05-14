@@ -60,7 +60,7 @@ func (a *App) delete(ctx iris.Context) {
 	}
 }
 
-func (a *App) addSocial(ctx iris.Context) {
+func (a *App) addAuth(ctx iris.Context) {
 	var (
 		err  error
 		data map[string]interface{}
