@@ -10,9 +10,7 @@ func (a *App) getUser(ctx iris.Context) {
 	user := ctx.Values().Get(userCtxKey).(*storage.User)
 	data, err := user.Data()
 	if err != nil {
-		ctx.StatusCode(http.StatusInternalServerError)
-		ctx.Values().Set(errorCtxKey, err)
-		return
+		handleError(err, ctx)
 	}
 	ctx.JSON(data)
 }
@@ -23,7 +21,9 @@ func (a *App) postUser(ctx iris.Context) {
 		err           error
 	)
 	defer func() {
-		handleError(err, ctx)
+		if err != nil {
+			handleError(err, ctx)
+		}
 	}()
 	user := ctx.Values().Get(userCtxKey).(*storage.User)
 	err = ctx.ReadJSON(&data)
@@ -43,7 +43,9 @@ func (a *App) delete(ctx iris.Context) {
 		data map[string]interface{}
 	)
 	defer func() {
-		handleError(err, ctx)
+		if err != nil {
+			handleError(err, ctx)
+		}
 	}()
 	user := ctx.Values().Get(userCtxKey).(*storage.User)
 	data, err = user.Delete(ctx.Request().URL.Query()["fields"])
@@ -63,7 +65,9 @@ func (a *App) addSocial(ctx iris.Context) {
 		data map[string]interface{}
 	)
 	defer func() {
-		handleError(err, ctx)
+		if err != nil {
+			handleError(err, ctx)
+		}
 	}()
 	user := ctx.Values().Get(userCtxKey).(*storage.User)
 	data, err = user.AddSocial(ctx.Request().URL.Query())

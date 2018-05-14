@@ -29,7 +29,7 @@ func (u User) Data() (C.J, error) {
 	if u.dbs.mySQL == nil {
 		return nil, errors.New("databases not initialized")
 	}
-	err := u.dbs.mySQL.QueryRow("SELECT `data` FROM `users` WHERE `id` = ?", u.ID()).Scan()
+	err := u.dbs.mySQL.QueryRow("SELECT `data` FROM `users` WHERE `id` = ?", u.ID()).Scan(&bytes)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, errors.New("user not found")

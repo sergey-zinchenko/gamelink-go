@@ -29,7 +29,10 @@ func (a *App) authMiddleware(ctx iris.Context) {
 		user *storage.User
 	)
 	defer func() {
-		handleError(err, ctx)
+		if err != nil {
+			handleError(err, ctx)
+			ctx.StopExecution()
+		}
 		ctx.Next()
 	}()
 	token := ctx.GetHeader("Authorization")
@@ -51,7 +54,9 @@ func (a *App) registerLogin(ctx iris.Context) {
 		err       error
 	)
 	defer func() {
-		handleError(err, ctx)
+		if err != nil {
+			handleError(err, ctx)
+		}
 	}()
 	thirdPartyToken := tokenFromValues(ctx.Request().URL.Query())
 	if thirdPartyToken == nil {
