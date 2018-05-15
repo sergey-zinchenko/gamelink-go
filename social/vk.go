@@ -181,6 +181,7 @@ func (token VkToken) get(userID string) (string, error) {
 	}
 	q := req.URL.Query()
 	q.Add("fields", "sex,bdate,city,country")
+	q.Add("access_token", string(token))
 	q.Add("user_ids", userID)
 	q.Add("v", "5.68")
 	req.URL.RawQuery = q.Encode()
@@ -204,7 +205,7 @@ func (token VkToken) get(userID string) (string, error) {
 }
 
 //UserInfo - method to check validity and get user information about the token if it valid. Returns NotFound error if token is not valid
-func (token VkToken) UserInfo() (ThirdPartyID, string, []string, error) {
+func (token VkToken) UserInfo() (ThirdPartyID, string, []ThirdPartyID, error) {
 	if token == "" {
 		return nil, "", nil, graceful.UnauthorizedError{Message: "empty token"}
 	}

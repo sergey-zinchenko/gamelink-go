@@ -7,7 +7,6 @@ import (
 	C "gamelink-go/common"
 	"gamelink-go/graceful"
 	"gamelink-go/social"
-	"net/url"
 )
 
 type (
@@ -25,25 +24,15 @@ func (u User) ID() int64 {
 
 //Data - returns user's field data from database
 func (u User) Data() (C.J, error) {
+	var bytes []byte
 	if u.dbs.mySQL == nil {
 		return nil, errors.New("databases not initialized")
 	}
-	stmt, err := u.dbs.mySQL.Prepare("SELECT `data` FROM `users` WHERE `id` = ?")
+	err := u.dbs.mySQL.QueryRow("SELECT `data` FROM `users` WHERE `id` = ?", u.ID()).Scan(&bytes)
 	if err != nil {
-		return nil, err
-	}
-	defer stmt.Close()
-	rows, err := stmt.Query(u.ID())
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var bytes []byte
-	if !rows.Next() {
-		return nil, errors.New("user not found")
-	}
-	err = rows.Scan(&bytes)
-	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.New("user not found")
+		}
 		return nil, err
 	}
 	var data C.J
@@ -83,15 +72,6 @@ func (u *User) txUpdate(data C.J, tx *sql.Tx) error {
 func (u *User) txDelete(tx *sql.Tx) error {
 	_, err := tx.Exec("DELETE FROM `users` WHERE `id`=?", u.ID())
 	return err
-}
-
-func (u *User) tokenFromValues(fields url.Values) social.ThirdPartyToken {
-	if vk, fb := fields["vk"], fields["fb"]; vk != nil && len(vk) == 1 && fb == nil {
-		return social.VkToken(vk[0])
-	} else if fb != nil && len(fb) == 1 && vk == nil {
-		return social.FbToken(fb[0])
-	}
-	return nil
 }
 
 func (u *User) logout() error {
@@ -183,7 +163,7 @@ func (u *User) Delete(fields []string) (C.J, error) {
 }
 
 // AddSocial - allow
-func (u *User) AddSocial(fields url.Values) (C.J, error) {
+func (u *User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 	var transaction = func(ID social.ThirdPartyID, tx *sql.Tx) (C.J, error) {
 		data, err := u.txData(tx)
 		if err != nil {
@@ -203,15 +183,14 @@ func (u *User) AddSocial(fields url.Values) (C.J, error) {
 	if err != nil {
 		return nil, err
 	}
-	token := u.tokenFromValues(fields)
 	if token == nil {
-		return nil, graceful.BadRequestError{Message: "invalid token"}
+		return nil, errors.New("empty token")
 	}
-	ID, _, _, err := token.UserInfo()
+	id, _, _, err := token.UserInfo()
 	if err != nil {
 		return nil, err
 	}
-	updData, err := transaction(ID, tx)
+	updData, err := transaction(id, tx)
 	if err != nil {
 		if e := tx.Rollback(); e != nil {
 			return nil, err
@@ -224,3 +203,11 @@ func (u *User) AddSocial(fields url.Values) (C.J, error) {
 	}
 	return updData, nil
 }
+
+//TODO: Нужно создать обраюотчик для добавление аторизации по второй социалке для зарегистрированного пользователя
+//Пользователь зарегистрированный через vk ожет захотеть добавить авторизацию через fb и наоборот
+//http method GET for path /users/auth
+//URL какого-то такого вида /users/auth?fb=sometoken
+//само собой только для авторизованных пользователей
+//через транзакции
+//возможные ситуации такие: у пользователя уже задан токен такой социалки или есть другая заптсь о пользователе с такой социалкой - вернуть Bad Request.

@@ -79,7 +79,7 @@ func (token FbToken) debugToken() (string, error) {
 		}
 	}
 	if !f.Data.IsValid {
-		return "", &graceful.UnauthorizedError{Message: "wrong is_valid flag"}
+		return "", &graceful.UnauthorizedError{Message: fmt.Sprintf("%d:%s", f.Error.Code, f.Error.Message)}
 	}
 	if f.Data.AppID != config.FaceBookAppID || f.Data.UserID == "" {
 		return "", errors.New("invalid response format app_id or user_id")
@@ -87,7 +87,7 @@ func (token FbToken) debugToken() (string, error) {
 	return f.Data.UserID, nil
 }
 
-func (token FbToken) get(userID string) (string, []string, error) {
+func (token FbToken) get(userID string) (string, []ThirdPartyID, error) {
 	type (
 		fbGetResponse struct {
 			Name    string         `json:"name"`
@@ -125,12 +125,16 @@ func (token FbToken) get(userID string) (string, []string, error) {
 	if f.ID != userID {
 		return "", nil, errors.New("user id not match")
 	}
-	var friendsIds = prepareUserFriendsArray(f.Friends.Data)
+	friendsIds := make([]ThirdPartyID, len(f.Friends.Data))
+	for k := range friendsIds {
+		friendsIds[k] = fbIdentifier(f.Friends.Data[k].FbFriendID)
+	}
+
 	return f.Name, friendsIds, nil
 }
 
 //UserInfo - method to get user information (name and identifier) of a valid user token and returns error (d = NotFound) if invalid
-func (token FbToken) UserInfo() (ThirdPartyID, string, []string, error) {
+func (token FbToken) UserInfo() (ThirdPartyID, string, []ThirdPartyID, error) {
 	if token == "" {
 		return nil, "", nil, graceful.UnauthorizedError{Message: "empty token"}
 	}
@@ -143,15 +147,4 @@ func (token FbToken) UserInfo() (ThirdPartyID, string, []string, error) {
 		return fbIdentifier(id), "", nil, err
 	}
 	return fbIdentifier(id), name, friendsIds, nil
-}
-
-func prepareUserFriendsArray(friends []*FbFriends) []ThirdPartyID {
-	if len(friends) == 0 {
-		return nil
-	}
-	var friendsIds = make([]string, len(friends))
-	for k := range friends {
-		friendsIds[k] = friends[k].FbFriendID
-	}
-	return friendsIds
 }
