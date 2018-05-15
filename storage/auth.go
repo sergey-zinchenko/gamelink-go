@@ -144,19 +144,16 @@ func (u User) AuthToken() (string, error) {
 //SyncFriends - add user friends to table friends
 func (dbs DBS) SyncFriends(friendsIds []string, ID string) error {
 	var transaction = func(friendsIds []string, ID string, tx *sql.Tx) error {
+		stmt, err := tx.Prepare("INSERT INTO `friends` (`user_id`, `friend_id`) VALUES (?,?)")
+		defer stmt.Close()
 		for _, v := range friendsIds {
-			//err := tx.QueryRow("SELECT `user_id` FROM `friends` f WHERE f.`user_id`=? AND f.`friend_id`=?", ID, v) // Вызывает ошибку busy buffer
-			//if err != nil {
-			stmt, err := tx.Prepare("INSERT INTO `friends` (`user_id`, `friend_id`) VALUES (?,?)")
 			if err != nil {
 				return err
 			}
-			defer stmt.Close()
 			_, err = stmt.Exec(ID, v)
 			if err != nil {
 				return err
 			}
-			//}
 		}
 		return nil
 	}

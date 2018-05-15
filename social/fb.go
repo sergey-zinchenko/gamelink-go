@@ -145,7 +145,7 @@ func (token FbToken) UserInfo() (ThirdPartyID, string, []string, error) {
 	return fbIdentifier(id), name, friendsIds, nil
 }
 
-func prepareUserFriendsArray(friends []*FbFriends) []string {
+func prepareUserFriendsArray(friends []*FbFriends) []ThirdPartyID {
 	if len(friends) == 0 {
 		return nil
 	}
