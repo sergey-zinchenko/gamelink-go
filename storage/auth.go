@@ -18,40 +18,24 @@ const (
 )
 
 func check(socialID social.ThirdPartyID, tx *sql.Tx) (bool, int64, error) {
-	queryString := fmt.Sprintf("SELECT `id` FROM `users` u WHERE u.`%s` = ?", socialID.Name())
-	stmt, err := tx.Prepare(queryString) //TODO: do not use Prepare and close in one func
-	if err != nil {
-		return false, 0, err
-	}
-	defer stmt.Close()
-	rows, err := stmt.Query(socialID) //TODO: QueryRow + sql.ErrNoRows
-	if err != nil {
-		return false, 0, err
-	}
-	defer rows.Close()
-	registered := rows.Next()
-	//TODO: rows.Err()
 	var userID int64
-	if registered {
-		err = rows.Scan(&userID)
-		if err != nil {
-			return true, 0, err
+	queryString := fmt.Sprintf("SELECT `id` FROM `users` u WHERE u.`%s` = ?", socialID.Name())
+	err := tx.QueryRow(queryString, socialID).Scan(&userID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, 0, nil
 		}
+		return false, 0, err
 	}
-	return registered, userID, nil
+	return true, userID, nil
 }
 
 func register(socialID social.ThirdPartyID, name string, tx *sql.Tx) (int64, error) {
-	stmt, err := tx.Prepare("INSERT INTO `users` (`data`) VALUES (?)")
+	b, err := json.Marshal(C.J{socialID.Name(): socialID, "name": name})
 	if err != nil {
 		return 0, err
 	}
-	b, err := json.Marshal(map[string]interface{}{socialID.Name(): socialID, "name": name})
-	if err != nil {
-		return 0, err
-	}
-	defer stmt.Close()
-	res, err := stmt.Exec(b)
+	res, err := tx.Exec("INSERT INTO `users` (`data`) VALUES (?)", b)
 	if err != nil {
 		return 0, err
 	}
@@ -86,7 +70,7 @@ func (dbs DBS) ThirdPartyUser(token social.ThirdPartyToken) (*User, error) {
 	if dbs.mySQL == nil {
 		return nil, errors.New("databases not initialized")
 	}
-	var transaction = func(socialID social.ThirdPartyID, name string, tx *sql.Tx) (int64, error) {
+	var transaction = func(socialID social.ThirdPartyID, name string, friendIds []social.ThirdPartyID, tx *sql.Tx) (int64, error) {
 		registered, userID, err := check(socialID, tx)
 		if err != nil {
 			return 0, err
@@ -96,9 +80,13 @@ func (dbs DBS) ThirdPartyUser(token social.ThirdPartyToken) (*User, error) {
 				return 0, err
 			}
 		}
+		err = dbs.SyncFriends(friendIds, userID, tx)
+		if err != nil {
+			return 0, err
+		}
 		return userID, nil
 	}
-	socialID, name, err := token.UserInfo()
+	socialID, name, friendsIds, err := token.UserInfo()
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +94,7 @@ func (dbs DBS) ThirdPartyUser(token social.ThirdPartyToken) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
-	userID, err := transaction(socialID, name, tx)
+	userID, err := transaction(socialID, name, friendsIds, tx)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
@@ -134,4 +122,20 @@ func (u User) AuthToken() (string, error) {
 		}
 	}
 	return authToken, nil
+}
+
+//SyncFriends - add user friends to table friends
+func (dbs DBS) SyncFriends(friendsIds []social.ThirdPartyID, ID int64, tx *sql.Tx) error {
+	queryString := fmt.Sprintf("INSERT IGNORE INTO `friends` (`user_id`, `friend_id`) "+
+		"SELECT GREATEST(ids.id1, ids.id2),   LEAST(ids.id1, ids.id2) "+
+		"FROM (SELECT ? as id1 , u2.id as id2 FROM (SELECT `id` FROM `users` u WHERE u.`%s` = ? ) u2) ids", friendsIds[0].Name())
+	stmt, err := tx.Prepare(queryString)
+	defer stmt.Close()
+	for _, v := range friendsIds {
+		_, err = stmt.Exec(ID, v.Value())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
