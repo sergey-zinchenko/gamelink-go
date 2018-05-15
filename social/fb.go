@@ -79,7 +79,7 @@ func (token FbToken) debugToken() (string, error) {
 		}
 	}
 	if !f.Data.IsValid {
-		return "", &graceful.UnauthorizedError{Message: fmt.Sprintf("%d:%s", f.Error.Code, f.Error.Message)}
+		return "", &graceful.UnauthorizedError{Message: "wrong is_valid flag"}
 	}
 	if f.Data.AppID != config.FaceBookAppID || f.Data.UserID == "" {
 		return "", errors.New("invalid response format app_id or user_id")
