@@ -18,40 +18,24 @@ const (
 )
 
 func check(socialID social.ThirdPartyID, tx *sql.Tx) (bool, int64, error) {
-	queryString := fmt.Sprintf("SELECT `id` FROM `users` u WHERE u.`%s` = ?", socialID.Name())
-	stmt, err := tx.Prepare(queryString) //TODO: do not use Prepare and close in one func
-	if err != nil {
-		return false, 0, err
-	}
-	defer stmt.Close()
-	rows, err := stmt.Query(socialID) //TODO: QueryRow + sql.ErrNoRows
-	if err != nil {
-		return false, 0, err
-	}
-	defer rows.Close()
-	registered := rows.Next()
-	//TODO: rows.Err()
 	var userID int64
-	if registered {
-		err = rows.Scan(&userID)
-		if err != nil {
-			return true, 0, err
+	queryString := fmt.Sprintf("SELECT `id` FROM `users` u WHERE u.`%s` = ?", socialID.Name())
+	err := tx.QueryRow(queryString, socialID).Scan(&userID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, 0, nil
 		}
+		return false, 0, err
 	}
-	return registered, userID, nil
+	return true, userID, nil
 }
 
 func register(socialID social.ThirdPartyID, name string, tx *sql.Tx) (int64, error) {
-	stmt, err := tx.Prepare("INSERT INTO `users` (`data`) VALUES (?)")
+	b, err := json.Marshal(C.J{socialID.Name(): socialID, "name": name})
 	if err != nil {
 		return 0, err
 	}
-	b, err := json.Marshal(map[string]interface{}{socialID.Name(): socialID, "name": name})
-	if err != nil {
-		return 0, err
-	}
-	defer stmt.Close()
-	res, err := stmt.Exec(b)
+	res, err := tx.Exec("INSERT INTO `users` (`data`) VALUES (?)", b)
 	if err != nil {
 		return 0, err
 	}
