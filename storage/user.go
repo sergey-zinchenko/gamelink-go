@@ -186,7 +186,7 @@ func (u *User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 	if token == nil {
 		return nil, errors.New("empty token")
 	}
-	id, _, err := token.UserInfo()
+	id, _, _, err := token.UserInfo()
 	if err != nil {
 		return nil, err
 	}

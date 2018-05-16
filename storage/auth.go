@@ -70,7 +70,7 @@ func (dbs DBS) ThirdPartyUser(token social.ThirdPartyToken) (*User, error) {
 	if dbs.mySQL == nil {
 		return nil, errors.New("databases not initialized")
 	}
-	var transaction = func(socialID social.ThirdPartyID, name string, tx *sql.Tx) (int64, error) {
+	var transaction = func(socialID social.ThirdPartyID, name string, friendIds []social.ThirdPartyID, tx *sql.Tx) (int64, error) {
 		registered, userID, err := check(socialID, tx)
 		if err != nil {
 			return 0, err
@@ -80,9 +80,13 @@ func (dbs DBS) ThirdPartyUser(token social.ThirdPartyToken) (*User, error) {
 				return 0, err
 			}
 		}
+		err = dbs.SyncFriends(friendIds, userID, tx)
+		if err != nil {
+			return 0, err
+		}
 		return userID, nil
 	}
-	socialID, name, err := token.UserInfo()
+	socialID, name, friendsIds, err := token.UserInfo()
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +94,7 @@ func (dbs DBS) ThirdPartyUser(token social.ThirdPartyToken) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
-	userID, err := transaction(socialID, name, tx)
+	userID, err := transaction(socialID, name, friendsIds, tx)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
@@ -118,4 +122,20 @@ func (u User) AuthToken() (string, error) {
 		}
 	}
 	return authToken, nil
+}
+
+//SyncFriends - add user friends to table friends
+func (dbs DBS) SyncFriends(friendsIds []social.ThirdPartyID, ID int64, tx *sql.Tx) error {
+	queryString := fmt.Sprintf("INSERT IGNORE INTO `friends` (`user_id`, `friend_id`) "+
+		"SELECT GREATEST(ids.id1, ids.id2),   LEAST(ids.id1, ids.id2) "+
+		"FROM (SELECT ? as id1 , u2.id as id2 FROM (SELECT `id` FROM `users` u WHERE u.`%s` = ? ) u2) ids", friendsIds[0].Name())
+	stmt, err := tx.Prepare(queryString)
+	defer stmt.Close()
+	for _, v := range friendsIds {
+		_, err = stmt.Exec(ID, v.Value())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
