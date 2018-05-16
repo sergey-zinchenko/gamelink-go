@@ -164,7 +164,7 @@ func (u *User) Delete(fields []string) (C.J, error) {
 
 // AddSocial - allow
 func (u *User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
-	var transaction = func(ID social.ThirdPartyID, tx *sql.Tx) (C.J, error) {
+	var transaction = func(ID social.ThirdPartyID, friendIds []social.ThirdPartyID, tx *sql.Tx) (C.J, error) {
 		data, err := u.txData(tx)
 		if err != nil {
 			return nil, err
@@ -177,6 +177,7 @@ func (u *User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 		if err != nil {
 			return nil, err
 		}
+		u.dbs.SyncFriends(friendIds, u.ID(), tx)
 		return data, nil
 	}
 	tx, err := u.dbs.mySQL.Begin()
@@ -186,11 +187,11 @@ func (u *User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 	if token == nil {
 		return nil, errors.New("empty token")
 	}
-	id, _, _, err := token.UserInfo()
+	id, _, friendIds, err := token.UserInfo()
 	if err != nil {
 		return nil, err
 	}
-	updData, err := transaction(id, tx)
+	updData, err := transaction(id, friendIds, tx)
 	if err != nil {
 		if e := tx.Rollback(); e != nil {
 			return nil, err
@@ -203,11 +204,3 @@ func (u *User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 	}
 	return updData, nil
 }
-
-//TODO: Нужно создать обраюотчик для добавление аторизации по второй социалке для зарегистрированного пользователя
-//Пользователь зарегистрированный через vk ожет захотеть добавить авторизацию через fb и наоборот
-//http method GET for path /users/auth
-//URL какого-то такого вида /users/auth?fb=sometoken
-//само собой только для авторизованных пользователей
-//через транзакции
-//возможные ситуации такие: у пользователя уже задан токен такой социалки или есть другая заптсь о пользователе с такой социалкой - вернуть Bad Request.
