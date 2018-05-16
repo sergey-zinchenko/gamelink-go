@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	C "gamelink-go/common"
 	"gamelink-go/graceful"
 	"gamelink-go/social"
@@ -20,6 +21,76 @@ type (
 //ID - returns user's id from database
 func (u User) ID() int64 {
 	return u.id
+}
+
+func (u *User) txCheck(socialID social.ThirdPartyID, tx *sql.Tx) (bool, error) {
+	queryString := fmt.Sprintf("SELECT `id` FROM `users` u WHERE u.`%s` = ?", socialID.Name())
+	err := tx.QueryRow(queryString, socialID).Scan(&u.id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func (u *User) txRegister(socialID social.ThirdPartyID, name string, tx *sql.Tx) error {
+	b, err := json.Marshal(C.J{socialID.Name(): socialID, "name": name})
+	if err != nil {
+		return err
+	}
+	res, err := tx.Exec("INSERT INTO `users` (`data`) VALUES (?)", b)
+	if err != nil {
+		return err
+	}
+	u.id, err = res.LastInsertId()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+//LoginUsingThirdPartyToken - function to fill users id by third party token
+func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken) error {
+	var transaction = func(socialID social.ThirdPartyID, name string, friendIds []social.ThirdPartyID, tx *sql.Tx) error {
+		registered, err := u.txCheck(socialID, tx)
+		if err != nil {
+			return err
+		}
+		if !registered {
+			if err = u.txRegister(socialID, name, tx); err != nil {
+				return err
+			}
+		}
+		err = u.txSyncFriends(friendIds, tx)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	socialID, name, friendsIds, err := token.UserInfo()
+	if err != nil {
+		return err
+	}
+	tx, err := u.dbs.mySQL.Begin()
+	if err != nil {
+		return err
+	}
+	err = transaction(socialID, name, friendsIds, tx)
+	if err != nil {
+		u.id = 0
+		e := tx.Rollback()
+		if e != nil {
+			return e
+		}
+		return err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 //Data - returns user's field data from database
@@ -43,7 +114,7 @@ func (u User) Data() (C.J, error) {
 	return data, nil
 }
 
-func (u *User) txData(tx *sql.Tx) (C.J, error) {
+func (u User) txData(tx *sql.Tx) (C.J, error) {
 	var bytes []byte
 	err := tx.QueryRow("SELECT `data` FROM `users` u WHERE u.`id`=?", u.ID()).Scan(&bytes)
 	if err != nil {
@@ -57,7 +128,7 @@ func (u *User) txData(tx *sql.Tx) (C.J, error) {
 	return data, nil
 }
 
-func (u *User) txUpdate(data C.J, tx *sql.Tx) error {
+func (u User) txUpdate(data C.J, tx *sql.Tx) error {
 	upd, err := json.Marshal(data)
 	if err != nil {
 		return err
@@ -69,17 +140,44 @@ func (u *User) txUpdate(data C.J, tx *sql.Tx) error {
 	return nil
 }
 
-func (u *User) txDelete(tx *sql.Tx) error {
+func (u User) txDelete(tx *sql.Tx) error {
 	_, err := tx.Exec("DELETE FROM `users` WHERE `id`=?", u.ID())
 	return err
 }
 
-func (u *User) logout() error {
+func (u User) txSyncFriends(friendsIds []social.ThirdPartyID, tx *sql.Tx) error {
+	const queryString = "INSERT IGNORE INTO `friends` (`user_id1`, `user_id2`) SELECT GREATEST(ids.id1, ids.id2),   LEAST(ids.id1, ids.id2) FROM (SELECT ? as id1 , u2.id as id2 FROM (SELECT `id` FROM `users` u WHERE u.`%s` = ? ) u2) ids"
+	var err error
+	vkStmt, err := tx.Prepare(fmt.Sprintf(queryString, social.VkID))
+	if err != nil {
+		return err
+	}
+	defer vkStmt.Close()
+	fbStmt, err := tx.Prepare(fmt.Sprintf(queryString, social.FbID))
+	if err != nil {
+		return err
+	}
+	defer fbStmt.Close()
+	for _, v := range friendsIds {
+		switch v.(type) {
+		case social.VkIdentifier:
+			_, err = vkStmt.Exec(u.ID(), v.Value())
+		case social.FbIdentifier:
+			_, err = fbStmt.Exec(u.ID(), v.Value())
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (u User) logout() error {
 	return nil
 }
 
 //Update - allow user update data
-func (u *User) Update(data C.J) (C.J, error) {
+func (u User) Update(data C.J) (C.J, error) {
 	var transaction = func(upd C.J, tx *sql.Tx) (C.J, error) {
 		data, err := u.txData(tx)
 		if err != nil {
@@ -115,7 +213,7 @@ func (u *User) Update(data C.J) (C.J, error) {
 }
 
 // Delete - allow user delete data about him or delete account
-func (u *User) Delete(fields []string) (C.J, error) {
+func (u User) Delete(fields []string) (C.J, error) {
 	var transaction = func(fields []string, tx *sql.Tx) (C.J, error) {
 		if len(fields) != 0 {
 			data, err := u.txData(tx)
@@ -163,7 +261,7 @@ func (u *User) Delete(fields []string) (C.J, error) {
 }
 
 // AddSocial - allow
-func (u *User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
+func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 	var transaction = func(ID social.ThirdPartyID, friendIds []social.ThirdPartyID, tx *sql.Tx) (C.J, error) {
 		data, err := u.txData(tx)
 		if err != nil {
@@ -177,7 +275,10 @@ func (u *User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 		if err != nil {
 			return nil, err
 		}
-		u.dbs.SyncFriends(friendIds, u.ID(), tx)
+		err = u.txSyncFriends(friendIds, tx)
+		if err != nil {
+			return nil, err
+		}
 		return data, nil
 	}
 	tx, err := u.dbs.mySQL.Begin()

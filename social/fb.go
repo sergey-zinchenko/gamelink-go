@@ -14,28 +14,28 @@ import (
 type (
 	//FbToken - Class to get information about Facebook user tokens
 	FbToken string
-	//FbFriends - Class to get information about Facebook users friends who install this app
-	FbFriends struct {
-		FbFriendID string `json:"id"`
-	}
-	//FbFriendsData - friends array
-	FbFriendsData struct {
-		Data []*FbFriends
-	}
 
 	fbError struct {
 		Message string `json:"message"`
 		Code    int    `json:"code"`
 	}
 
-	fbIdentifier string
+	//FbIdentifier - class to store fb identifier and column name
+	FbIdentifier string
 )
 
-func (i fbIdentifier) Name() string {
-	return "fb_id"
+const (
+	//FbID - const name of facebook identifier column in the db
+	FbID = "fb_id"
+)
+
+//Name - fb column name in the db
+func (i FbIdentifier) Name() string {
+	return FbID
 }
 
-func (i fbIdentifier) Value() string {
+//Value - fb id value
+func (i FbIdentifier) Value() string {
 	return string(i)
 }
 
@@ -89,10 +89,18 @@ func (token FbToken) debugToken() (string, error) {
 
 func (token FbToken) get(userID string) (string, []ThirdPartyID, error) {
 	type (
+		fbFriends struct {
+			FbFriendID string `json:"id"`
+		}
+
+		fbFriendsData struct {
+			Data []*fbFriends
+		}
+
 		fbGetResponse struct {
 			Name    string         `json:"name"`
 			ID      string         `json:"id"`
-			Friends *FbFriendsData `json:"friends"`
+			Friends *fbFriendsData `json:"friends"`
 			Error   *fbError       `json:"error"`
 		}
 	)
@@ -127,7 +135,7 @@ func (token FbToken) get(userID string) (string, []ThirdPartyID, error) {
 	}
 	friendsIds := make([]ThirdPartyID, len(f.Friends.Data))
 	for k := range friendsIds {
-		friendsIds[k] = fbIdentifier(f.Friends.Data[k].FbFriendID)
+		friendsIds[k] = FbIdentifier(f.Friends.Data[k].FbFriendID)
 	}
 
 	return f.Name, friendsIds, nil
@@ -144,7 +152,7 @@ func (token FbToken) UserInfo() (ThirdPartyID, string, []ThirdPartyID, error) {
 	}
 	name, friendsIds, err := token.get(id)
 	if err != nil {
-		return fbIdentifier(id), "", nil, err
+		return FbIdentifier(id), "", nil, err
 	}
-	return fbIdentifier(id), name, friendsIds, nil
+	return FbIdentifier(id), name, friendsIds, nil
 }

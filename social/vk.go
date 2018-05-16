@@ -25,20 +25,25 @@ type (
 		m   sync.Mutex
 	}
 
-	vkIdentifier string
+	//VkIdentifier - class to store vk identifier and column name
+	VkIdentifier string
 )
 
 var serviceKey VkServiceKey
 
 const (
 	maxRetries = 10
+	//VkID - const name of vkomntakte id columnt in the db
+	VkID = "vk_id"
 )
 
-func (i vkIdentifier) Name() string {
-	return "vk_id"
+//Name - vk column name in the db
+func (i VkIdentifier) Name() string {
+	return VkID
 }
 
-func (i vkIdentifier) Value() string {
+//Value - vk identifier value
+func (i VkIdentifier) Value() string {
 	return string(i)
 }
 
@@ -215,7 +220,7 @@ func (token VkToken) UserInfo() (ThirdPartyID, string, []ThirdPartyID, error) {
 	}
 	name, err := token.get(id)
 	if err != nil {
-		return vkIdentifier(id), "", nil, err
+		return VkIdentifier(id), "", nil, err
 	}
-	return vkIdentifier(id), name, nil, nil
+	return VkIdentifier(id), name, nil, nil
 }
