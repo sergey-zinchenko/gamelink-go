@@ -1,6 +1,7 @@
 package app
 
 import (
+	C "gamelink-go/common"
 	"gamelink-go/config"
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
@@ -11,9 +12,6 @@ const (
 )
 
 type (
-	//Type to define json objects faster
-	j map[string]interface{}
-
 	//App structure - connects databases with the middleware and handlers of router
 	App struct {
 		dbs  *storage.DBS
@@ -40,8 +38,8 @@ func NewApp() (a *App) {
 	{
 		users.Get("/", a.getUser)
 		users.Post("/", a.postUser)
-		users.Delete("/", a.delete)
-		users.Get("/auth", a.addSocial)
+		users.Delete("/", a.deleteUser)
+		users.Get("/addAuth", a.addAuth)
 	}
 	//service := i.Party("/service")
 	//{
@@ -50,7 +48,7 @@ func NewApp() (a *App) {
 	a.iris.OnAnyErrorCode(func(ctx iris.Context) {
 		if config.IsDevelopmentEnv() {
 			if err := ctx.Values().Get(errorCtxKey); err != nil {
-				ctx.JSON(j{"error": err.(error).Error()})
+				ctx.JSON(C.J{"error": err.(error).Error()})
 			}
 		}
 	})
