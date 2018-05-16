@@ -170,9 +170,11 @@ func (token VkToken) checkToken() (userID string, err error) {
 func (token VkToken) get(userID string) (string, error) {
 	type (
 		vkUsersGetData struct {
+			ID        int64  `json:"id"`
 			FirstName string `json:"first_name"`
 			LastName  string `json:"last_name"`
-			ID        int64  `json:"id"`
+			Bdate     string `json:"bdate"`
+			Sex       int64  `json:"sex"`
 		}
 
 		vkUsersGetResponse struct {
@@ -185,7 +187,7 @@ func (token VkToken) get(userID string) (string, error) {
 		return "", err
 	}
 	q := req.URL.Query()
-	q.Add("fields", "sex,bdate,city,country")
+	q.Add("fields", "sex,bdate")
 	q.Add("access_token", string(token))
 	q.Add("user_ids", userID)
 	q.Add("v", "5.68")
@@ -206,6 +208,7 @@ func (token VkToken) get(userID string) (string, error) {
 	if len(f.Response) != 1 || fmt.Sprint(f.Response[0].ID) != userID {
 		return "", errors.New("user id not match or empty response")
 	}
+	fmt.Println(f.Response)
 	return f.Response[0].FirstName + " " + f.Response[0].LastName, nil
 }
 
