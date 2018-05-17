@@ -7,6 +7,7 @@ import (
 	"gamelink-go/config"
 	"gamelink-go/graceful"
 	"net/http"
+	"strconv"
 	"sync"
 )
 
@@ -57,6 +58,7 @@ func (sk *VkServiceKey) Key() (string, error) {
 	type (
 		vkAccessTokenResponse struct {
 			AccessToken      string `json:"access_token"`
+			Email            string `json:"email"`
 			Error            string `json:"error"`
 			ErrorDescription string `json:"error_description"`
 		}
@@ -88,6 +90,7 @@ func (sk *VkServiceKey) Key() (string, error) {
 		return "", errors.New("empty access_token")
 	}
 	sk.key = f.AccessToken
+	//email := f.Email
 	return sk.key, nil
 }
 
@@ -208,7 +211,6 @@ func (token VkToken) get(userID string) (string, error) {
 	if len(f.Response) != 1 || fmt.Sprint(f.Response[0].ID) != userID {
 		return "", errors.New("user id not match or empty response")
 	}
-	fmt.Println(f.Response)
 	return f.Response[0].FirstName + " " + f.Response[0].LastName, nil
 }
 
@@ -225,5 +227,45 @@ func (token VkToken) UserInfo() (ThirdPartyID, string, []ThirdPartyID, error) {
 	if err != nil {
 		return VkIdentifier(id), "", nil, err
 	}
-	return VkIdentifier(id), name, nil, nil
+	friendsIds, err := token.getFriends(id)
+	if err != nil {
+		friendsIds = nil
+	}
+	return VkIdentifier(id), name, friendsIds, nil
+}
+
+func (token VkToken) getFriends(userID string) ([]ThirdPartyID, error) {
+	type (
+		vkFriendsGetResponse struct {
+			Data  []int    `json:"response"`
+			Error *vkError `json:"error"`
+		}
+	)
+	req, err := http.NewRequest("GET", "https://api.vk.com/method/friends.getAppUsers", nil)
+	if err != nil {
+		return nil, err
+	}
+	q := req.URL.Query()
+	q.Add("access_token", string(token))
+	q.Add("v", "5.68")
+	req.URL.RawQuery = q.Encode()
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	var f vkFriendsGetResponse
+	err = json.NewDecoder(resp.Body).Decode(&f)
+	if err != nil {
+		return nil, err
+	}
+	if f.Error != nil {
+		return nil, NewVkError(f.Error.Message, f.Error.Code)
+	}
+
+	friendsIds := make([]ThirdPartyID, len(f.Data))
+	for k := range friendsIds {
+		friendsIds[k] = VkIdentifier(strconv.Itoa(f.Data[k]))
+	}
+	return friendsIds, nil
 }
