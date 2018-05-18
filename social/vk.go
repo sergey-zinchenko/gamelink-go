@@ -28,13 +28,18 @@ type (
 
 	//VkIdentifier - class to store vk identifier and column name
 	VkIdentifier string
+	//VkInfo - class for VK user info
+	VkInfo struct {
+		VkID VkIdentifier `json:"vk_id"`
+		commonInfo
+	}
 )
 
 var serviceKey VkServiceKey
 
 const (
 	maxRetries = 10
-	//VkID - const name of vkomntakte id columnt in the db
+	//VkID - const name of vkontakte id column in the db
 	VkID = "vk_id"
 )
 
@@ -46,6 +51,11 @@ func (i VkIdentifier) Name() string {
 //Value - vk identifier value
 func (i VkIdentifier) Value() string {
 	return string(i)
+}
+
+//ID - return vk id
+func (d VkInfo) ID() ThirdPartyID {
+	return d.VkID
 }
 
 //Key - method returns stored service key and request it from server if needed
@@ -170,7 +180,7 @@ func (token VkToken) checkToken() (userID string, err error) {
 	return
 }
 
-func (token VkToken) get(userID string) (string, error) {
+func (token VkToken) get(userID string) (string, string, int64, error) {
 	type (
 		vkUsersGetData struct {
 			ID        int64  `json:"id"`
@@ -187,7 +197,7 @@ func (token VkToken) get(userID string) (string, error) {
 	)
 	req, err := http.NewRequest("GET", "https://api.vk.com/method/users.get", nil)
 	if err != nil {
-		return "", err
+		return "", "", 0, err
 	}
 	q := req.URL.Query()
 	q.Add("fields", "sex,bdate")
@@ -197,41 +207,51 @@ func (token VkToken) get(userID string) (string, error) {
 	req.URL.RawQuery = q.Encode()
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return "", "", 0, err
 	}
 	defer resp.Body.Close()
 	var f vkUsersGetResponse
 	err = json.NewDecoder(resp.Body).Decode(&f)
 	if err != nil {
-		return "", err
+		return "", "", 0, err
 	}
 	if f.Error != nil {
-		return "", NewVkError(f.Error.Message, f.Error.Code)
+		return "", "", 0, NewVkError(f.Error.Message, f.Error.Code)
 	}
 	if len(f.Response) != 1 || fmt.Sprint(f.Response[0].ID) != userID {
-		return "", errors.New("user id not match or empty response")
+		return "", "", 0, errors.New("user id not match or empty response")
 	}
-	return f.Response[0].FirstName + " " + f.Response[0].LastName, nil
+	return f.Response[0].FirstName + " " + f.Response[0].LastName, f.Response[0].Bdate, f.Response[0].Sex, nil
 }
 
 //UserInfo - method to check validity and get user information about the token if it valid. Returns NotFound error if token is not valid
-func (token VkToken) UserInfo() (ThirdPartyID, string, []ThirdPartyID, error) {
+func (token VkToken) UserInfo() (ThirdPartyUser, error) {
 	if token == "" {
-		return nil, "", nil, graceful.UnauthorizedError{Message: "empty token"}
+		return nil, graceful.UnauthorizedError{Message: "empty token"}
 	}
 	id, err := token.checkToken()
 	if err != nil {
-		return nil, "", nil, err
+		return nil, err
 	}
-	name, err := token.get(id)
+	name, bdate, sex, err := token.get(id)
 	if err != nil {
-		return VkIdentifier(id), "", nil, err
+		return nil, err
 	}
 	friendsIds, err := token.getFriends(id)
 	if err != nil {
 		friendsIds = nil
 	}
-	return VkIdentifier(id), name, friendsIds, nil
+	var userSex string
+	if sex == 1 {
+		userSex = "F"
+	} else if sex == 2 {
+		userSex = "M"
+	} else {
+		userSex = "X"
+	}
+	info := commonInfo{name, bdate, userSex, "", friendsIds}
+	userInfo := VkInfo{VkIdentifier(id), info}
+	return userInfo, nil
 }
 
 func (token VkToken) getFriends(userID string) ([]ThirdPartyID, error) {
