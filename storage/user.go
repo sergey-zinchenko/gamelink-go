@@ -23,9 +23,9 @@ func (u User) ID() int64 {
 	return u.id
 }
 
-func (u *User) txCheck(socialID social.ThirdPartyID, tx *sql.Tx) (bool, error) {
-	queryString := fmt.Sprintf("SELECT `id` FROM `users` u WHERE u.`%s` = ?", socialID.Name())
-	err := tx.QueryRow(queryString, socialID).Scan(&u.id)
+func (u *User) txCheck(userData social.ThirdPartyUser, tx *sql.Tx) (bool, error) {
+	queryString := fmt.Sprintf("SELECT `id` FROM `users` u WHERE u.`%s` = ?", userData.ID().Name())
+	err := tx.QueryRow(queryString, userData.ID().Value()).Scan(&u.id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return false, nil
@@ -35,8 +35,8 @@ func (u *User) txCheck(socialID social.ThirdPartyID, tx *sql.Tx) (bool, error) {
 	return true, nil
 }
 
-func (u *User) txRegister(socialID social.ThirdPartyID, name string, tx *sql.Tx) error {
-	b, err := json.Marshal(C.J{socialID.Name(): socialID, "name": name})
+func (u *User) txRegister(userData social.ThirdPartyUser, tx *sql.Tx) error {
+	b, err := json.Marshal(userData)
 	if err != nil {
 		return err
 	}
@@ -53,23 +53,23 @@ func (u *User) txRegister(socialID social.ThirdPartyID, name string, tx *sql.Tx)
 
 //LoginUsingThirdPartyToken - function to fill users id by third party token
 func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken) error {
-	var transaction = func(socialID social.ThirdPartyID, name string, friendIds []social.ThirdPartyID, tx *sql.Tx) error {
-		registered, err := u.txCheck(socialID, tx)
+	var transaction = func(userData social.ThirdPartyUser, tx *sql.Tx) error {
+		registered, err := u.txCheck(userData, tx)
 		if err != nil {
 			return err
 		}
 		if !registered {
-			if err = u.txRegister(socialID, name, tx); err != nil {
+			if err = u.txRegister(userData, tx); err != nil {
 				return err
 			}
 		}
-		err = u.txSyncFriends(friendIds, tx)
+		err = u.txSyncFriends(userData.Friends(), tx)
 		if err != nil {
 			return err
 		}
 		return nil
 	}
-	socialID, name, friendsIds, err := token.UserInfo()
+	userData, err := token.UserInfo()
 	if err != nil {
 		return err
 	}
@@ -77,7 +77,7 @@ func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken) error {
 	if err != nil {
 		return err
 	}
-	err = transaction(socialID, name, friendsIds, tx)
+	err = transaction(userData, tx)
 	if err != nil {
 		u.id = 0
 		e := tx.Rollback()
@@ -262,20 +262,20 @@ func (u User) Delete(fields []string) (C.J, error) {
 
 // AddSocial - allow
 func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
-	var transaction = func(ID social.ThirdPartyID, friendIds []social.ThirdPartyID, tx *sql.Tx) (C.J, error) {
+	var transaction = func(userData social.ThirdPartyUser, tx *sql.Tx) (C.J, error) {
 		data, err := u.txData(tx)
 		if err != nil {
 			return nil, err
 		}
-		if _, ok := data[ID.Name()]; ok {
+		if _, ok := data[userData.ID().Name()]; ok {
 			return nil, graceful.BadRequestError{Message: "account already exist"}
 		}
-		data[ID.Name()] = ID.Value()
+		data[userData.ID().Name()] = userData.ID().Value()
 		err = u.txUpdate(data, tx)
 		if err != nil {
 			return nil, err
 		}
-		err = u.txSyncFriends(friendIds, tx)
+		err = u.txSyncFriends(userData.Friends(), tx)
 		if err != nil {
 			return nil, err
 		}
@@ -288,11 +288,11 @@ func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 	if token == nil {
 		return nil, errors.New("empty token")
 	}
-	id, _, friendIds, err := token.UserInfo()
+	userData, err := token.UserInfo()
 	if err != nil {
 		return nil, err
 	}
-	updData, err := transaction(id, friendIds, tx)
+	updData, err := transaction(userData, tx)
 	if err != nil {
 		if e := tx.Rollback(); e != nil {
 			return nil, err
