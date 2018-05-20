@@ -99,7 +99,20 @@ func (u User) Data() (C.J, error) {
 	if u.dbs.mySQL == nil {
 		return nil, errors.New("databases not initialized")
 	}
-	err := u.dbs.mySQL.QueryRow("SELECT `data` FROM `users` WHERE `id` = ?", u.ID()).Scan(&bytes)
+	err := u.dbs.mySQL.QueryRow("SELECT JSON_INSERT(u.`data`, '$.friends', fj.friends) from `users` u, "+
+		"(SELECT "+
+		"CAST(CONCAT('[',GROUP_CONCAT(DISTINCT CONCAT('{', "+
+		"'\"id\":',		b.`id`, "+
+		"',', '\"name\":',		JSON_QUOTE(b.`name`),"+
+		"'}')),']') AS JSON"+
+		") "+
+		"AS `friends` "+
+		"FROM "+
+		"(SELECT u.`id`, u.`name`,f.user_id2 as g FROM `friends` f,`users` u WHERE `user_id2` = ? AND f.user_id1 = u.id"+
+		" UNION "+
+		"SELECT u.`id`, u.`name`, f.user_id1 as g FROM `friends` f, `users` u WHERE `user_id1` = ? AND f.user_id2 = u.id) b "+
+		"GROUP BY b.g) fj "+
+		"WHERE u.`id` = ?", u.ID(), u.ID(), u.ID()).Scan(&bytes)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, errors.New("user not found")
