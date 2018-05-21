@@ -175,7 +175,6 @@ func (token FbToken) UserInfo() (ThirdPartyUser, error) {
 	} else {
 		userSex = "X"
 	}
-	info := commonInfo{name, bdate, userSex, email, friendsIds}
-	userInfo := FbInfo{FbIdentifier(id), info}
+	userInfo := FbInfo{FbIdentifier(id), commonInfo{name, bdate, userSex, email, friendsIds}}
 	return userInfo, nil
 }

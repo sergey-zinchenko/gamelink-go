@@ -249,8 +249,7 @@ func (token VkToken) UserInfo() (ThirdPartyUser, error) {
 	} else {
 		userSex = "X"
 	}
-	info := commonInfo{name, bdate, userSex, "", friendsIds}
-	userInfo := VkInfo{VkIdentifier(id), info}
+	userInfo := VkInfo{VkIdentifier(id), commonInfo{name, bdate, userSex, "", friendsIds}}
 	return userInfo, nil
 }
 

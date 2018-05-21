@@ -5,16 +5,18 @@ import (
 	"gamelink-go/graceful"
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
+	"github.com/kataras/iris/context"
 	"net/http"
 )
 
 func (a *App) getUser(ctx iris.Context) {
 	user := ctx.Values().Get(userCtxKey).(*storage.User)
-	data, err := user.Data()
+	data, err := user.DataString()
 	if err != nil {
 		handleError(err, ctx)
 	}
-	ctx.JSON(data)
+	ctx.ContentType(context.ContentJSONHeaderValue)
+	ctx.Text(data)
 }
 
 func (a *App) postUser(ctx iris.Context) {

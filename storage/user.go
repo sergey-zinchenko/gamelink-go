@@ -35,8 +35,8 @@ func (u *User) txCheck(userData social.ThirdPartyUser, tx *sql.Tx) (bool, error)
 	return true, nil
 }
 
-func (u *User) txRegister(userData social.ThirdPartyUser, tx *sql.Tx) error {
-	b, err := json.Marshal(userData)
+func (u *User) txRegister(user social.ThirdPartyUser, tx *sql.Tx) error {
+	b, err := json.Marshal(user)
 	if err != nil {
 		return err
 	}
@@ -53,17 +53,17 @@ func (u *User) txRegister(userData social.ThirdPartyUser, tx *sql.Tx) error {
 
 //LoginUsingThirdPartyToken - function to fill users id by third party token
 func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken) error {
-	var transaction = func(userData social.ThirdPartyUser, tx *sql.Tx) error {
-		registered, err := u.txCheck(userData, tx)
+	var transaction = func(user social.ThirdPartyUser, tx *sql.Tx) error {
+		registered, err := u.txCheck(user, tx)
 		if err != nil {
 			return err
 		}
 		if !registered {
-			if err = u.txRegister(userData, tx); err != nil {
+			if err = u.txRegister(user, tx); err != nil {
 				return err
 			}
 		}
-		err = u.txSyncFriends(userData.Friends(), tx)
+		err = u.txSyncFriends(user.Friends(), tx)
 		if err != nil {
 			return err
 		}
@@ -93,6 +93,35 @@ func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken) error {
 	return nil
 }
 
+//DataString - returns user's field data from database as text
+func (u User) DataString() (string, error) {
+	var str string
+	if u.dbs.mySQL == nil {
+		return "", errors.New("databases not initialized")
+	}
+	err := u.dbs.mySQL.QueryRow("SELECT IFNULL((SELECT JSON_INSERT(u.`data`, '$.friends', fj.`friends`) FROM `users` u, "+
+		"(SELECT "+
+		"CAST(CONCAT('[',GROUP_CONCAT(DISTINCT CONCAT('{', "+
+		"'\"id\":',		b.`id`, "+
+		"',', '\"name\":',		JSON_QUOTE(b.`name`),"+
+		"'}')),']') AS JSON"+
+		") "+
+		"AS `friends` "+
+		"FROM "+
+		"(SELECT u.`id`, u.`name`,f.user_id2 as g FROM `friends` f,`users` u WHERE `user_id2` = ? AND f.user_id1 = u.id"+
+		" UNION "+
+		"SELECT u.`id`, u.`name`, f.user_id1 as g FROM `friends` f, `users` u WHERE `user_id1` = ? AND f.user_id2 = u.id) b "+
+		"GROUP BY b.g) fj "+
+		"WHERE u.`id` = ?), q.`data`) `data` FROM `users` q WHERE q.`id`=?", u.ID(), u.ID(), u.ID(), u.ID()).Scan(&str)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", errors.New("user not found")
+		}
+		return "", err
+	}
+	return str, nil
+}
+
 //Data - returns user's field data from database
 func (u User) Data() (C.J, error) {
 	var bytes []byte
@@ -120,7 +149,7 @@ func (u User) Data() (C.J, error) {
 		return nil, err
 	}
 	var data C.J
-	err = json.Unmarshal(bytes, &data)
+	err = json.Unmarshal(bytes, &data) //TODO вот это нам не нужно, если только где-то не понадобится вызов Data по коду см.выше реализацию
 	if err != nil {
 		return nil, err
 	}
