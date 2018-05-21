@@ -23,9 +23,9 @@ func (u User) ID() int64 {
 	return u.id
 }
 
-func (u *User) txCheck(socialID social.ThirdPartyID, tx *sql.Tx) (bool, error) {
-	queryString := fmt.Sprintf("SELECT `id` FROM `users` u WHERE u.`%s` = ?", socialID.Name())
-	err := tx.QueryRow(queryString, socialID).Scan(&u.id)
+func (u *User) txCheck(userData social.ThirdPartyUser, tx *sql.Tx) (bool, error) {
+	queryString := fmt.Sprintf("SELECT `id` FROM `users` u WHERE u.`%s` = ?", userData.ID().Name())
+	err := tx.QueryRow(queryString, userData.ID().Value()).Scan(&u.id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return false, nil
@@ -35,8 +35,8 @@ func (u *User) txCheck(socialID social.ThirdPartyID, tx *sql.Tx) (bool, error) {
 	return true, nil
 }
 
-func (u *User) txRegister(socialID social.ThirdPartyID, name string, tx *sql.Tx) error {
-	b, err := json.Marshal(C.J{socialID.Name(): socialID, "name": name})
+func (u *User) txRegister(user social.ThirdPartyUser, tx *sql.Tx) error {
+	b, err := json.Marshal(user)
 	if err != nil {
 		return err
 	}
@@ -53,23 +53,23 @@ func (u *User) txRegister(socialID social.ThirdPartyID, name string, tx *sql.Tx)
 
 //LoginUsingThirdPartyToken - function to fill users id by third party token
 func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken) error {
-	var transaction = func(socialID social.ThirdPartyID, name string, friendIds []social.ThirdPartyID, tx *sql.Tx) error {
-		registered, err := u.txCheck(socialID, tx)
+	var transaction = func(user social.ThirdPartyUser, tx *sql.Tx) error {
+		registered, err := u.txCheck(user, tx)
 		if err != nil {
 			return err
 		}
 		if !registered {
-			if err = u.txRegister(socialID, name, tx); err != nil {
+			if err = u.txRegister(user, tx); err != nil {
 				return err
 			}
 		}
-		err = u.txSyncFriends(friendIds, tx)
+		err = u.txSyncFriends(user.Friends(), tx)
 		if err != nil {
 			return err
 		}
 		return nil
 	}
-	socialID, name, friendsIds, err := token.UserInfo()
+	userData, err := token.UserInfo()
 	if err != nil {
 		return err
 	}
@@ -77,7 +77,7 @@ func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken) error {
 	if err != nil {
 		return err
 	}
-	err = transaction(socialID, name, friendsIds, tx)
+	err = transaction(userData, tx)
 	if err != nil {
 		u.id = 0
 		e := tx.Rollback()
@@ -93,13 +93,55 @@ func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken) error {
 	return nil
 }
 
+//DataString - returns user's field data from database as text
+func (u User) DataString() (string, error) {
+	var str string
+	if u.dbs.mySQL == nil {
+		return "", errors.New("databases not initialized")
+	}
+	err := u.dbs.mySQL.QueryRow("SELECT IFNULL((SELECT JSON_INSERT(u.`data`, '$.friends', fj.`friends`) FROM `users` u, "+
+		"(SELECT "+
+		"CAST(CONCAT('[',GROUP_CONCAT(DISTINCT CONCAT('{', "+
+		"'\"id\":',		b.`id`, "+
+		"',', '\"name\":',		JSON_QUOTE(b.`name`),"+
+		"'}')),']') AS JSON"+
+		") "+
+		"AS `friends` "+
+		"FROM "+
+		"(SELECT u.`id`, u.`name`,f.user_id2 as g FROM `friends` f,`users` u WHERE `user_id2` = ? AND f.user_id1 = u.id"+
+		" UNION "+
+		"SELECT u.`id`, u.`name`, f.user_id1 as g FROM `friends` f, `users` u WHERE `user_id1` = ? AND f.user_id2 = u.id) b "+
+		"GROUP BY b.g) fj "+
+		"WHERE u.`id` = ?), q.`data`) `data` FROM `users` q WHERE q.`id`=?", u.ID(), u.ID(), u.ID(), u.ID()).Scan(&str)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", errors.New("user not found")
+		}
+		return "", err
+	}
+	return str, nil
+}
+
 //Data - returns user's field data from database
 func (u User) Data() (C.J, error) {
 	var bytes []byte
 	if u.dbs.mySQL == nil {
 		return nil, errors.New("databases not initialized")
 	}
-	err := u.dbs.mySQL.QueryRow("SELECT `data` FROM `users` WHERE `id` = ?", u.ID()).Scan(&bytes)
+	err := u.dbs.mySQL.QueryRow("SELECT JSON_INSERT(u.`data`, '$.friends', fj.friends) from `users` u, "+
+		"(SELECT "+
+		"CAST(CONCAT('[',GROUP_CONCAT(DISTINCT CONCAT('{', "+
+		"'\"id\":',		b.`id`, "+
+		"',', '\"name\":',		JSON_QUOTE(b.`name`),"+
+		"'}')),']') AS JSON"+
+		") "+
+		"AS `friends` "+
+		"FROM "+
+		"(SELECT u.`id`, u.`name`,f.user_id2 as g FROM `friends` f,`users` u WHERE `user_id2` = ? AND f.user_id1 = u.id"+
+		" UNION "+
+		"SELECT u.`id`, u.`name`, f.user_id1 as g FROM `friends` f, `users` u WHERE `user_id1` = ? AND f.user_id2 = u.id) b "+
+		"GROUP BY b.g) fj "+
+		"WHERE u.`id` = ?", u.ID(), u.ID(), u.ID()).Scan(&bytes)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, errors.New("user not found")
@@ -107,7 +149,7 @@ func (u User) Data() (C.J, error) {
 		return nil, err
 	}
 	var data C.J
-	err = json.Unmarshal(bytes, &data)
+	err = json.Unmarshal(bytes, &data) //TODO вот это нам не нужно, если только где-то не понадобится вызов Data по коду см.выше реализацию
 	if err != nil {
 		return nil, err
 	}
@@ -262,20 +304,20 @@ func (u User) Delete(fields []string) (C.J, error) {
 
 // AddSocial - allow
 func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
-	var transaction = func(ID social.ThirdPartyID, friendIds []social.ThirdPartyID, tx *sql.Tx) (C.J, error) {
+	var transaction = func(userData social.ThirdPartyUser, tx *sql.Tx) (C.J, error) {
 		data, err := u.txData(tx)
 		if err != nil {
 			return nil, err
 		}
-		if _, ok := data[ID.Name()]; ok {
+		if _, ok := data[userData.ID().Name()]; ok {
 			return nil, graceful.BadRequestError{Message: "account already exist"}
 		}
-		data[ID.Name()] = ID.Value()
+		data[userData.ID().Name()] = userData.ID().Value()
 		err = u.txUpdate(data, tx)
 		if err != nil {
 			return nil, err
 		}
-		err = u.txSyncFriends(friendIds, tx)
+		err = u.txSyncFriends(userData.Friends(), tx)
 		if err != nil {
 			return nil, err
 		}
@@ -288,11 +330,11 @@ func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 	if token == nil {
 		return nil, errors.New("empty token")
 	}
-	id, _, friendIds, err := token.UserInfo()
+	userData, err := token.UserInfo()
 	if err != nil {
 		return nil, err
 	}
-	updData, err := transaction(id, friendIds, tx)
+	updData, err := transaction(userData, tx)
 	if err != nil {
 		if e := tx.Rollback(); e != nil {
 			return nil, err
