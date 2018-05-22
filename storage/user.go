@@ -347,3 +347,24 @@ func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 	}
 	return updData, nil
 }
+
+// Instances - return saves from db all or one by instance id
+func (u User) Instances(instIDs []string) (string, error) {
+	var str string
+	var err error
+	if u.dbs.mySQL == nil {
+		return "", errors.New("databases not initialized")
+	}
+	if len(instIDs) == 0 {
+		err = u.dbs.mySQL.QueryRow("SELECT CAST(CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('{', '\"id\":',		s.`id`, ',', '\"name\":',	JSON_QUOTE(s.`name`), '}')),']') AS JSON) FROM `saves` s  WHERE s.`user_id` = ? GROUP BY s.`user_id`", u.ID()).Scan(&str)
+	} else {
+		err = u.dbs.mySQL.QueryRow("SELECT JSON_OBJECT('id', s.`id`, `name`, s.`name`) FROM `saves` s WHERE s.`id` = ? AND s.`user_id`=?", instIDs[0], u.ID()).Scan(&str)
+	}
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", errors.New("instances not found")
+		}
+		return "", err
+	}
+	return str, nil
+}

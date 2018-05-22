@@ -41,6 +41,10 @@ func NewApp() (a *App) {
 		users.Delete("/", a.deleteUser)
 		users.Get("/addAuth", a.addAuth)
 	}
+	instances := a.iris.Party("/instances", a.authMiddleware)
+	{
+		instances.Get("/", a.getAllUserInstances)
+	}
 	//service := i.Party("/service")
 	//{
 	//
