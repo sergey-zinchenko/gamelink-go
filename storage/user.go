@@ -391,7 +391,7 @@ func (u User) txUpdateSaveData(data C.J, saveID string, tx *sql.Tx) error {
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec("UPDATE `saves` s SET s.`data`=? WHERE s.id=?", upd, saveID)
+	_, err = tx.Exec("UPDATE `saves` s SET s.`data`=? WHERE s.`id`=?", upd, saveID)
 	if err != nil {
 		return err
 	}
@@ -399,7 +399,7 @@ func (u User) txUpdateSaveData(data C.J, saveID string, tx *sql.Tx) error {
 }
 
 func (u User) txDeleteSave(saveID string, tx *sql.Tx) error {
-	_, err := tx.Exec("DELETE FROM `saves` WHERE s.`id` = ?", saveID)
+	_, err := tx.Exec("DELETE FROM `saves` WHERE `id`=?", saveID)
 	return err
 }
 
@@ -473,7 +473,7 @@ func (u User) DeleteSave(saveID []string, fields []string) (C.J, error) {
 			for _, v := range fields {
 				delete(data, v)
 			}
-			err = u.txUpdate(data, tx)
+			err = u.txUpdateSaveData(data, saveID, tx)
 			if err != nil {
 				return nil, err
 			}
