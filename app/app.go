@@ -45,7 +45,7 @@ func NewApp() (a *App) {
 	{
 		instances.Get("/", a.getSave)
 		instances.Post("/", a.postSave)
-
+		instances.Delete("/", a.deleteSave)
 	}
 	//service := i.Party("/service")
 	//{

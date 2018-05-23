@@ -398,6 +398,11 @@ func (u User) txUpdateSaveData(data C.J, saveID string, tx *sql.Tx) error {
 	return nil
 }
 
+func (u User) txDeleteSave(saveID string, tx *sql.Tx) error {
+	_, err := tx.Exec("DELETE FROM `saves` WHERE s.`id` = ?", saveID)
+	return err
+}
+
 //UpdateSave - update save data in transaction, return updated data
 func (u User) UpdateSave(data C.J, saveID string) (C.J, error) {
 	var transaction = func(upd C.J, saveID string, tx *sql.Tx) (C.J, error) {
@@ -434,17 +439,16 @@ func (u User) UpdateSave(data C.J, saveID string) (C.J, error) {
 
 //CreateSave - create new save instance in db
 func (u User) CreateSave(data C.J) (C.J, error) {
-	var transaction = func(data C.J, tx *sql.Tx) error {
-		_, err := tx.Exec("INSERT INTO `saves` s SET s.`data` = ?, s.`user_id = ?` ", data, u.ID())
-		if err != nil {
-			return err
-		}
+	var transaction = func(s []byte, tx *sql.Tx) error {
+		_, err := tx.Exec("INSERT INTO `saves` (`data`, `user_id`) VALUES (?,?)", s, u.ID())
+		return err
 	}
 	tx, err := u.dbs.mySQL.Begin()
 	if err != nil {
 		return nil, err
 	}
-	err = transaction(data, tx)
+	s, err := json.Marshal(data)
+	err = transaction(s, tx)
 	if err != nil {
 		if e := tx.Rollback(); e != nil {
 			return nil, err
@@ -456,4 +460,45 @@ func (u User) CreateSave(data C.J) (C.J, error) {
 		return nil, err
 	}
 	return data, nil
+}
+
+//DeleteSave - allow user save some data from save data or delete save
+func (u User) DeleteSave(saveID []string, fields []string) (C.J, error) {
+	var transaction = func(saveID string, fields []string, tx *sql.Tx) (C.J, error) {
+		if len(fields) != 0 {
+			data, err := u.txSaveData(saveID, tx)
+			if err != nil {
+				return nil, err
+			}
+			for _, v := range fields {
+				delete(data, v)
+			}
+			err = u.txUpdate(data, tx)
+			if err != nil {
+				return nil, err
+			}
+			return data, nil
+		}
+		err := u.txDeleteSave(saveID, tx)
+		if err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
+	tx, err := u.dbs.mySQL.Begin()
+	if err != nil {
+		return nil, err
+	}
+	updData, err := transaction(saveID[0], fields, tx)
+	if err != nil {
+		if e := tx.Rollback(); e != nil {
+			return nil, err
+		}
+		return nil, err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return nil, err
+	}
+	return updData, nil
 }

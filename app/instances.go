@@ -1,10 +1,11 @@
 package app
 
-import "C"
 import (
+	C "gamelink-go/common"
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
+	"net/http"
 )
 
 func (a *App) getSave(ctx iris.Context) {
@@ -42,4 +43,24 @@ func (a *App) postSave(ctx iris.Context) {
 		return
 	}
 	ctx.JSON(save)
+}
+
+func (a *App) deleteSave(ctx iris.Context) {
+	var (
+		data C.J
+		err  error
+	)
+	defer func() {
+		handleError(err, ctx)
+	}()
+	user := ctx.Values().Get(userCtxKey).(*storage.User)
+	data, err = user.DeleteSave(ctx.Request().URL.Query()["id"], ctx.Request().URL.Query()["fields"])
+	if err != nil {
+		return
+	}
+	if data == nil {
+		ctx.StatusCode(http.StatusNoContent)
+	} else {
+		ctx.JSON(data)
+	}
 }
