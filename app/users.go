@@ -16,7 +16,7 @@ func (a *App) getUser(ctx iris.Context) {
 		handleError(err, ctx)
 	}
 	ctx.ContentType(context.ContentJSONHeaderValue)
-	ctx.Text(data)
+	ctx.WriteString(data)
 }
 
 func (a *App) postUser(ctx iris.Context) {

@@ -123,6 +123,7 @@ func (u User) DataString() (string, error) {
 }
 
 //Data - returns user's field data from database
+//TODO вот это нам не нужно, если только где-то не понадобится вызов Data по коду см.выше реализацию
 func (u User) Data() (C.J, error) {
 	var bytes []byte
 	if u.dbs.mySQL == nil {
@@ -149,7 +150,7 @@ func (u User) Data() (C.J, error) {
 		return nil, err
 	}
 	var data C.J
-	err = json.Unmarshal(bytes, &data) //TODO вот это нам не нужно, если только где-то не понадобится вызов Data по коду см.выше реализацию
+	err = json.Unmarshal(bytes, &data)
 	if err != nil {
 		return nil, err
 	}
@@ -348,17 +349,17 @@ func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 	return updData, nil
 }
 
-// Instances - return saves from db all or one by instance id
-func (u User) Instances(instIDs []string) (string, error) {
+// Saves - return saves from db all or one by instance id
+func (u User) Saves(saveID []string) (string, error) {
 	var str string
 	var err error
 	if u.dbs.mySQL == nil {
 		return "", errors.New("databases not initialized")
 	}
-	if len(instIDs) == 0 {
+	if len(saveID) == 0 {
 		err = u.dbs.mySQL.QueryRow("SELECT CAST(CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('{', '\"id\":',		s.`id`, ',', '\"name\":',	JSON_QUOTE(s.`name`), '}')),']') AS JSON) FROM `saves` s  WHERE s.`user_id` = ? GROUP BY s.`user_id`", u.ID()).Scan(&str)
 	} else {
-		err = u.dbs.mySQL.QueryRow("SELECT JSON_OBJECT('id', s.`id`, `name`, s.`name`) FROM `saves` s WHERE s.`id` = ? AND s.`user_id`=?", instIDs[0], u.ID()).Scan(&str)
+		err = u.dbs.mySQL.QueryRow("SELECT JSON_OBJECT('id', s.`id`, `name`, s.`name`) FROM `saves` s WHERE s.`id` = ? AND s.`user_id`=?", saveID[0], u.ID()).Scan(&str)
 	}
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -367,4 +368,92 @@ func (u User) Instances(instIDs []string) (string, error) {
 		return "", err
 	}
 	return str, nil
+}
+
+//txSaveData - returns save data in C.J format
+func (u User) txSaveData(saveID string, tx *sql.Tx) (C.J, error) {
+	var bytes []byte
+	err := tx.QueryRow("SELECT `data` FROM `saves` s WHERE s.`id`=?", saveID).Scan(&bytes)
+	if err != nil {
+		return nil, err
+	}
+	var data C.J
+	err = json.Unmarshal(bytes, &data)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+//txUpdateSaveData - update save data in db
+func (u User) txUpdateSaveData(data C.J, saveID string, tx *sql.Tx) error {
+	upd, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec("UPDATE `saves` s SET s.`data`=? WHERE s.id=?", upd, saveID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+//UpdateSave - update save data in transaction, return updated data
+func (u User) UpdateSave(data C.J, saveID string) (C.J, error) {
+	var transaction = func(upd C.J, saveID string, tx *sql.Tx) (C.J, error) {
+		data, err := u.txSaveData(saveID, tx)
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range upd {
+			data[k] = v
+		}
+		err = u.txUpdateSaveData(data, saveID, tx)
+		if err != nil {
+			return nil, err
+		}
+		return data, nil
+	}
+	tx, err := u.dbs.mySQL.Begin()
+	if err != nil {
+		return nil, err
+	}
+	data, err = transaction(data, saveID, tx)
+	if err != nil {
+		if e := tx.Rollback(); e != nil {
+			return nil, e
+		}
+		return nil, err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+//CreateSave - create new save instance in db
+func (u User) CreateSave(data C.J) (C.J, error) {
+	var transaction = func(data C.J, tx *sql.Tx) error {
+		_, err := tx.Exec("INSERT INTO `saves` s SET s.`data` = ?, s.`user_id = ?` ", data, u.ID())
+		if err != nil {
+			return err
+		}
+	}
+	tx, err := u.dbs.mySQL.Begin()
+	if err != nil {
+		return nil, err
+	}
+	err = transaction(data, tx)
+	if err != nil {
+		if e := tx.Rollback(); e != nil {
+			return nil, err
+		}
+		return nil, err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
 }
