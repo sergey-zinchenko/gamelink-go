@@ -14,6 +14,7 @@ func (a *App) getUser(ctx iris.Context) {
 	data, err := user.DataString()
 	if err != nil {
 		handleError(err, ctx)
+		return
 	}
 	ctx.ContentType(context.ContentJSONHeaderValue)
 	ctx.WriteString(data)

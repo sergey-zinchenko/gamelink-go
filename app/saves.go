@@ -10,9 +10,11 @@ import (
 
 func (a *App) getSave(ctx iris.Context) {
 	user := ctx.Values().Get(userCtxKey).(*storage.User)
-	instances, err := user.Saves(ctx.Request().URL.Query()["id"])
+	saveID, _ := ctx.Params().GetInt("id")
+	instances, err := user.Saves(saveID)
 	if err != nil {
 		handleError(err, ctx)
+		return
 	}
 	ctx.ContentType(context.ContentJSONHeaderValue)
 	ctx.WriteString(instances)
@@ -33,9 +35,9 @@ func (a *App) postSave(ctx iris.Context) {
 	if err != nil {
 		return
 	}
-	saveID := ctx.Request().URL.Query()["id"]
-	if len(saveID) != 0 {
-		save, err = user.UpdateSave(data, saveID[0])
+	saveID, _ := ctx.Params().GetInt("id")
+	if saveID != 0 {
+		save, err = user.UpdateSave(data, saveID)
 	} else {
 		save, err = user.CreateSave(data)
 	}
@@ -54,7 +56,8 @@ func (a *App) deleteSave(ctx iris.Context) {
 		handleError(err, ctx)
 	}()
 	user := ctx.Values().Get(userCtxKey).(*storage.User)
-	data, err = user.DeleteSave(ctx.Request().URL.Query()["id"], ctx.Request().URL.Query()["fields"])
+	saveID, _ := ctx.Params().GetInt("id")
+	data, err = user.DeleteSave(saveID, ctx.Request().URL.Query()["fields"])
 	if err != nil {
 		return
 	}

@@ -41,11 +41,13 @@ func NewApp() (a *App) {
 		users.Delete("/", a.deleteUser)
 		users.Get("/addAuth", a.addAuth)
 	}
-	instances := a.iris.Party("/instances", a.authMiddleware)
+	instances := a.iris.Party("/saves", a.authMiddleware)
 	{
 		instances.Get("/", a.getSave)
+		instances.Get("/{id}", a.getSave)
 		instances.Post("/", a.postSave)
-		instances.Delete("/", a.deleteSave)
+		instances.Post("/{id}", a.postSave)
+		instances.Delete("/{id}", a.deleteSave)
 	}
 	//service := i.Party("/service")
 	//{
