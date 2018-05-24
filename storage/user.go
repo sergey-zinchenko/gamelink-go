@@ -123,6 +123,7 @@ func (u User) DataString() (string, error) {
 }
 
 //Data - returns user's field data from database
+//TODO вот это нам не нужно, если только где-то не понадобится вызов Data по коду см.выше реализацию
 func (u User) Data() (C.J, error) {
 	var bytes []byte
 	if u.dbs.mySQL == nil {
@@ -149,7 +150,7 @@ func (u User) Data() (C.J, error) {
 		return nil, err
 	}
 	var data C.J
-	err = json.Unmarshal(bytes, &data) //TODO вот это нам не нужно, если только где-то не понадобится вызов Data по коду см.выше реализацию
+	err = json.Unmarshal(bytes, &data)
 	if err != nil {
 		return nil, err
 	}
