@@ -49,6 +49,10 @@ func NewApp() (a *App) {
 		instances.Post("/{id}", a.postSave)
 		instances.Delete("/{id}", a.deleteSave)
 	}
+	leaderboards := a.iris.Party("/leaderboards", a.authMiddleware)
+	{
+		leaderboards.Get("/{id:int}/{lbtype: string}", a.getLeaderboard)
+	}
 	//service := i.Party("/service")
 	//{
 	//
