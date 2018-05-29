@@ -66,4 +66,5 @@ func (a *App) deleteSave(ctx iris.Context) {
 	} else {
 		ctx.JSON(data)
 	}
+
 }
