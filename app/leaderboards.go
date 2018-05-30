@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
@@ -15,8 +14,7 @@ func (a *App) getLeaderboard(ctx iris.Context) {
 		handleError(err, ctx)
 		return
 	}
-	lbName := fmt.Sprintf("lb%d", lbID)
-	leaderboard, err := user.Leaderboard(ctx.Params().Get("lbtype"), lbName)
+	leaderboard, err := user.Leaderboard(ctx.Params().Get("lbtype"), lbID)
 	if err != nil {
 		handleError(err, ctx)
 		return

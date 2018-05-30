@@ -7,11 +7,15 @@ import (
 )
 
 //Leaderboard - return leaderboards
-func (u User) Leaderboard(lbType string, lbName string) (string, error) {
+func (u User) Leaderboard(lbType string, lbID int) (string, error) {
 	var lb string
 	var err error
+	lbName := fmt.Sprintf("lb%d", lbID)
 	if u.dbs.mySQL == nil {
 		return "", errors.New("databases not initialized")
+	}
+	if lbType != "all" && lbType != "friends" {
+		return "", errors.New("wrong type of leaderboard")
 	}
 	if lbType == "all" {
 		q := fmt.Sprintf("SELECT JSON_OBJECT("+
@@ -25,10 +29,11 @@ func (u User) Leaderboard(lbType string, lbName string) (string, error) {
 			"'\"name\":'  , 	JSON_QUOTE(b.`name`),   ','  ,"+
 			"'\"score\":' ,  	b.`%s`						 ,"+
 			"'}')),']') AS JSON))"+
-			"FROM(SELECT s.`id`, count(*) + 1 as pos, s.`name`, s.`score` from leader_board1 l, (select id, %s as score, name from leader_board1 o where o.`id` = %d) s "+
+			"FROM(SELECT s.`id`, count(*) + 1 as pos, s.`name`, s.`score` from leader_board1 l, (select id, %s as score, name from leader_board1 o where o.`id`=?) s "+
 			"where l.`%s` IS NOT NULL AND  l.`%s` > s.`score` ) k,"+
-			"(SELECT l.`id`, l.`name`, l.`%s` FROM leader_board1 l LIMIT 100) b GROUP BY k.`id`", lbName, lbName, u.ID(), lbName, lbName, lbName)
-		err = u.dbs.mySQL.QueryRow(q).Scan(&lb)
+			"(SELECT l.`id`, l.`name`, l.`%s` FROM leader_board1 l LIMIT 100) b GROUP BY k.`id`", lbName, lbName, lbName, lbName, lbName)
+		err = u.dbs.mySQL.QueryRow(q, u.ID()).Scan(&lb)
+		fmt.Println(q)
 	} else if lbType == "friends" {
 		q := fmt.Sprintf("SELECT JSON_OBJECT("+
 			"\"id\"			,  k.`id`		, "+
@@ -42,16 +47,16 @@ func (u User) Leaderboard(lbType string, lbName string) (string, error) {
 			"'\"score\":' , 	p.`%s`,"+
 			"'}')),']') AS JSON))"+
 			"FROM ( SELECT v.`id`, v.`name`, v.`%s`"+
-			"FROM (SELECT u.`id`,u.`name`,u.`%s` FROM `friends` f, `users` u WHERE f.`user_id2` = %d AND f.`user_id1` = u.`id` "+
-			"UNION SELECT u.`id`,u.`name`,u.`%s` FROM `friends` f, `users` u WHERE f.`user_id1` = %d AND f.`user_id2` = u.`id`) v "+
+			"FROM (SELECT u.`id`,u.`name`,u.`%s` FROM `friends` f, `users` u WHERE f.`user_id2` = ? AND f.`user_id1` = u.`id` "+
+			"UNION SELECT u.`id`,u.`name`,u.`%s` FROM `friends` f, `users` u WHERE f.`user_id1` = ? AND f.`user_id2` = u.`id`) v "+
 			"ORDER BY v.`%s`) p, "+
 			"(SELECT m.`id`, count(*) + 1 as pos, m.`name`, m.score "+
-			"FROM (SELECT  l.`id`, l.`name`, l.`%s` as score FROM leader_board1 l WHERE l.`id` = %d) m, "+
-			"(SELECT u.`%s` as score FROM `friends` f, `users` u WHERE f.`user_id2` = %d AND f.`user_id1` = u.`id` "+
+			"FROM (SELECT  l.`id`, l.`name`, l.`%s` as score FROM leader_board1 l WHERE l.`id` = ?) m, "+
+			"(SELECT u.`%s` as score FROM `friends` f, `users` u WHERE f.`user_id2` = ? AND f.`user_id1` = u.`id` "+
 			"UNION "+
-			"SELECT u.`%s` as score FROM `friends` f, `users` u WHERE f.`user_id1` = %d AND f.`user_id2` = u.`id`) s "+
-			"where m.score IS NOT NULL AND  s.score > m.score ) k GROUP BY k.`id`", lbName, lbName, lbName, u.ID(), lbName, u.ID(), lbName, lbName, u.ID(), lbName, u.ID(), lbName, u.ID())
-		err = u.dbs.mySQL.QueryRow(q).Scan(&lb)
+			"SELECT u.`%s` as score FROM `friends` f, `users` u WHERE f.`user_id1` = ? AND f.`user_id2` = u.`id`) s "+
+			"where m.score IS NOT NULL AND  s.score > m.score ) k GROUP BY k.`id`", lbName, lbName, lbName, lbName, lbName, lbName, lbName, lbName)
+		err = u.dbs.mySQL.QueryRow(q, u.ID(), u.ID(), u.ID(), u.ID(), u.ID()).Scan(&lb)
 	}
 	if err != nil {
 		if err == sql.ErrNoRows {
