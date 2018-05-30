@@ -6,6 +6,13 @@ import (
 	"fmt"
 )
 
+const (
+	friendsLeaderboard  = "friends"
+	allUsersLeaderboard = "all"
+	leaderboard1        = 1
+	leaderboard2        = 2
+)
+
 //Leaderboard - return leaderboards
 func (u User) Leaderboard(lbType string, lbID int) (string, error) {
 	var lb string
@@ -14,10 +21,15 @@ func (u User) Leaderboard(lbType string, lbID int) (string, error) {
 	if u.dbs.mySQL == nil {
 		return "", errors.New("databases not initialized")
 	}
-	if lbType != "all" && lbType != "friends" {
-		return "", errors.New("wrong type of leaderboard")
+	if lbType != allUsersLeaderboard && lbType != friendsLeaderboard {
+
+		return "", errors.New("bad request, wrong type of leaderboard")
 	}
-	if lbType == "all" {
+	if lbID != leaderboard1 && lbID != leaderboard2 {
+
+		return "", errors.New("bad request, wrong leaderboard ID")
+	}
+	if lbType == allUsersLeaderboard {
 		q := fmt.Sprintf("SELECT JSON_OBJECT("+
 			"\"id\"       ,  k.`id`   , "+
 			"\"position\" ,  k.`pos`  , "+
@@ -34,7 +46,7 @@ func (u User) Leaderboard(lbType string, lbID int) (string, error) {
 			"(SELECT l.`id`, l.`name`, l.`%s` FROM leader_board1 l LIMIT 100) b GROUP BY k.`id`", lbName, lbName, lbName, lbName, lbName)
 		err = u.dbs.mySQL.QueryRow(q, u.ID()).Scan(&lb)
 		fmt.Println(q)
-	} else if lbType == "friends" {
+	} else if lbType == friendsLeaderboard {
 		q := fmt.Sprintf("SELECT JSON_OBJECT("+
 			"\"id\"			,  k.`id`		, "+
 			"\"position\"	,  k.`pos`		, "+
