@@ -1,10 +1,12 @@
 package app
 
 import (
+	stdContext "context"
 	C "gamelink-go/common"
 	"gamelink-go/config"
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
+	"time"
 )
 
 const (
@@ -34,6 +36,13 @@ func NewApp() (a *App) {
 	{
 		auth.Get("/", a.registerLogin)
 	}
+	service := a.iris.Party("/service")
+	{
+
+		service.Get("/", a.getAppInfo)
+		service.Get("/healthz", a.healthCheck)
+		service.Get("/readyz", a.readyCheck)
+	}
 	users := a.iris.Party("/users", a.authMiddleware)
 	{
 		users.Get("/", a.getUser)
@@ -53,10 +62,6 @@ func NewApp() (a *App) {
 	{
 		leaderboards.Get("/{id:int}/{lbtype: string}", a.getLeaderboard)
 	}
-	//service := i.Party("/service")
-	//{
-	//
-	//}
 	a.iris.OnAnyErrorCode(func(ctx iris.Context) {
 		if config.IsDevelopmentEnv() {
 			if err := ctx.Values().Get(errorCtxKey); err != nil {
@@ -70,4 +75,15 @@ func NewApp() (a *App) {
 //Run - This function will initialize router for the application and try to start listening clients
 func (a *App) Run() error {
 	return a.iris.Run(iris.Addr(config.ServerAddress))
+}
+
+//Shutdown - make Gracefull Shutdown
+func (a *App) Shutdown() {
+	iris.RegisterOnInterrupt(func() {
+		timeout := 5 * time.Second
+		ctx, cancel := stdContext.WithTimeout(stdContext.Background(), timeout)
+		defer cancel()
+		// close all hosts
+		a.iris.Shutdown(ctx)
+	})
 }
