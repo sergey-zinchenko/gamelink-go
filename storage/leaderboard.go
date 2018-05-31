@@ -23,7 +23,7 @@ func (u User) Leaderboard(lbType string, lbID int) (string, error) {
 	}
 	if lbType != allUsersLeaderboard && lbType != friendsLeaderboard {
 
-		return "", errors.New("bad request, wrong type of leaderboard")
+		return "", errors.New("bad request, wrong leaderboard type ")
 	}
 	if lbID != leaderboard1 && lbID != leaderboard2 {
 
