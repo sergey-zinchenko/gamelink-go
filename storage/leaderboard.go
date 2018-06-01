@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"gamelink-go/graceful"
 	"gamelink-go/storage/queries"
 )
@@ -19,27 +20,17 @@ func (u User) Leaderboard(lbType string, lbNum int) (string, error) {
 	if u.dbs.mySQL == nil {
 		return "", errors.New("databases not initialized")
 	}
-	switch lbType {
-	case allUsersLeaderboard:
-		switch lbNum {
-		case 1:
-			err = u.dbs.mySQL.QueryRow(queries.AllUsersLeaderboard1Query, u.ID()).Scan(&result)
-		case 2:
-			err = u.dbs.mySQL.QueryRow(queries.AllUsersLeaderboard2Query, u.ID()).Scan(&result)
+	if lbNum == 1 || lbNum == 2 {
+		switch lbType {
+		case allUsersLeaderboard:
+			err = u.dbs.mySQL.QueryRow(fmt.Sprintf(queries.AllUsersLeaderboardQuery, lbNum), u.ID()).Scan(&result)
+		case friendsLeaderboard:
+			err = u.dbs.mySQL.QueryRow(fmt.Sprintf(queries.FriendsLeaderboardQuery, lbNum), u.ID()).Scan(&result)
 		default:
-			return "", graceful.BadRequestError{Message: "wrong leader board number"}
+			return "", graceful.BadRequestError{Message: "wrong leader board type"}
 		}
-	case friendsLeaderboard:
-		switch lbNum {
-		case 1:
-			err = u.dbs.mySQL.QueryRow(queries.FriendsLeaderboard1Query, u.ID(), u.ID(), u.ID(), u.ID(), u.ID()).Scan(&result)
-		case 2:
-			err = u.dbs.mySQL.QueryRow(queries.FriendsLeaderboard2Query, u.ID(), u.ID(), u.ID(), u.ID(), u.ID()).Scan(&result)
-		default:
-			return "", graceful.BadRequestError{Message: "wrong leader board number"}
-		}
-	default:
-		return "", graceful.BadRequestError{Message: "wrong leader board type"}
+	} else {
+		return "", graceful.BadRequestError{Message: "wrong leader board number"}
 	}
 	if err != nil {
 		if err == sql.ErrNoRows {

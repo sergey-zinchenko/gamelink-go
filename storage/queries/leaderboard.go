@@ -1,8 +1,8 @@
 package queries
 
 const (
-	//AllUsersLeaderboard1Query - mysql query to get 1st leader board against all users
-	AllUsersLeaderboard1Query = `
+	//AllUsersLeaderboardQuery - mysql query template to get leader board against all users
+	AllUsersLeaderboardQuery = `
 SELECT JSON_OBJECT(
     "id", k.id,
     "position", k.pos,
@@ -11,7 +11,8 @@ SELECT JSON_OBJECT(
     "top100", CAST(CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('{',
                                                             '"id":', b.id, ',',
                                                             '"name":', JSON_QUOTE(b.name), ',',
-                                                            '"score":', b.lb2,
+                                                            '"score":', b.lb%[1]d
+                                                            ,
                                                             '}')), ']') AS JSON))
 FROM (SELECT
         s.id,
@@ -20,51 +21,26 @@ FROM (SELECT
         s.score
       from leader_board1 l, (select
                                id,
-                               lb2 as score,
+                               lb%[1]d
+                                as score,
                                name
                              from leader_board1 o
                              where o.id = ?) s
-      where l.lb2 IS NOT NULL AND l.lb2 > s.score) k,
+      where l.lb%[1]d
+       IS NOT NULL AND l.lb%[1]d
+        > s.score) k,
   (SELECT
      l.id,
      l.name,
-     l.lb2
+     l.lb%[1]d
+
    FROM leader_board1 l
    LIMIT 100) b
 GROUP BY k.id`
-	//AllUsersLeaderboard2Query - mysql query to get second leader board against all users
-	AllUsersLeaderboard2Query = `
-SELECT JSON_OBJECT(
-    "id", k.id,
-    "position", k.pos,
-    "name", k.name,
-    "score", k.score,
-    "top100", CAST(CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('{',
-                                                            '"id":', b.id, ',',
-                                                            '"name":', JSON_QUOTE(b.name), ',',
-                                                            '"score":', b.lb2,
-                                                            '}')), ']') AS JSON))
-FROM (SELECT
-        s.id,
-        count(*) + 1 as pos,
-        s.name,
-        s.score
-      from leader_board1 l, (select
-                               id,
-                               lb2 as score,
-                               name
-                             from leader_board1 o
-                             where o.id = ?) s
-      where l.lb2 IS NOT NULL AND l.lb2 > s.score) k,
-  (SELECT
-     l.id,
-     l.name,
-     l.lb2
-   FROM leader_board1 l
-   LIMIT 100) b
-GROUP BY k.id`
-	//FriendsLeaderboard1Query - mysql query to get first leader board against friends
-	FriendsLeaderboard1Query = `
+
+	//FriendsLeaderboardQuery - mysql query template to get leader board against friends
+	FriendsLeaderboardQuery = `
+SET @param = ?;
 SELECT JSON_OBJECT(
     "id", k.id,
     "position", k.pos,
@@ -74,25 +50,30 @@ SELECT JSON_OBJECT(
     CAST(CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('{',
                                                   '"id":', p.id, ',',
                                                   '"name":', JSON_QUOTE(p.name), ',',
-                                                  '"score":', p.lb2,
+                                                  '"score":', p.lb%[1]d
+                                                  ,
                                                   '}')), ']') AS JSON))
 FROM (SELECT
         v.id,
         v.name,
-        v.lb2
+        v.lb%[1]d
+
       FROM (SELECT
               u.id,
               u.name,
-              u.lb2
+              u.lb%[1]d
+
             FROM friends f, users u
-            WHERE f.user_id2 = ? AND f.user_id1 = u.id
+            WHERE f.user_id2 = @param AND f.user_id1 = u.id
             UNION SELECT
                     u.id,
                     u.name,
-                    u.lb2
+                    u.lb%[1]d
+
                   FROM friends f, users u
-                  WHERE f.user_id1 = ? AND f.user_id2 = u.id) v
-      ORDER BY v.lb2) p,
+                  WHERE f.user_id1 = @param AND f.user_id2 = u.id) v
+      ORDER BY v.lb%[1]d
+      ) p,
   (SELECT
      m.id,
      count(*) + 1 as pos,
@@ -101,66 +82,19 @@ FROM (SELECT
    FROM (SELECT
            l.id,
            l.name,
-           l.lb2 as score
+           l.lb%[1]d
+            as score
          FROM leader_board1 l
-         WHERE l.id = ?) m,
-     (SELECT u.lb2 as score
+         WHERE l.id = @param) m,
+     (SELECT u.lb%[1]d
+      as score
       FROM friends f, users u
-      WHERE f.user_id2 = ? AND f.user_id1 = u.id
+      WHERE f.user_id2 = @param AND f.user_id1 = u.id
       UNION
-      SELECT u.lb2 as score
+      SELECT u.lb%[1]d
+       as score
       FROM friends f, users u
-      WHERE f.user_id1 = ? AND f.user_id2 = u.id) s
-   where m.score IS NOT NULL AND s.score > m.score) k
-GROUP BY k.id`
-	//FriendsLeaderboard2Query - mysql query to get second leader board against friends
-	FriendsLeaderboard2Query = `
-SELECT JSON_OBJECT(
-    "id", k.id,
-    "position", k.pos,
-    "name", k.name,
-    "score", k.score,
-    "friends",
-    CAST(CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('{',
-                                                  '"id":', p.id, ',',
-                                                  '"name":', JSON_QUOTE(p.name), ',',
-                                                  '"score":', p.lb2,
-                                                  '}')), ']') AS JSON))
-FROM (SELECT
-        v.id,
-        v.name,
-        v.lb2
-      FROM (SELECT
-              u.id,
-              u.name,
-              u.lb2
-            FROM friends f, users u
-            WHERE f.user_id2 = ? AND f.user_id1 = u.id
-            UNION SELECT
-                    u.id,
-                    u.name,
-                    u.lb2
-                  FROM friends f, users u
-                  WHERE f.user_id1 = ? AND f.user_id2 = u.id) v
-      ORDER BY v.lb2) p,
-  (SELECT
-     m.id,
-     count(*) + 1 as pos,
-     m.name,
-     m.score
-   FROM (SELECT
-           l.id,
-           l.name,
-           l.lb2 as score
-         FROM leader_board1 l
-         WHERE l.id = ?) m,
-     (SELECT u.lb2 as score
-      FROM friends f, users u
-      WHERE f.user_id2 = ? AND f.user_id1 = u.id
-      UNION
-      SELECT u.lb2 as score
-      FROM friends f, users u
-      WHERE f.user_id1 = ? AND f.user_id2 = u.id) s
+      WHERE f.user_id1 = @param AND f.user_id2 = u.id) s
    where m.score IS NOT NULL AND s.score > m.score) k
 GROUP BY k.id`
 )
