@@ -8,6 +8,7 @@ import (
 	C "gamelink-go/common"
 	"gamelink-go/graceful"
 	"gamelink-go/social"
+	"gamelink-go/storage/queries"
 )
 
 type (
@@ -24,7 +25,7 @@ func (u User) ID() int64 {
 }
 
 func (u *User) txCheck(userData social.ThirdPartyUser, tx *sql.Tx) (bool, error) {
-	queryString := fmt.Sprintf("SELECT `id` FROM `users` u WHERE u.`%s` = ?", userData.ID().Name())
+	queryString := fmt.Sprintf(queries.CheckUserQuery, userData.ID().Name())
 	err := tx.QueryRow(queryString, userData.ID().Value()).Scan(&u.id)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -40,7 +41,7 @@ func (u *User) txRegister(user social.ThirdPartyUser, tx *sql.Tx) error {
 	if err != nil {
 		return err
 	}
-	res, err := tx.Exec("INSERT INTO `users` (`data`) VALUES (?)", b)
+	res, err := tx.Exec(queries.RegisterUserQuery, b)
 	if err != nil {
 		return err
 	}
@@ -99,23 +100,10 @@ func (u User) DataString() (string, error) {
 	if u.dbs.mySQL == nil {
 		return "", errors.New("databases not initialized")
 	}
-	err := u.dbs.mySQL.QueryRow("SELECT IFNULL((SELECT JSON_INSERT(u.`data`, '$.friends', fj.`friends`) FROM `users` u, "+
-		"(SELECT "+
-		"CAST(CONCAT('[',GROUP_CONCAT(DISTINCT CONCAT('{', "+
-		"'\"id\":',		b.`id`, "+
-		"',', '\"name\":',		JSON_QUOTE(b.`name`),"+
-		"'}')),']') AS JSON"+
-		") "+
-		"AS `friends` "+
-		"FROM "+
-		"(SELECT u.`id`, u.`name`,f.user_id2 as g FROM `friends` f,`users` u WHERE `user_id2` = ? AND f.user_id1 = u.id"+
-		" UNION "+
-		"SELECT u.`id`, u.`name`, f.user_id1 as g FROM `friends` f, `users` u WHERE `user_id1` = ? AND f.user_id2 = u.id) b "+
-		"GROUP BY b.g) fj "+
-		"WHERE u.`id` = ?), q.`data`) `data` FROM `users` q WHERE q.`id`=?", u.ID(), u.ID(), u.ID(), u.ID()).Scan(&str)
+	err := u.dbs.mySQL.QueryRow(queries.GetExtraUserDataQuery, u.ID()).Scan(&str)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return "", errors.New("user not found")
+			return "", graceful.NotFoundError{"user not found"}
 		}
 		return "", err
 	}
@@ -129,23 +117,10 @@ func (u User) Data() (C.J, error) {
 	if u.dbs.mySQL == nil {
 		return nil, errors.New("databases not initialized")
 	}
-	err := u.dbs.mySQL.QueryRow("SELECT JSON_INSERT(u.`data`, '$.friends', fj.friends) from `users` u, "+
-		"(SELECT "+
-		"CAST(CONCAT('[',GROUP_CONCAT(DISTINCT CONCAT('{', "+
-		"'\"id\":',		b.`id`, "+
-		"',', '\"name\":',		JSON_QUOTE(b.`name`),"+
-		"'}')),']') AS JSON"+
-		") "+
-		"AS `friends` "+
-		"FROM "+
-		"(SELECT u.`id`, u.`name`,f.user_id2 as g FROM `friends` f,`users` u WHERE `user_id2` = ? AND f.user_id1 = u.id"+
-		" UNION "+
-		"SELECT u.`id`, u.`name`, f.user_id1 as g FROM `friends` f, `users` u WHERE `user_id1` = ? AND f.user_id2 = u.id) b "+
-		"GROUP BY b.g) fj "+
-		"WHERE u.`id` = ?", u.ID(), u.ID(), u.ID()).Scan(&bytes)
+	err := u.dbs.mySQL.QueryRow(queries.GetExtraUserDataQuery, u.ID()).Scan(&bytes)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, errors.New("user not found")
+			return nil, graceful.NotFoundError{"user not found"}
 		}
 		return nil, err
 	}
@@ -159,7 +134,7 @@ func (u User) Data() (C.J, error) {
 
 func (u User) txData(tx *sql.Tx) (C.J, error) {
 	var bytes []byte
-	err := tx.QueryRow("SELECT `data` FROM `users` u WHERE u.`id`=?", u.ID()).Scan(&bytes)
+	err := tx.QueryRow(queries.GetUserDataQuery, u.ID()).Scan(&bytes)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +151,7 @@ func (u User) txUpdate(data C.J, tx *sql.Tx) error {
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec("UPDATE `users` u SET u.`data`=? WHERE u.id=?", upd, u.ID())
+	_, err = tx.Exec(queries.UpdateUserDataQuery, upd, u.ID())
 	if err != nil {
 		return err
 	}
@@ -184,19 +159,18 @@ func (u User) txUpdate(data C.J, tx *sql.Tx) error {
 }
 
 func (u User) txDelete(tx *sql.Tx) error {
-	_, err := tx.Exec("DELETE FROM `users` WHERE `id`=?", u.ID())
+	_, err := tx.Exec(queries.DeleteUserQuery, u.ID())
 	return err
 }
 
 func (u User) txSyncFriends(friendsIds []social.ThirdPartyID, tx *sql.Tx) error {
-	const queryString = "INSERT IGNORE INTO `friends` (`user_id1`, `user_id2`) SELECT GREATEST(ids.id1, ids.id2),   LEAST(ids.id1, ids.id2) FROM (SELECT ? as id1 , u2.id as id2 FROM (SELECT `id` FROM `users` u WHERE u.`%s` = ? ) u2) ids"
 	var err error
-	vkStmt, err := tx.Prepare(fmt.Sprintf(queryString, social.VkID))
+	vkStmt, err := tx.Prepare(fmt.Sprintf(queries.MakeFriendshipQuery, social.VkID))
 	if err != nil {
 		return err
 	}
 	defer vkStmt.Close()
-	fbStmt, err := tx.Prepare(fmt.Sprintf(queryString, social.FbID))
+	fbStmt, err := tx.Prepare(fmt.Sprintf(queries.MakeFriendshipQuery, social.FbID))
 	if err != nil {
 		return err
 	}
@@ -216,6 +190,7 @@ func (u User) txSyncFriends(friendsIds []social.ThirdPartyID, tx *sql.Tx) error 
 }
 
 func (u User) logout() error {
+	//TODO: нужно имплементировать
 	return nil
 }
 
@@ -329,7 +304,7 @@ func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 		return nil, err
 	}
 	if token == nil {
-		return nil, errors.New("empty token")
+		return nil, graceful.BadRequestError{Message: "empty token"}
 	}
 	userData, err := token.UserInfo()
 	if err != nil {
