@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	C "gamelink-go/common"
+	"gamelink-go/graceful"
 	"gamelink-go/storage/queries"
 )
 
@@ -22,7 +23,7 @@ func (u User) Saves(saveID int) (string, error) {
 	}
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return "", errors.New("saves not found")
+			return "", graceful.NotFoundError{Message: "saves not found"}
 		}
 		return "", err
 	}
@@ -32,7 +33,7 @@ func (u User) Saves(saveID int) (string, error) {
 //txSaveData - returns save data in C.J format
 func (u User) txSaveData(saveID int, tx *sql.Tx) (C.J, error) {
 	var bytes []byte
-	err := tx.QueryRow("SELECT `data` FROM `saves` s WHERE s.`id`=?", saveID).Scan(&bytes)
+	err := tx.QueryRow(queries.GetSaveDataQuery, saveID).Scan(&bytes)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +51,7 @@ func (u User) txUpdateSaveData(data C.J, saveID int, tx *sql.Tx) error {
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec("UPDATE `saves` s SET s.`data`=? WHERE s.`id`=?", upd, saveID)
+	_, err = tx.Exec(queries.UpdateSaveDataQuery, upd, saveID)
 	if err != nil {
 		return err
 	}
@@ -58,7 +59,7 @@ func (u User) txUpdateSaveData(data C.J, saveID int, tx *sql.Tx) error {
 }
 
 func (u User) txDeleteSave(saveID int, tx *sql.Tx) error {
-	_, err := tx.Exec("DELETE FROM `saves` WHERE `id`=?", saveID)
+	_, err := tx.Exec(queries.DeleteSaveQuery, saveID)
 	return err
 }
 
@@ -99,7 +100,7 @@ func (u User) UpdateSave(data C.J, saveID int) (C.J, error) {
 //CreateSave - create new save instance in db
 func (u User) CreateSave(data C.J) (C.J, error) {
 	var transaction = func(s []byte, tx *sql.Tx) error {
-		_, err := tx.Exec("INSERT INTO `saves` (`data`, `user_id`) VALUES (?,?)", s, u.ID())
+		_, err := tx.Exec(queries.CreateSaveQuery, s, u.ID())
 		return err
 	}
 	tx, err := u.dbs.mySQL.Begin()
