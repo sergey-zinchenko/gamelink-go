@@ -2,6 +2,7 @@ package app
 
 import (
 	C "gamelink-go/common"
+	"gamelink-go/graceful"
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
@@ -10,7 +11,10 @@ import (
 
 func (a *App) getSave(ctx iris.Context) {
 	user := ctx.Values().Get(userCtxKey).(*storage.User)
-	saveID, _ := ctx.Params().GetInt("id")
+	saveID, err := ctx.Params().GetInt("id")
+	if err != nil {
+		handleError(graceful.BadRequestError{Message: "wrong params"}, ctx)
+	}
 	instances, err := user.Saves(saveID)
 	if err != nil {
 		handleError(err, ctx)
@@ -35,7 +39,10 @@ func (a *App) postSave(ctx iris.Context) {
 	if err != nil {
 		return
 	}
-	saveID, _ := ctx.Params().GetInt("id")
+	saveID, err := ctx.Params().GetInt("id")
+	if err != nil {
+		handleError(graceful.BadRequestError{Message: "wrong params"}, ctx)
+	}
 	if saveID != 0 {
 		save, err = user.UpdateSave(data, saveID)
 	} else {
@@ -56,10 +63,13 @@ func (a *App) deleteSave(ctx iris.Context) {
 		handleError(err, ctx)
 	}()
 	user := ctx.Values().Get(userCtxKey).(*storage.User)
-	saveID, _ := ctx.Params().GetInt("id")
+	saveID, err := ctx.Params().GetInt("id")
+	if err != nil {
+		handleError(err, ctx)
+	}
 	data, err = user.DeleteSave(saveID, ctx.Request().URL.Query()["fields"])
 	if err != nil {
-		return
+		handleError(err, ctx)
 	}
 	if data == nil {
 		ctx.StatusCode(http.StatusNoContent)

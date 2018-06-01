@@ -4,8 +4,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
+	C "gamelink-go/common"
+	"gamelink-go/graceful"
 	"gamelink-go/social"
-	"net/url"
+	"gamelink-go/storage/queries"
 )
 
 type (
@@ -21,30 +24,107 @@ func (u User) ID() int64 {
 	return u.id
 }
 
+func (u *User) txCheck(userData social.ThirdPartyUser, tx *sql.Tx) (bool, error) {
+	queryString := fmt.Sprintf(queries.CheckUserQuery, userData.ID().Name())
+	err := tx.QueryRow(queryString, userData.ID().Value()).Scan(&u.id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func (u *User) txRegister(user social.ThirdPartyUser, tx *sql.Tx) error {
+	b, err := json.Marshal(user)
+	if err != nil {
+		return err
+	}
+	res, err := tx.Exec(queries.RegisterUserQuery, b)
+	if err != nil {
+		return err
+	}
+	u.id, err = res.LastInsertId()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+//LoginUsingThirdPartyToken - function to fill users id by third party token
+func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken) error {
+	var transaction = func(user social.ThirdPartyUser, tx *sql.Tx) error {
+		registered, err := u.txCheck(user, tx)
+		if err != nil {
+			return err
+		}
+		if !registered {
+			if err = u.txRegister(user, tx); err != nil {
+				return err
+			}
+		}
+		err = u.txSyncFriends(user.Friends(), tx)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	userData, err := token.UserInfo()
+	if err != nil {
+		return err
+	}
+	tx, err := u.dbs.mySQL.Begin()
+	if err != nil {
+		return err
+	}
+	err = transaction(userData, tx)
+	if err != nil {
+		u.id = 0
+		e := tx.Rollback()
+		if e != nil {
+			return e
+		}
+		return err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+//DataString - returns user's field data from database as text
+func (u User) DataString() (string, error) {
+	var str string
+	if u.dbs.mySQL == nil {
+		return "", errors.New("databases not initialized")
+	}
+	err := u.dbs.mySQL.QueryRow(queries.GetExtraUserDataQuery, u.ID()).Scan(&str)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", graceful.NotFoundError{Message: "user not found"}
+		}
+		return "", err
+	}
+	return str, nil
+}
+
 //Data - returns user's field data from database
-func (u User) Data() (map[string]interface{}, error) {
+//TODO вот это нам не нужно, если только где-то не понадобится вызов Data по коду см.выше реализацию
+func (u User) Data() (C.J, error) {
+	var bytes []byte
 	if u.dbs.mySQL == nil {
 		return nil, errors.New("databases not initialized")
 	}
-	stmt, err := u.dbs.mySQL.Prepare("SELECT `data` FROM `users` WHERE `id` = ?")
+	err := u.dbs.mySQL.QueryRow(queries.GetExtraUserDataQuery, u.ID()).Scan(&bytes)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, graceful.NotFoundError{Message: "user not found"}
+		}
 		return nil, err
 	}
-	defer stmt.Close()
-	rows, err := stmt.Query(u.ID())
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var bytes []byte
-	if !rows.Next() {
-		return nil, errors.New("user not found")
-	}
-	err = rows.Scan(&bytes)
-	if err != nil {
-		return nil, err
-	}
-	var data map[string]interface{}
+	var data C.J
 	err = json.Unmarshal(bytes, &data)
 	if err != nil {
 		return nil, err
@@ -52,200 +132,194 @@ func (u User) Data() (map[string]interface{}, error) {
 	return data, nil
 }
 
-// UpdateData - update user data
-func (u *User) UpdateData(userID int64, oldData map[string]interface{}, newData map[string]interface{}) error {
-	delete(newData, "fb_id")
-	delete(newData, "vk_id")
-	for k, v := range newData {
-		oldData[k] = v
-	}
-	var transaction = func(userID int64, Data *map[string]interface{}, tx *sql.Tx) error {
-		stmt, err := tx.Prepare("UPDATE `users` SET `data`=? WHERE `id`=?")
-		if err != nil {
-			return err
-		}
-		b, err := json.Marshal(Data)
-		if err != nil {
-			return err
-		}
-		defer stmt.Close()
-		_, err = stmt.Exec(b, userID)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-	tx, err := u.dbs.mySQL.Begin()
-	if err != nil {
-		return err
-	}
-	err = transaction(userID, &oldData, tx)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-	err = tx.Commit()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// DeleteData - delete user data
-func (u *User) DeleteData(userID int64, queryValues url.Values, Data map[string]interface{}) error {
-	var flag string
-	var query string
-	if len(queryValues) == 0 {
-		query = "DELETE FROM `users` WHERE `id`=?"
-		flag = "user_delete"
-	} else {
-		for _, v := range queryValues["data"] {
-			if v == "fb_id" || v == "vk_id" {
-				continue
-			}
-			delete(Data, v)
-		}
-		query = "UPDATE `users` SET `data`=? WHERE `id`=?"
-		flag = "data_delete"
-	}
-	var transaction = func(userID int64, Data *map[string]interface{}, query string, tx *sql.Tx) error {
-		stmt, err := tx.Prepare(query)
-		if err != nil {
-			return err
-		}
-		defer stmt.Close()
-		switch flag {
-		case "user_delete":
-			_, err = stmt.Exec(userID)
-		case "data_delete":
-			b, err := json.Marshal(Data)
-			if err != nil {
-				return err
-			}
-			_, err = stmt.Exec(b, userID)
-		default:
-			return errors.New("delete data error")
-		}
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-	tx, err := u.dbs.mySQL.Begin()
-	if err != nil {
-		return err
-	}
-	err = transaction(userID, &Data, query, tx)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-	err = tx.Commit()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-//AddSocialAcc - allow user to add one more social media account
-func (u *User) AddSocialAcc(userID int64, queryValues url.Values) error {
-	var socialSource string
-	var (
-		tokenFromValues = func(query url.Values) social.ThirdPartyToken {
-			if vk, fb := query["vk"], query["fb"]; vk != nil && len(vk) == 1 && fb == nil {
-				socialSource = "vk_id"
-				return social.VkToken(vk[0])
-			} else if fb != nil && len(fb) == 1 && vk == nil {
-				socialSource = "fb_id"
-				return social.FbToken(fb[0])
-			}
-			return nil
-		}
-	)
-	token := tokenFromValues(queryValues)
-	stmt, err := u.dbs.mySQL.Prepare("SELECT `data` FROM `users` WHERE `id` = ?")
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-	rows, err := stmt.Query(u.ID())
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
+func (u User) txData(tx *sql.Tx) (C.J, error) {
 	var bytes []byte
-	if !rows.Next() {
-		return err
-	}
-	err = rows.Scan(&bytes)
+	err := tx.QueryRow(queries.GetUserDataQuery, u.ID()).Scan(&bytes)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	var data map[string]interface{}
+	var data C.J
 	err = json.Unmarshal(bytes, &data)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if _, ok := data[socialSource]; ok {
-		return err
-	}
-	ID, _, err := token.UserInfo()
-	if err != nil {
-		return err
-	}
-	data[socialSource] = ID
-	var transaction = func(userID int64, data *map[string]interface{}, tx *sql.Tx) error {
-		stmt, err := tx.Prepare("UPDATE `users` SET `data`=? WHERE `id`=?")
-		if err != nil {
-			return err
-		}
-		b, err := json.Marshal(data)
-		if err != nil {
-			return err
-		}
-		defer stmt.Close()
-		_, err = stmt.Exec(b, userID)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-	tx, err := u.dbs.mySQL.Begin()
-	if err != nil {
-		return err
-	}
-	err = transaction(userID, &data, tx)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-	err = tx.Commit()
-	if err != nil {
-		return err
-	}
+	return data, nil
+}
 
+func (u User) txUpdate(data C.J, tx *sql.Tx) error {
+	upd, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(queries.UpdateUserDataQuery, upd, u.ID())
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
-//TODO: Нужно создать обработчик для загрузки информации о зарегистрированном пользователе.
-//http method post for path /users
-//Можно грузить произвольный JSON
-//В нем не должно быть полей vk_id, fb_id - их надо удалять из входящих данных
-//Обработка должна быть не по тригеру (удали его из бд), а с использованием транзакции
-//схему организации транзакции посмотри в ThirdPartyUser
-//Сначала грузишь json c инфой из базы (data) потом объединяешь его с тем что получен в теле запроса и пишешь это братно через метод update
+func (u User) txDelete(tx *sql.Tx) error {
+	_, err := tx.Exec(queries.DeleteUserQuery, u.ID())
+	return err
+}
 
-//TODO: Нужно создать обработчик для удаления полей из инфы о пользователе или всего пользователя
-//http method delete for path /users
-//если вызван DELETE /users/ с валидным  Authorization и в URL query нет параметров то нужно снести всего пользователя целиком - вызвать DELETE в базе по идшнику.
-//если в URL Query содержит массив data - i.e DELETE /users?data=field1&data=field2 то нужно удалить поля с этими именами в json из поля data в базе.
-//само собой нельзя грохать fb_id и vk_id
-//так же как и в предыдущем кейсе делать через транзакции без тригеров
+func (u User) txSyncFriends(friendsIds []social.ThirdPartyID, tx *sql.Tx) error {
+	var err error
+	vkStmt, err := tx.Prepare(fmt.Sprintf(queries.MakeFriendshipQuery, social.VkID))
+	if err != nil {
+		return err
+	}
+	defer vkStmt.Close()
+	fbStmt, err := tx.Prepare(fmt.Sprintf(queries.MakeFriendshipQuery, social.FbID))
+	if err != nil {
+		return err
+	}
+	defer fbStmt.Close()
+	for _, v := range friendsIds {
+		switch v.(type) {
+		case social.VkIdentifier:
+			_, err = vkStmt.Exec(u.ID(), v.Value())
+		case social.FbIdentifier:
+			_, err = fbStmt.Exec(u.ID(), v.Value())
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
-//TODO: Нужно создать обраюотчик для добавление аторизации по второй социалке для зарегистрированного пользователя
-//Пользователь зарегистрированный через vk ожет захотеть добавить авторизацию через fb и наоборот
-//http method GET for path /users/auth
-//URL какого-то такого вида /users/auth?fb=sometoken
-//само собой только для авторизованных пользователей
-//через транзакции
-//возможные ситуации такие: у пользователя уже задан токен такой социалки или есть другая заптсь о пользователе с такой социалкой - вернуть Bad Request.
+func (u User) logout() error {
+	//TODO: нужно имплементировать
+	return nil
+}
+
+//Update - allow user update data
+func (u User) Update(data C.J) (C.J, error) {
+	var transaction = func(upd C.J, tx *sql.Tx) (C.J, error) {
+		data, err := u.txData(tx)
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range upd {
+			data[k] = v
+		}
+		err = u.txUpdate(data, tx)
+		if err != nil {
+			return nil, err
+		}
+		return data, nil
+	}
+	delete(data, "fb_id")
+	delete(data, "vk_id")
+	tx, err := u.dbs.mySQL.Begin()
+	if err != nil {
+		return nil, err
+	}
+	data, err = transaction(data, tx)
+	if err != nil {
+		if e := tx.Rollback(); e != nil {
+			return nil, e
+		}
+		return nil, err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+// Delete - allow user delete data about him or delete account
+func (u User) Delete(fields []string) (C.J, error) {
+	var transaction = func(fields []string, tx *sql.Tx) (C.J, error) {
+		if len(fields) != 0 {
+			data, err := u.txData(tx)
+			if err != nil {
+				return nil, err
+			}
+			for _, v := range fields {
+				if v == "fb_id" || v == "vk_id" {
+					continue
+				}
+				delete(data, v)
+			}
+			err = u.txUpdate(data, tx)
+			if err != nil {
+				return nil, err
+			}
+			return data, nil
+		}
+		err := u.txDelete(tx)
+		if err != nil {
+			return nil, err
+		}
+		err = u.logout() // Redis Call - Delete tokens from Redis
+		if err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
+	tx, err := u.dbs.mySQL.Begin()
+	if err != nil {
+		return nil, err
+	}
+	updData, err := transaction(fields, tx)
+	if err != nil {
+		if e := tx.Rollback(); e != nil {
+			return nil, err
+		}
+		return nil, err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return nil, err
+	}
+	return updData, nil
+}
+
+// AddSocial - allow
+func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
+	var transaction = func(userData social.ThirdPartyUser, tx *sql.Tx) (C.J, error) {
+		data, err := u.txData(tx)
+		if err != nil {
+			return nil, err
+		}
+		if _, ok := data[userData.ID().Name()]; ok {
+			return nil, graceful.BadRequestError{Message: "account already exist"}
+		}
+		data[userData.ID().Name()] = userData.ID().Value()
+		err = u.txUpdate(data, tx)
+		if err != nil {
+			return nil, err
+		}
+		err = u.txSyncFriends(userData.Friends(), tx)
+		if err != nil {
+			return nil, err
+		}
+		return data, nil
+	}
+	tx, err := u.dbs.mySQL.Begin()
+	if err != nil {
+		return nil, err
+	}
+	if token == nil {
+		return nil, graceful.BadRequestError{Message: "empty token"}
+	}
+	userData, err := token.UserInfo()
+	if err != nil {
+		return nil, err
+	}
+	updData, err := transaction(userData, tx)
+	if err != nil {
+		if e := tx.Rollback(); e != nil {
+			return nil, err
+		}
+		return nil, err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return nil, err
+	}
+	return updData, nil
+}

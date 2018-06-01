@@ -1,80 +1,108 @@
 package app
 
 import (
+	C "gamelink-go/common"
+	"gamelink-go/graceful"
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
+	"github.com/kataras/iris/context"
 	"net/http"
 )
 
 func (a *App) getUser(ctx iris.Context) {
 	user := ctx.Values().Get(userCtxKey).(*storage.User)
-	data, err := user.Data()
+	data, err := user.DataString()
 	if err != nil {
-		ctx.StatusCode(http.StatusInternalServerError)
-		ctx.Values().Set(errorCtxKey, err)
+		handleError(err, ctx)
+		return
+	}
+	ctx.ContentType(context.ContentJSONHeaderValue)
+	ctx.WriteString(data)
+}
+
+func (a *App) postUser(ctx iris.Context) {
+	var (
+		data, updated C.J
+		err           error
+	)
+	defer func() {
+		if err != nil {
+			handleError(err, ctx)
+		}
+	}()
+	user := ctx.Values().Get(userCtxKey).(*storage.User)
+	err = ctx.ReadJSON(&data)
+	if err != nil {
+		return
+	}
+	updated, err = user.Update(data)
+	if err != nil {
+		return
+	}
+	ctx.JSON(updated)
+}
+
+func (a *App) deleteUser(ctx iris.Context) {
+	var (
+		err  error
+		data C.J
+	)
+	defer func() {
+		if err != nil {
+			handleError(err, ctx)
+		}
+	}()
+	user := ctx.Values().Get(userCtxKey).(*storage.User)
+	data, err = user.Delete(ctx.Request().URL.Query()["fields"])
+	if err != nil {
+		return
+	}
+	if data == nil {
+		ctx.StatusCode(http.StatusNoContent)
+	} else {
+		ctx.JSON(data)
+	}
+}
+
+func (a *App) addAuth(ctx iris.Context) {
+	var (
+		err  error
+		data C.J
+	)
+	defer func() {
+		if err != nil {
+			handleError(err, ctx)
+		}
+	}()
+	user := ctx.Values().Get(userCtxKey).(*storage.User)
+	token := tokenFromValues(ctx.Request().URL.Query())
+	if token == nil {
+		err = graceful.BadRequestError{Message: "invalid token"}
+		return
+	}
+	data, err = user.AddSocial(token)
+	if err != nil {
 		return
 	}
 	ctx.JSON(data)
 }
 
-func (a *App) updateUserInfo(ctx iris.Context) {
-	var newData map[string]interface{}
+func (a *App) delete(ctx iris.Context) {
+	var (
+		err  error
+		data map[string]interface{}
+	)
+	defer func() {
+		handleError(err, ctx)
+	}()
 	user := ctx.Values().Get(userCtxKey).(*storage.User)
-	userID := user.ID()
-	oldData, err := user.Data()
+	data, err = user.Delete(ctx.Request().URL.Query()["fields"])
 	if err != nil {
-		ctx.StatusCode(http.StatusInternalServerError)
-		ctx.Values().Set(errorCtxKey, err)
 		return
 	}
-	err = ctx.ReadJSON(&newData)
-	if err != nil {
-		ctx.Values().Set("error", "updating user info error, read and parse failed. "+err.Error())
-		ctx.StatusCode(iris.StatusInternalServerError)
-		return
-	}
-	err = user.UpdateData(userID, oldData, newData)
-	if err != nil {
-		ctx.Values().Set("error", "updating user info db error. "+err.Error())
-		ctx.StatusCode(iris.StatusInternalServerError)
-	}
-}
-
-func (a *App) deleteUserInfo(ctx iris.Context) {
-	var err error
-	user := ctx.Values().Get(userCtxKey).(*storage.User)
-	userID := user.ID()
-	Data, err := user.Data()
-	if err != nil {
-		ctx.StatusCode(http.StatusInternalServerError)
-		ctx.Values().Set(errorCtxKey, err)
-		return
-	}
-	queryValues := ctx.Request().URL.Query()
-	if err != nil {
-		ctx.StatusCode(http.StatusInternalServerError)
-		ctx.Values().Set(errorCtxKey, err)
-		return
-	}
-	err = user.DeleteData(userID, queryValues, Data)
-	if err != nil {
-		ctx.Values().Set("error", "deleting user info db error. "+err.Error())
-		ctx.StatusCode(iris.StatusInternalServerError)
-	}
-}
-
-func (a *App) addAnotherSocialAcc(ctx iris.Context) {
-	var err error
-	user := ctx.Values().Get(userCtxKey).(*storage.User)
-	userID := user.ID()
-	queryValues := ctx.Request().URL.Query()
-	if err != nil {
-		ctx.Values().Set("error", "bad request ."+err.Error())
-		return
-	}
-	err = user.AddSocialAcc(userID, queryValues)
-	if err != nil {
-		//ctx.Values().Set("error", "adding social account error. ")
-		ctx.StatusCode(iris.StatusInternalServerError)
+	if data == nil {
+		ctx.StatusCode(http.StatusNoContent)
+	} else {
+		ctx.JSON(data)
 	}
 }

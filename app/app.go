@@ -1,6 +1,7 @@
 package app
 
 import (
+	C "gamelink-go/common"
 	"gamelink-go/config"
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
@@ -11,9 +12,6 @@ const (
 )
 
 type (
-	//Type to define json objects faster
-	j map[string]interface{}
-
 	//App structure - connects databases with the middleware and handlers of router
 	App struct {
 		dbs  *storage.DBS
@@ -39,9 +37,21 @@ func NewApp() (a *App) {
 	users := a.iris.Party("/users", a.authMiddleware)
 	{
 		users.Get("/", a.getUser)
-		users.Post("/", a.updateUserInfo)
-		users.Delete("/", a.deleteUserInfo)
-		users.Get("/auth", a.addAnotherSocialAcc)
+		users.Post("/", a.postUser)
+		users.Delete("/", a.deleteUser)
+		users.Get("/addAuth", a.addAuth)
+	}
+	instances := a.iris.Party("/saves", a.authMiddleware)
+	{
+		instances.Get("/", a.getSave)
+		instances.Get("/{id}", a.getSave)
+		instances.Post("/", a.postSave)
+		instances.Post("/{id}", a.postSave)
+		instances.Delete("/{id}", a.deleteSave)
+	}
+	leaderboards := a.iris.Party("/leaderboards", a.authMiddleware)
+	{
+		leaderboards.Get("/{id:int}/{lbtype: string}", a.getLeaderboard)
 	}
 	//service := i.Party("/service")
 	//{
@@ -50,7 +60,7 @@ func NewApp() (a *App) {
 	a.iris.OnAnyErrorCode(func(ctx iris.Context) {
 		if config.IsDevelopmentEnv() {
 			if err := ctx.Values().Get(errorCtxKey); err != nil {
-				ctx.JSON(j{"error": err.(error).Error()})
+				ctx.JSON(C.J{"error": err.(error).Error()})
 			}
 		}
 	})
