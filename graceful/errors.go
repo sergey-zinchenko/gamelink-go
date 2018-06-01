@@ -11,6 +11,10 @@ type (
 	BadRequestError struct {
 		Message string
 	}
+	//NotFoundError - specific error class for not found object handing
+	NotFoundError struct {
+		Message string
+	}
 	//StatusCode - interface for getting http status code from errors
 	StatusCode interface {
 		StatusCode() int
@@ -41,4 +45,17 @@ func (br BadRequestError) Error() string {
 //StatusCode - function to meet StatusCode interface - returns BadRequest http code
 func (br BadRequestError) StatusCode() int {
 	return http.StatusBadRequest
+}
+
+//Error - function required by error interface; It returns default message if not defined.
+func (nf NotFoundError) Error() string {
+	if nf.Message != "" {
+		return nf.Message
+	}
+	return "notfound"
+}
+
+//StatusCode - function to meet StatusCode interface - returns NotFound http code
+func (nf NotFoundError) StatusCode() int {
+	return http.StatusNotFound
 }
