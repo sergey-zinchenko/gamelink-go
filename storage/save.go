@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	C "gamelink-go/common"
+	"gamelink-go/storage/queries"
 )
 
 // Saves - return saves from db all or one by instance id
@@ -15,9 +16,9 @@ func (u User) Saves(saveID int) (string, error) {
 		return "", errors.New("databases not initialized")
 	}
 	if saveID == 0 {
-		err = u.dbs.mySQL.QueryRow("SELECT CAST(CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('{', '\"id\":',		s.`id`, ',', '\"name\":',	JSON_QUOTE(s.`name`), '}')),']') AS JSON) FROM `saves` s  WHERE s.`user_id` = ? GROUP BY s.`user_id`", u.ID()).Scan(&str)
+		err = u.dbs.mySQL.QueryRow(queries.GetAllSavesQuery, u.ID()).Scan(&str)
 	} else {
-		err = u.dbs.mySQL.QueryRow("SELECT JSON_OBJECT('id', s.`id`, 'name', s.`name`) FROM `saves` s WHERE s.`id` = ? AND s.`user_id`=?", saveID, u.ID()).Scan(&str)
+		err = u.dbs.mySQL.QueryRow(queries.GetSaveQuery, saveID, u.ID()).Scan(&str)
 	}
 	if err != nil {
 		if err == sql.ErrNoRows {
