@@ -35,7 +35,10 @@ func (a *App) postSave(ctx iris.Context) {
 	if err != nil {
 		return
 	}
-	saveID, _ := ctx.Params().GetInt("id")
+	saveID, err := ctx.Params().GetInt("id")
+	if err != nil {
+		return
+	}
 	if saveID != 0 {
 		save, err = user.UpdateSave(data, saveID)
 	} else {
@@ -56,7 +59,10 @@ func (a *App) deleteSave(ctx iris.Context) {
 		handleError(err, ctx)
 	}()
 	user := ctx.Values().Get(userCtxKey).(*storage.User)
-	saveID, _ := ctx.Params().GetInt("id")
+	saveID, err := ctx.Params().GetInt("id")
+	if err != nil {
+		return
+	}
 	data, err = user.DeleteSave(saveID, ctx.Request().URL.Query()["fields"])
 	if err != nil {
 		return
