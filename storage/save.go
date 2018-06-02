@@ -99,23 +99,11 @@ func (u User) UpdateSave(data C.J, saveID int) (C.J, error) {
 
 //CreateSave - create new save instance in db
 func (u User) CreateSave(data C.J) (C.J, error) {
-	var transaction = func(s []byte, tx *sql.Tx) error {
-		_, err := tx.Exec(queries.CreateSaveQuery, s, u.ID())
-		return err
-	}
-	tx, err := u.dbs.mySQL.Begin()
-	if err != nil {
-		return nil, err
-	}
 	s, err := json.Marshal(data)
-	err = transaction(s, tx)
 	if err != nil {
-		if e := tx.Rollback(); e != nil {
-			return nil, err
-		}
 		return nil, err
 	}
-	err = tx.Commit()
+	_, err = u.dbs.mySQL.Exec(queries.CreateSaveQuery, s, u.ID())
 	if err != nil {
 		return nil, err
 	}
