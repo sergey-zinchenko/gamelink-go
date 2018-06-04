@@ -100,10 +100,10 @@ func (u User) DataString() (string, error) {
 	if u.dbs.mySQL == nil {
 		return "", errors.New("databases not initialized")
 	}
-	err := u.dbs.mySQL.QueryRow(queries.GetExtraUserDataQuery, u.ID()).Scan(&str)
+	err := u.dbs.mySQL.QueryRow(queries.GetExtraUserDataQuery, u.ID(), u.ID(), u.ID(), u.ID()).Scan(&str)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return "", graceful.NotFoundError{"user not found"}
+			return "", graceful.NotFoundError{Message: "user not found"}
 		}
 		return "", err
 	}
@@ -117,10 +117,10 @@ func (u User) Data() (C.J, error) {
 	if u.dbs.mySQL == nil {
 		return nil, errors.New("databases not initialized")
 	}
-	err := u.dbs.mySQL.QueryRow(queries.GetExtraUserDataQuery, u.ID()).Scan(&bytes)
+	err := u.dbs.mySQL.QueryRow(queries.GetExtraUserDataQuery, u.ID(), u.ID(), u.ID(), u.ID()).Scan(&bytes)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, graceful.NotFoundError{"user not found"}
+			return nil, graceful.NotFoundError{Message: "user not found"}
 		}
 		return nil, err
 	}
