@@ -4,38 +4,34 @@ const (
 	//AllUsersLeaderboardQuery - mysql query template to get leader board against all users
 	AllUsersLeaderboardQuery = `
 SELECT JSON_OBJECT(
-           "id", k.id,
-           "name", k.name,
-           "score", k.score,
-           "rank", k.rank,
-           "leaderboard", CAST(IFNULL(CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('{',
+           "id", i.id,
+           "nickname", IFNULL(i.nickname, i.name),
+		   "country", i.country,
+           "score", i.score,
+		   "rank", rank, 
+           "meta", i.meta,
+           "leaderboard", leaderboard) FROM (SELECT * FROM leader_board%[1]d u WHERE u.id=?) as i,
+															 (SELECT (CAST(IFNULL(CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('{',
                                                                           '"id":', l.id, ',',
-                                                                          '"name":', JSON_QUOTE(l.name), ',',
-                                                                          '"score":', l.score
-           ,
-                                                                          '}')), ']'), "[]") AS JSON)) AS leaderboard 
+                                                                          '"nickname":', IFNULL(JSON_QUOTE(l.nickname),JSON_QUOTE(l.name)), ',',
+                                                                          '"score":', l.score,
+                                                                          '}')), ']'), "[]") AS JSON)) as leaderboard
    FROM
-  (SELECT
-     i.*,
-     COUNT(*) + 1 as rank
-   FROM leader_board%[1]d i, leader_board%[1]d j
-   WHERE i.id = ? AND j.score > i.score) k, (SELECT *
-                                              FROM leader_board%[1]d WHERE leader_board%[1]d.score > 0
-                                              LIMIT 100) l
-WHERE
-k.id != l.id`
+  (SELECT v.id, v.nickname,v.name,v.score FROM leader_board%[1]d v WHERE v.score > 0 LIMIT 100) l WHERE  l.id != ?) as q, 
+  (SELECT COUNT(*) + 1 as rank FROM leader_board%[1]d i, leader_board%[1]d j WHERE i.id = ? AND j.score > i.score) as rank`
 
 	//FriendsLeaderboardQuery - mysql query template to get leader board against friends
 	FriendsLeaderboardQuery = `
 SELECT JSON_OBJECT(
-    "id",     k.id,
-    "name",   k.name,
-    "score",  k.score,
-    "rank",   k.rank,
+    "id"		,   k.id,
+    "nickname"	, 	IFNULL(k.nickname, k.name),
+    "score"		,  	IFNULL(k.score, 0),
+    "rank"		,   k.rank,
+	"country"	,	k.country,
     "leaderboard", CAST(IFNULL(CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('{',
-                                                            '"id":',     l.id,         ',',
-                                                            '"name":',   JSON_QUOTE(l.name), ',',
-                                                            '"score":',   l.score
+                                                            '"id":',     	l.id,         ',',
+                                                            '"nickname":',  IFNULL(JSON_QUOTE(l.nickname),JSON_QUOTE(l.name)), ',',
+                                                            '"score":',   	l.score
                                                             ,
                                                             '}')), ']'),"[]") AS JSON)) AS leaderboard FROM 
 (SELECT i.*, COUNT(*) + 1 as rank FROM leader_board%[1]d  i, friends f,  leader_board%[1]d  j
