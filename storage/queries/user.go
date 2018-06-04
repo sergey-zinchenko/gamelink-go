@@ -6,7 +6,7 @@ const (
 	CheckUserQuery = `
 SELECT id
 FROM users u
-WHERE u. % s = ?`
+WHERE u. %s = ?`
 
 	//RegisterUserQuery - mysql query to register user
 	RegisterUserQuery = `INSERT INTO users (data) VALUES (?)`
