@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	C "gamelink-go/common"
-	"gamelink-go/graceful"
 	"gamelink-go/storage/queries"
 )
 
@@ -23,7 +22,7 @@ func (u User) Saves(saveID int) (string, error) {
 	}
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return "", graceful.NotFoundError{Message: "saves not found"}
+			return "[]", nil
 		}
 		return "", err
 	}

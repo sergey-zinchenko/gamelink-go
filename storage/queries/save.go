@@ -3,7 +3,7 @@ package queries
 const (
 	//GetAllSavesQuery - mysql query to get all saves of given user
 	GetAllSavesQuery = `
-SELECT
+SELECT 
   CAST(CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('{', '"id":', s.id, ',', '"name":', JSON_QUOTE(s.name), '}')), ']')
        AS JSON)
 FROM saves s

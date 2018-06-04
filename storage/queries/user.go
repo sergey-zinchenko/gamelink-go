@@ -13,7 +13,6 @@ WHERE u. % s = ?`
 
 	//GetExtraUserDataQuery - mysql query to get extended user data json
 	GetExtraUserDataQuery = `
-SET @param = ?;
 SELECT IFNULL((SELECT JSON_INSERT(u.data, '$.friends', fj.friends)
                FROM users u,
                  (SELECT CAST(CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('{',
@@ -28,18 +27,18 @@ SELECT IFNULL((SELECT JSON_INSERT(u.data, '$.friends', fj.friends)
                        u.name,
                        f.user_id2 as g
                      FROM friends f, users u
-                     WHERE user_id = @param AND f.user_id1 = u.id
+                     WHERE user_id2 = ? AND f.user_id1 = u.id
                      UNION
                      SELECT
                        u.id,
                        u.name,
                        f.user_id1 as g
                      FROM friends f, users u
-                     WHERE user_id1 = @param AND f.user_id2 = u.id) b
+                     WHERE user_id1 = ? AND f.user_id2 = u.id) b
                   GROUP BY b.g) fj
-               WHERE u.id = @param), q.data) data
+               WHERE u.id = ?), q.data) data
 FROM users q
-WHERE q.id = @param;`
+WHERE q.id = ?;`
 
 	//GetUserDataQuery - mysql query to get user's data json
 	GetUserDataQuery = `
