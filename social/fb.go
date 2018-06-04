@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strings"
 )
 
 type (
@@ -97,7 +98,7 @@ func (token FbToken) debugToken() (string, error) {
 	return f.Data.UserID, nil
 }
 
-func (token FbToken) get(userID string) (string, []ThirdPartyID, string, string, string, error) {
+func (token FbToken) get(userID string) (string, []ThirdPartyID, string, string, string, string, error) {
 	type (
 		fbFriends struct {
 			FbFriendID string `json:"id"`
@@ -107,51 +108,64 @@ func (token FbToken) get(userID string) (string, []ThirdPartyID, string, string,
 			Data []*fbFriends
 		}
 
+		fbLocation struct {
+			LocID   string `json:"id"`
+			LocName string `json:"name"`
+		}
+
 		fbGetResponse struct {
-			Name    string         `json:"name"`
-			ID      string         `json:"id"`
-			Friends *fbFriendsData `json:"friends"`
-			Sex     string         `json:"gender"`
-			Bdate   string         `json:"birthday"`
-			Email   string         `json:"email"`
-			Error   *fbError       `json:"error"`
+			Name     string         `json:"name"`
+			ID       string         `json:"id"`
+			Friends  *fbFriendsData `json:"friends"`
+			Sex      string         `json:"gender"`
+			Bdate    string         `json:"birthday"`
+			Email    string         `json:"email"`
+			Location *fbLocation    `json:"location"`
+			Error    *fbError       `json:"error"`
 		}
 	)
 	u, err := url.Parse("https://graph.facebook.com/v2.8")
 	if err != nil {
-		return "", nil, "", "", "", err
+		return "", nil, "", "", "", "", err
 	}
 	u.Path = path.Join(u.Path, userID)
 	req, err := http.NewRequest("GET", u.String(), nil)
 	if err != nil {
-		return "", nil, "", "", "", err
+		return "", nil, "", "", "", "", err
 	}
 	q := req.URL.Query()
-	q.Add("fields", "id, name, friends,gender,birthday,email")
+	q.Add("fields", "id, name, friends,gender,birthday,email,location")
+	q.Add("locale", "en_GB")
 	q.Add("access_token", string(token))
 	req.URL.RawQuery = q.Encode()
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", nil, "", "", "", err
+		return "", nil, "", "", "", "", err
 	}
 	defer resp.Body.Close()
 	var f fbGetResponse
 	err = json.NewDecoder(resp.Body).Decode(&f)
+
 	if err != nil {
-		return "", nil, "", "", "", err
+		return "", nil, "", "", "", "", err
 	}
 	if f.Error != nil {
-		return "", nil, "", "", "", NewFbError(f.Error.Message, f.Error.Code)
+		return "", nil, "", "", "", "", NewFbError(f.Error.Message, f.Error.Code)
 	}
 	if f.ID != userID {
-		return "", nil, "", "", "", errors.New("user id not match")
+		return "", nil, "", "", "", "", errors.New("user id not match")
 	}
 	friendsIds := make([]ThirdPartyID, len(f.Friends.Data))
 	for k := range friendsIds {
 		friendsIds[k] = FbIdentifier(f.Friends.Data[k].FbFriendID)
 	}
+	var Country string
+	if f.Location != nil {
+		SepCountry := strings.Split(f.Location.LocName, ",")
+		Country = strings.Trim(SepCountry[1], " ")
+	}
 
-	return f.Name, friendsIds, f.Sex, f.Bdate, f.Email, nil
+	return f.Name, friendsIds, f.Sex, f.Bdate, f.Email, Country, nil
 }
 
 //UserInfo - method to get user information (name and identifier) of a valid user token and returns error (d = NotFound) if invalid
@@ -163,7 +177,7 @@ func (token FbToken) UserInfo() (ThirdPartyUser, error) {
 	if err != nil {
 		return nil, err
 	}
-	name, friendsIds, sex, bdate, email, err := token.get(id)
+	name, friendsIds, sex, bdate, email, country, err := token.get(id)
 	if err != nil {
 		return nil, err
 	}
@@ -175,6 +189,6 @@ func (token FbToken) UserInfo() (ThirdPartyUser, error) {
 	} else {
 		userSex = "X"
 	}
-	userInfo := FbInfo{FbIdentifier(id), commonInfo{name, bdate, userSex, email, friendsIds}}
+	userInfo := FbInfo{FbIdentifier(id), commonInfo{name, bdate, userSex, email, country, friendsIds}}
 	return userInfo, nil
 }
