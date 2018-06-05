@@ -59,13 +59,7 @@ WHERE id = ?`
 
 	//MakeFriendshipQuery - mysql query to make friendship between two users
 	MakeFriendshipQuery = `
-INSERT IGNORE INTO friends (user_id1, user_id2) SELECT
-                                                  GREATEST(ids.id1, ids.id2),
-                                                  LEAST(ids.id1, ids.id2)
-                                                FROM (SELECT
-                                                        ?     as id1,
-                                                        u2.id as id2
-                                                      FROM (SELECT id
-                                                            FROM users u
-                                                            WHERE u.%s = ?) u2) ids`
+INSERT IGNORE INTO friends (user_id1, user_id2) VALUES 
+(?, (SELECT id from users u WHERE u.%[1]s =?)),
+((SELECT id from users u WHERE u.%[1]s =?), ?)`
 )
