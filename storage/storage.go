@@ -7,6 +7,11 @@ import (
 	_ "github.com/go-sql-driver/mysql" //That blank import is required to add mysql driver to the app
 )
 
+//const (
+//	// NumOfLeaderBoards - number of leaderboards
+//	NumOfLeaderBoards = 3
+//)
+
 type (
 	//DBS - class to work with storage
 	DBS struct {
@@ -37,3 +42,31 @@ func (dbs *DBS) Connect() (err error) {
 	}
 	return
 }
+
+////CreateDB - create schema and tables if not exist
+//func (dbs *DBS) CreateDB() (err error) {
+//	_, err = dbs.mySQL.Exec(queries.CreateSchema)
+//	if err != nil {
+//		return
+//	}
+//	_, err = dbs.mySQL.Exec(queries.CreateTableUsers)
+//	if err != nil {
+//		return
+//	}
+//	_, err = dbs.mySQL.Exec(queries.CreateTableFriends)
+//	if err != nil {
+//		return
+//	}
+//	_, err = dbs.mySQL.Exec(queries.CreateTableSaves)
+//	if err != nil {
+//		return
+//	}
+//	for k := 0; k < NumOfLeaderBoards; k++ {
+//		_, err = dbs.mySQL.Exec(queries.CreateLbView, k)
+//		if err != nil {
+//			break
+//			return
+//		}
+//	}
+//	return nil
+//}

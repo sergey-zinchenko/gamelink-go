@@ -29,6 +29,11 @@ func (a *App) ConnectDataBases() error {
 func NewApp() (a *App) {
 	a = new(App)
 
+	//err := a.dbs.CreateDB() // Здесь чушь!?
+	//if err != nil {
+	//	return
+	//}
+
 	a.iris = iris.New()
 	a.dbs = &storage.DBS{}
 	auth := a.iris.Party("/auth")
