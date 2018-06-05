@@ -239,7 +239,7 @@ func (u User) Delete(fields []string) (C.J, error) {
 				return nil, err
 			}
 			for _, v := range fields {
-				if v == "fb_id" || v == "vk_id" {
+				if v == "fb_id" || v == "vk_id" || v == "name" || v == "country" || v == "bdate" || v == "email" || v == "sex" {
 					continue
 				}
 				delete(data, v)

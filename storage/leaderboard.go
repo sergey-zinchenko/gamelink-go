@@ -20,12 +20,12 @@ func (u User) Leaderboard(lbType string, lbNum int) (string, error) {
 	if u.dbs.mySQL == nil {
 		return "", errors.New("databases not initialized")
 	}
-	if lbNum == 1 || lbNum == 2 {
+	if lbNum == 1 || lbNum == 2 || lbNum == 3 {
 		switch lbType {
 		case allUsersLeaderboard:
-			err = u.dbs.mySQL.QueryRow(fmt.Sprintf(queries.AllUsersLeaderboardQuery, lbNum), u.ID()).Scan(&result)
+			err = u.dbs.mySQL.QueryRow(fmt.Sprintf(queries.AllUsersLeaderboardQuery, lbNum), u.ID(), u.ID(), u.ID()).Scan(&result)
 		case friendsLeaderboard:
-			err = u.dbs.mySQL.QueryRow(fmt.Sprintf(queries.FriendsLeaderboardQuery, lbNum), u.ID()).Scan(&result)
+			err = u.dbs.mySQL.QueryRow(fmt.Sprintf(queries.FriendsLeaderboardQuery, lbNum), u.ID(), u.ID(), u.ID(), u.ID()).Scan(&result)
 		default:
 			return "", graceful.BadRequestError{Message: "wrong leader board type"}
 		}
