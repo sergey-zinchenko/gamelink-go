@@ -28,7 +28,6 @@ func (a *App) ConnectDataBases() error {
 //router will be configured but not database connections
 func NewApp() (a *App) {
 	a = new(App)
-
 	a.iris = iris.New()
 	a.dbs = &storage.DBS{}
 	auth := a.iris.Party("/auth")

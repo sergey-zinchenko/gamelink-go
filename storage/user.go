@@ -178,9 +178,9 @@ func (u User) txSyncFriends(friendsIds []social.ThirdPartyID, tx *sql.Tx) error 
 	for _, v := range friendsIds {
 		switch v.(type) {
 		case social.VkIdentifier:
-			_, err = vkStmt.Exec(u.ID(), v.Value(), v.Value(), u.ID())
+			_, err = vkStmt.Exec(u.ID(), v.Value())
 		case social.FbIdentifier:
-			_, err = fbStmt.Exec(u.ID(), v.Value(), v.Value(), u.ID())
+			_, err = fbStmt.Exec(u.ID(), v.Value())
 		}
 		if err != nil {
 			return err
