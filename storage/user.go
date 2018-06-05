@@ -178,9 +178,9 @@ func (u User) txSyncFriends(friendsIds []social.ThirdPartyID, tx *sql.Tx) error 
 	for _, v := range friendsIds {
 		switch v.(type) {
 		case social.VkIdentifier:
-			_, err = vkStmt.Exec(u.ID(), v.Value())
+			_, err = vkStmt.Exec(u.ID(), v.Value(), v.Value(), u.ID())
 		case social.FbIdentifier:
-			_, err = fbStmt.Exec(u.ID(), v.Value())
+			_, err = fbStmt.Exec(u.ID(), v.Value(), v.Value(), u.ID())
 		}
 		if err != nil {
 			return err
@@ -212,6 +212,11 @@ func (u User) Update(data C.J) (C.J, error) {
 	}
 	delete(data, "fb_id")
 	delete(data, "vk_id")
+	delete(data, "name")
+	delete(data, "country")
+	delete(data, "bdate")
+	delete(data, "email")
+	delete(data, "sex")
 	tx, err := u.dbs.mySQL.Begin()
 	if err != nil {
 		return nil, err
