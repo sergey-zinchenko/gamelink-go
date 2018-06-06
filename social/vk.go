@@ -180,11 +180,11 @@ func (token VkToken) checkToken() (userID string, err error) {
 	return
 }
 
-func (token VkToken) get(userID string) (string, string, int64, string, error) {
+func (token VkToken) get(userID string) (string, string, int64, *string, error) {
 	type (
 		vkLocation struct {
-			LocID   int64  `json:"id"`
-			LocName string `json:"title"`
+			LocID   int64   `json:"id"`
+			LocName *string `json:"title,omitempty"`
 		}
 
 		vkUsersGetData struct {
@@ -193,7 +193,7 @@ func (token VkToken) get(userID string) (string, string, int64, string, error) {
 			LastName  string      `json:"last_name"`
 			Bdate     string      `json:"bdate"`
 			Sex       int64       `json:"sex"`
-			Country   *vkLocation `json:"country"`
+			Country   *vkLocation `json:"country,omitempty"`
 		}
 
 		vkUsersGetResponse struct {
@@ -203,7 +203,7 @@ func (token VkToken) get(userID string) (string, string, int64, string, error) {
 	)
 	req, err := http.NewRequest("GET", "https://api.vk.com/method/users.get", nil)
 	if err != nil {
-		return "", "", 0, "", err
+		return "", "", 0, nil, err
 	}
 	q := req.URL.Query()
 	q.Add("fields", "sex,bdate, country")
@@ -214,21 +214,26 @@ func (token VkToken) get(userID string) (string, string, int64, string, error) {
 	req.URL.RawQuery = q.Encode()
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", "", 0, "", err
+		return "", "", 0, nil, err
 	}
 	defer resp.Body.Close()
 	var f vkUsersGetResponse
 	err = json.NewDecoder(resp.Body).Decode(&f)
 	if err != nil {
-		return "", "", 0, "", err
+		return "", "", 0, nil, err
 	}
 	if f.Error != nil {
-		return "", "", 0, "", NewVkError(f.Error.Message, f.Error.Code)
+		return "", "", 0, nil, NewVkError(f.Error.Message, f.Error.Code)
 	}
 	if len(f.Response) != 1 || fmt.Sprint(f.Response[0].ID) != userID {
-		return "", "", 0, "", errors.New("user id not match or empty response")
+		return "", "", 0, nil, errors.New("user id not match or empty response")
 	}
-	return f.Response[0].FirstName + " " + f.Response[0].LastName, f.Response[0].Bdate, f.Response[0].Sex, f.Response[0].Country.LocName, nil
+	var country *string
+	if f.Response[0].Country.LocName != nil {
+		country = f.Response[0].Country.LocName
+	}
+
+	return f.Response[0].FirstName + " " + f.Response[0].LastName, f.Response[0].Bdate, f.Response[0].Sex, country, nil
 }
 
 //UserInfo - method to check validity and get user information about the token if it valid. Returns NotFound error if token is not valid

@@ -25,7 +25,7 @@ func (u User) Leaderboard(lbType string, lbNum int) (string, error) {
 		case allUsersLeaderboard:
 			err = u.dbs.mySQL.QueryRow(fmt.Sprintf(queries.AllUsersLeaderboardQuery, lbNum), u.ID(), u.ID(), u.ID()).Scan(&result)
 		case friendsLeaderboard:
-			err = u.dbs.mySQL.QueryRow(fmt.Sprintf(queries.FriendsLeaderboardQuery, lbNum), u.ID(), u.ID(), u.ID(), u.ID()).Scan(&result)
+			err = u.dbs.mySQL.QueryRow(fmt.Sprintf(queries.FriendsLeaderboardQuery, lbNum), u.ID(), u.ID(), u.ID()).Scan(&result)
 		default:
 			return "", graceful.BadRequestError{Message: "wrong leader board type"}
 		}
