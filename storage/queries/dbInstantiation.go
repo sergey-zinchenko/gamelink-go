@@ -2,9 +2,10 @@ package queries
 
 const (
 	//CreateSchema - querie to create schema
-	CreateSchema = `
-CREATE SCHEMA IF NOT EXISTS gamelink DEFAULT CHARACTER SET utf8 ;
-USE gamelink;`
+	CreateSchema = `CREATE SCHEMA IF NOT EXISTS gamelink DEFAULT CHARACTER SET utf8`
+
+	//UseSchema - querie to use schema
+	UseSchema = `USE gamelink;`
 
 	//CreateTableUsers - querie to create table users
 	CreateTableUsers = `CREATE TABLE IF NOT EXISTS gamelink.users (
@@ -26,7 +27,8 @@ USE gamelink;`
  UNIQUE INDEX vk_id_UNIQUE (vk_id ASC),
  UNIQUE INDEX fb_id_UNIQUE (fb_id ASC),
  INDEX lb1 (lb1 ASC),
- INDEX lb2 (lb2 ASC))
+ INDEX lb2 (lb2 ASC),
+ INDEX lb2 (lb3 ASC),)
 ENGINE = InnoDB
 AUTO_INCREMENT = 49
 DEFAULT CHARACTER SET = utf8;`

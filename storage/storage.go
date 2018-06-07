@@ -52,18 +52,18 @@ func (dbs *DBS) Connect() (err error) {
 //CreateDB - create schema and tables if not exist
 func (dbs *DBS) CreateDB() (err error) {
 
-	db, err := sql.Open("mysql", "admin:123@tcp(127.0.0.1:3306)/")
+	db, err := sql.Open("mysql", config.MysqlDsn)
 	if err != nil {
 		panic(err)
 	}
 	defer db.Close()
 
-	_, err = db.Exec("CREATE SCHEMA IF NOT EXISTS gamelink DEFAULT CHARACTER SET utf8 ")
+	_, err = db.Exec(queries.CreateSchema)
 	if err != nil {
 		panic(err)
 	}
 
-	_, err = db.Exec("USE gamelink")
+	_, err = db.Exec(queries.UseSchema)
 	if err != nil {
 		return
 	}
