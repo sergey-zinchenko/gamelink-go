@@ -21,7 +21,13 @@ type (
 
 //ConnectDataBases - tries to connect to all databases required to function of the app. Method can be recalled.
 func (a *App) ConnectDataBases() error {
-	return a.dbs.Connect()
+	if err := a.dbs.Connect(); err != nil {
+		return err
+	}
+	if err := a.dbs.CheckTables(); err != nil {
+		return err
+	}
+	return nil
 }
 
 //NewApp - You can construct and initialize App (application) object with that function
