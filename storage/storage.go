@@ -2,6 +2,7 @@ package storage
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"gamelink-go/config"
 	"gamelink-go/storage/queries"
@@ -24,13 +25,10 @@ type (
 
 //Connect - Connections to all databases will be established here.
 func (dbs *DBS) Connect() (err error) {
-	dbs.mySQL, err = sql.Open("mysql", config.MysqlDsn)
-	if err != nil {
-		return
+	if dbs.mySQL, err = sql.Open("mysql", config.MysqlDsn); err != nil {
+		return err
 	}
-
 	if err = dbs.mySQL.Ping(); err != nil {
-		err = dbs.CreateDB()
 		if err != nil {
 			dbs.mySQL.Close() //i dont know about correctness
 		}
@@ -49,80 +47,46 @@ func (dbs *DBS) Connect() (err error) {
 	return
 }
 
-//CreateDB - create schema and tables if not exist
-func (dbs *DBS) CreateDB() (err error) {
-
-	db, err := sql.Open("mysql", "admin:123@tcp(127.0.0.1:3306)/")
-	if err != nil {
-		fmt.Println("1")
+//CheckTables - create schema and tables if not exist
+func (dbs *DBS) CheckTables() (err error) {
+	if dbs.mySQL == nil {
+		return errors.New("mysql database not connected")
+	}
+	if _, err = dbs.mySQL.Exec(queries.CreateTableUsers); err != nil {
+		return
+	}
+	if _, err = dbs.mySQL.Exec(queries.CreateTableFriends); err != nil {
 		return
 	}
 
-	_, err = db.Exec(queries.CreateSchema)
-	if err != nil {
-		fmt.Println("2")
+	if _, err = dbs.mySQL.Exec(queries.CreateTableSaves); err != nil {
+		return
+	}
+	if _, err = dbs.mySQL.Exec(queries.CreateTableTournaments); err != nil {
 		return
 	}
 
-	_, err = db.Exec(queries.UseSchema)
-	if err != nil {
-		fmt.Println("3")
-		return
-	}
-	_, err = db.Exec(queries.CreateTableUsers)
-	if err != nil {
-		fmt.Println("4")
-		return
-	}
-	_, err = db.Exec(queries.CreateTableFriends)
-	if err != nil {
-		fmt.Println("5")
-		return
-	}
-	_, err = db.Exec(queries.CreateTableSaves)
-	if err != nil {
-		fmt.Println("6")
+	if _, err = dbs.mySQL.Exec(queries.CreateTableRooms); err != nil {
 		return
 	}
 
-	_, err = db.Exec(queries.CreateTableTournaments)
-	if err != nil {
-		fmt.Println("7")
+	if _, err = dbs.mySQL.Exec(queries.CreateTableRoomsUsers); err != nil {
 		return
 	}
 
-	_, err = db.Exec(queries.CreateTableRooms)
-	if err != nil {
-		fmt.Println("8")
+	if _, err = dbs.mySQL.Exec(queries.CreateFunctionStartTournament); err != nil {
 		return
 	}
 
-	_, err = db.Exec(queries.CreateTableRoomsUsers)
-	if err != nil {
-		fmt.Println("9")
-		return
-	}
-
-	_, err = db.Exec(queries.CreateFunctionStartTournament)
-	if err != nil {
-		fmt.Println("10")
-		return
-	}
-
-	_, err = db.Exec(queries.CreateFunctionJoinTournament)
-	if err != nil {
-		fmt.Println("11")
+	if _, err = dbs.mySQL.Exec(queries.CreateFunctionJoinTournament); err != nil {
 		return
 	}
 
 	for k := 1; k < NumOfLeaderBoards+1; k++ {
 		viewCreationScript := fmt.Sprintf(queries.CreateLbView, k)
-		_, err = db.Exec(viewCreationScript)
-		if err != nil {
-			fmt.Println("12")
-			break
+		if _, err = dbs.mySQL.Exec(viewCreationScript); err != nil {
+			return
 		}
 	}
-	dbs.Connect()
 	return nil
 }
