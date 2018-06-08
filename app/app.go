@@ -54,10 +54,15 @@ func NewApp() (a *App) {
 	{
 		leaderboards.Get("/{id:int}/{lbtype: string}", a.getLeaderboard)
 	}
-	//service := i.Party("/service")
-	//{
-	//
-	//}
+
+	startTournament := a.iris.Party("/tournaments")
+	{
+		startTournament.Get("/start", a.startTournament)
+	}
+	tournaments := a.iris.Party("/tournaments", a.authMiddleware)
+	{
+		tournaments.Get("/join", a.joinTournament)
+	}
 	a.iris.OnAnyErrorCode(func(ctx iris.Context) {
 		if config.IsDevelopmentEnv() {
 			if err := ctx.Values().Get(errorCtxKey); err != nil {
