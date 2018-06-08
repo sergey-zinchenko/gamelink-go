@@ -6,11 +6,17 @@ import (
 )
 
 //tournamentLifeTime - tournament lifetime in seconds
-//const tournamentLifeTime  = 28800
-const tournamentLifeTime = 30
 
-//const tournamentInterval  = 259200
-const tournamentInterval = 60
+const (
+	//const tournamentLifeTime  = 28800
+	tournamentLifeTime = 30
+
+	//const tournamentInterval  = 259200
+	tournamentInterval = 60
+
+	//usersInRoom = 200
+	usersInRoom = 2
+)
 
 //StartTournament - func to start new tournament
 func (dbs DBS) StartTournament() error {
@@ -30,7 +36,7 @@ func (dbs DBS) StartTournament() error {
 //Join - func to join user to tournament
 func (u User) Join() error {
 	var success int
-	err := u.dbs.mySQL.QueryRow("SELECT join_tournament(?,?)", u.ID(), time.Now().Unix()).Scan(&success)
+	err := u.dbs.mySQL.QueryRow("SELECT join_tournament(?,?, ?)", u.ID(), time.Now().Unix(), usersInRoom).Scan(&success)
 	if err != nil {
 		return err
 	}

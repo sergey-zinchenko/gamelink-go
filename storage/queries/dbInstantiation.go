@@ -141,10 +141,10 @@ VIEW leader_board%[1]d AS
 
 	//CreateFunctionJoinTournament - query to create function CreateFunctionJoinTournament
 	CreateFunctionJoinTournament = `
-CREATE DEFINER=admin@localhost FUNCTION join_tournament(user_id INT, unix_time_now INT) RETURNS int(11)
+CREATE DEFINER=admin@localhost FUNCTION join_tournament(user_id INT, unix_time_now INT, users_in_room INT) RETURNS int(11)
 BEGIN
 IF unix_time_now - (SELECT MAX(id) FROM tournaments) < 0 THEN  	
-	IF MOD((SELECT MAX(id) FROM rooms_users), 2) != 0
+	IF MOD((SELECT MAX(id) FROM rooms_users), users_in_room) != 0
 		THEN INSERT INTO rooms_users (room_id, user_id) VALUES ((SELECT MAX(id) FROM rooms), user_id); 
 	ELSE 
 		INSERT INTO rooms (tournament_id) VALUES ((SELECT MAX(id) FROM tournaments));
