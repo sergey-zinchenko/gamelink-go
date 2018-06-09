@@ -2,15 +2,18 @@ package storage
 
 import (
 	"database/sql"
+	"errors"
+	"fmt"
 	"gamelink-go/config"
+	"gamelink-go/storage/queries"
 	"github.com/go-redis/redis"
 	_ "github.com/go-sql-driver/mysql" //That blank import is required to add mysql driver to the app
 )
 
-//const (
-//	// NumOfLeaderBoards - number of leaderboards
-//	NumOfLeaderBoards = 3
-//)
+const (
+	// NumOfLeaderBoards - number of leaderboards
+	NumOfLeaderBoards = 3
+)
 
 type (
 	//DBS - class to work with storage
@@ -22,12 +25,13 @@ type (
 
 //Connect - Connections to all databases will be established here.
 func (dbs *DBS) Connect() (err error) {
-	dbs.mySQL, err = sql.Open("mysql", config.MysqlDsn)
-	if err != nil {
-		return
+	if dbs.mySQL, err = sql.Open("mysql", config.MysqlDsn); err != nil {
+		return err
 	}
 	if err = dbs.mySQL.Ping(); err != nil {
-		dbs.mySQL.Close() //i dont know about correctness
+		if err != nil {
+			dbs.mySQL.Close() //i dont know about correctness
+		}
 		return
 	}
 	dbs.rc = redis.NewClient(&redis.Options{
@@ -43,30 +47,60 @@ func (dbs *DBS) Connect() (err error) {
 	return
 }
 
-////CreateDB - create schema and tables if not exist
-//func (dbs *DBS) CreateDB() (err error) {
-//	_, err = dbs.mySQL.Exec(queries.CreateSchema)
-//	if err != nil {
-//		return
-//	}
-//	_, err = dbs.mySQL.Exec(queries.CreateTableUsers)
-//	if err != nil {
-//		return
-//	}
-//	_, err = dbs.mySQL.Exec(queries.CreateTableFriends)
-//	if err != nil {
-//		return
-//	}
-//	_, err = dbs.mySQL.Exec(queries.CreateTableSaves)
-//	if err != nil {
-//		return
-//	}
-//	for k := 0; k < NumOfLeaderBoards; k++ {
-//		_, err = dbs.mySQL.Exec(queries.CreateLbView, k)
-//		if err != nil {
-//			break
-//			return
-//		}
-//	}
-//	return nil
-//}
+//CheckTables - create schema and tables if not exist
+func (dbs *DBS) CheckTables() (err error) {
+	if dbs.mySQL == nil {
+		return errors.New("mysql database not connected")
+	}
+	var transaction = func(tx *sql.Tx) error {
+		if _, err = dbs.mySQL.Exec(queries.CreateTableUsers); err != nil {
+			return err
+		}
+		if _, err = dbs.mySQL.Exec(queries.CreateTableFriends); err != nil {
+			return err
+		}
+
+		if _, err = dbs.mySQL.Exec(queries.CreateTableSaves); err != nil {
+			return err
+		}
+		if _, err = dbs.mySQL.Exec(queries.CreateTableTournaments); err != nil {
+			return err
+		}
+
+		if _, err = dbs.mySQL.Exec(queries.CreateTableRooms); err != nil {
+			return err
+		}
+
+		if _, err = dbs.mySQL.Exec(queries.CreateTableRoomsUsers); err != nil {
+			return err
+		}
+
+		if _, err = dbs.mySQL.Exec(queries.CreateUsersTournamentsTable); err != nil {
+			return err
+		}
+
+		for k := 1; k < NumOfLeaderBoards+1; k++ {
+			viewCreationScript := fmt.Sprintf(queries.CreateLbView, k)
+			if _, err = dbs.mySQL.Exec(viewCreationScript); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	tx, err := dbs.mySQL.Begin()
+	if err != nil {
+		return err
+	}
+	err = transaction(tx)
+	if err != nil {
+		if e := tx.Rollback(); e != nil {
+			return e
+		}
+		return err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
+}

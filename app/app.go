@@ -21,18 +21,19 @@ type (
 
 //ConnectDataBases - tries to connect to all databases required to function of the app. Method can be recalled.
 func (a *App) ConnectDataBases() error {
-	return a.dbs.Connect()
+	if err := a.dbs.Connect(); err != nil {
+		return err
+	}
+	if err := a.dbs.CheckTables(); err != nil {
+		return err
+	}
+	return nil
 }
 
 //NewApp - You can construct and initialize App (application) object with that function
 //router will be configured but not database connections
 func NewApp() (a *App) {
 	a = new(App)
-
-	//err := a.dbs.CreateDB() // Здесь чушь!?
-	//if err != nil {
-	//	return
-	//}
 
 	a.iris = iris.New()
 	a.dbs = &storage.DBS{}
@@ -59,10 +60,17 @@ func NewApp() (a *App) {
 	{
 		leaderboards.Get("/{id:int}/{lbtype: string}", a.getLeaderboard)
 	}
-	//service := i.Party("/service")
-	//{
-	//
-	//}
+
+	startTournament := a.iris.Party("/tournaments")
+	{
+		startTournament.Get("/start", a.startTournament)
+	}
+	tournaments := a.iris.Party("/tournaments", a.authMiddleware)
+	{
+		tournaments.Get("/join", a.joinTournament)
+		tournaments.Post("/updatepts", a.updatePts)
+		tournaments.Get("/leaderboard", a.getRoomLeaderboard)
+	}
 	a.iris.OnAnyErrorCode(func(ctx iris.Context) {
 		if config.IsDevelopmentEnv() {
 			if err := ctx.Values().Get(errorCtxKey); err != nil {

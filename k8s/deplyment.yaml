@@ -1,0 +1,77 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: gamelink
+  labels:
+    app: gamelink
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: gamelink
+    spec:
+      containers:
+        - name: gamelink
+          image: 'registry.gitlab.smedialink.com/z/gamelink-go:latest'
+          env:
+          - name: REDISADDR
+            valueFrom:
+              configMapKeyRef:
+                name: gamelink
+                key: REDISADDR
+          - name: REDISDB
+            valueFrom:
+              configMapKeyRef:
+                 name: gamelink
+                 key: REDISDB
+          - name: REDISPWD
+            valueFrom:
+              secretKeyRef:
+                name: gamelink
+                key: REDISPWD
+          - name: SERVADDR
+            value: "0.0.0.0:3000"
+          - name: FBAPPID
+            valueFrom:
+              configMapKeyRef:
+                name: gamelink
+                key: FBAPPID
+          - name: FBAPPSEC
+            valueFrom:
+              secretKeyRef:
+                name: gamelink
+                key: FBAPPSEC
+          - name: VKAPPID
+            valueFrom:
+              configMapKeyRef:
+                name: gamelink
+                key: VKAPPID
+          - name: VKAPPSEC
+            valueFrom:
+              secretKeyRef:
+                name: gamelink
+                key: VKAPPSEC
+          - name: MYSQLADDR
+            valueFrom:
+              configMapKeyRef:
+                 name: gamelink
+                 key: MYSQLADDR
+          - name: MYSQLDATABASE
+            valueFrom:
+              configMapKeyRef:
+                name: gamelink
+                key: MYSQLDATABASE
+          - name: MYSQLUSERNAME
+            valueFrom:
+              configMapKeyRef:
+                name: gamelink
+                key: MYSQLUSERNAME
+          - name: MYSQLPASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: gamelink
+                key: MYSQLPASSWORD
+          ports:
+            - containerPort: 3000
+              name: http

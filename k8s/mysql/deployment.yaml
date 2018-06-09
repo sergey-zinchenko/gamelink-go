@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  labels:
+    app: gamelink
+spec:
+  selector:
+    matchLabels:
+      app: gamelink
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: gamelink
+    spec:
+      containers:
+      - image: mysql:5.7
+        name: mysql
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: gamelink
+              key: MYSQLROOTPASSWORD
+        - name: MYSQL_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: gamelink
+              key: MYSQLDATABASE
+        - name: MYSQL_USER
+          valueFrom:
+             configMapKeyRef:
+               name: gamelink
+               key: MYSQLUSERNAME
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+               name: gamelink
+               key: MYSQLPASSWORD
+        ports:
+        - containerPort: 3306
+          name: mysql
+        volumeMounts:
+        - name: mysql-persistent-storage
+          mountPath: /var/lib/mysql
+      volumes:
+      - name: mysql-persistent-storage
+        persistentVolumeClaim:
+          claimName: mysql-pv-claim

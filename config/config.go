@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
 	"os"
@@ -31,17 +32,21 @@ var (
 )
 
 const (
-	modeKey      = "MODE"
-	devMode      = "development"
-	fbAppIDKey   = "FBAPPID"
-	fbAppSecKey  = "FBAPPSEC"
-	vkAppIDKey   = "VKAPPID"
-	vkAppSecKey  = "VKAPPSEC"
-	servAddrKey  = "SERVADDR"
-	mysqlDsnKey  = "MYSQLDSN"
-	redisAddrKey = "REDISADDR"
-	redisPwdKey  = "REDISPWD"
-	redisDbKey   = "REDISDB"
+	modeKey          = "MODE"
+	devMode          = "development"
+	fbAppIDKey       = "FBAPPID"
+	fbAppSecKey      = "FBAPPSEC"
+	vkAppIDKey       = "VKAPPID"
+	vkAppSecKey      = "VKAPPSEC"
+	servAddrKey      = "SERVADDR"
+	mysqlDsnKey      = "MYSQLDSN"
+	mysqlUserNameKey = "MYSQLUSERNAME"
+	mysqlPasswordKey = "MYSQLPASSWORD"
+	mysqlDatabase    = "MYSQLDATABASE"
+	mysqlAddrKey     = "MYSQLADDR"
+	redisAddrKey     = "REDISADDR"
+	redisPwdKey      = "REDISPWD"
+	redisDbKey       = "REDISDB"
 )
 
 //GetEnvironment - this function returns mode string of the os environment or "development" mode if empty or not defined
@@ -71,7 +76,22 @@ func LoadEnvironment() {
 		log.Fatal("server address must be set")
 	}
 	MysqlDsn = os.Getenv(mysqlDsnKey)
-	if MysqlDsn == "" {
+	mysqlUserName := os.Getenv(mysqlUserNameKey)
+	mysqlPassword := os.Getenv(mysqlPasswordKey)
+	mysqlDatabase := os.Getenv(mysqlDatabase)
+	mysqlAddress := os.Getenv(mysqlAddrKey)
+	if mysqlAddress != "" || mysqlUserName != "" || mysqlPassword != "" || mysqlDatabase != "" {
+		if mysqlAddress == "" {
+			log.Fatal("mysql server address must be set")
+		}
+		if mysqlUserName == "" {
+			log.Fatal("mysql user name must be set")
+		}
+		if mysqlDatabase == "" {
+			log.Fatal("mysql database name must be set")
+		}
+		MysqlDsn = fmt.Sprintf("%s:%s@tcp(%s)/%s", mysqlUserName, mysqlPassword, mysqlAddress, mysqlDatabase)
+	} else if MysqlDsn == "" {
 		log.Fatal("mysql data source name must be set")
 	}
 	RedisAddr = os.Getenv(redisAddrKey)
