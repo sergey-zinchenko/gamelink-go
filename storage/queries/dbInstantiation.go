@@ -79,8 +79,9 @@ DEFAULT CHARACTER SET = utf8;`
 	//CreateTableTournaments - query to create tournaments table
 	CreateTableTournaments = `
 CREATE TABLE IF NOT EXISTS tournaments (
-  id INT NOT NULL,
-  UNIQUE INDEX id (id ASC),
+  id INT NOT NULL AUTO_INCREMENT,	
+  expired_time INT NOT NULL,
+  UNIQUE INDEX id (expired_time ASC),
   PRIMARY KEY (id))
 ENGINE = InnoDB;`
 
@@ -88,14 +89,14 @@ ENGINE = InnoDB;`
 	CreateTableRooms = `
 CREATE TABLE IF NOT EXISTS rooms (
   id INT NOT NULL AUTO_INCREMENT,
-  tournament_id INT NOT NULL,
+  expired_time INT NOT NULL,
   created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  INDEX tournament_id (tournament_id ASC),
+  INDEX tournament_expired_time (expired_time ASC),
   INDEX id (id ASC),
   CONSTRAINT fk_rooms_1
-    FOREIGN KEY (tournament_id)
-    REFERENCES tournaments (id)
+    FOREIGN KEY (expired_time)
+    REFERENCES tournaments (expired_time)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;`
@@ -105,15 +106,22 @@ ENGINE = InnoDB;`
 CREATE TABLE IF NOT EXISTS rooms_users (
   id INT NOT NULL AUTO_INCREMENT,
   room_id INT NOT NULL,
+  expired_time INT NOT NULL,
   user_id INT(11) NOT NULL,
   score INT UNSIGNED NULL,
   created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   INDEX fk_rooms_users_rooms1_idx (room_id ASC),
   INDEX fk_rooms_users_users1_idx (user_id ASC),
+  INDEX fk_rooms_users_tournament_idx (expired_time ASC),
   CONSTRAINT fk_rooms_users_rooms1
     FOREIGN KEY (room_id)
     REFERENCES rooms (id)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION, 
+  CONSTRAINT fk_rooms_users_tournament_idx
+    FOREIGN KEY (expired_time)
+    REFERENCES tournaments (expired_time)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
   CONSTRAINT fk_rooms_users_users1
@@ -124,7 +132,7 @@ CREATE TABLE IF NOT EXISTS rooms_users (
 ENGINE = InnoDB;`
 
 	//CreateLbView - query to create view for leaderboard
-	CreateLbView = `CREATE 
+	CreateLbView = `CREATE OR REPLACE
     ALGORITHM = UNDEFINED
     SQL SECURITY DEFINER
 VIEW leader_board%[1]d AS
@@ -137,34 +145,22 @@ VIEW leader_board%[1]d AS
     FROM
         users u
     ORDER BY u.lb%[1]d DESC`
-
-	//CreateFunctionJoinTournament - query to create function CreateFunctionJoinTournament
-	CreateFunctionJoinTournament = `
-CREATE FUNCTION join_tournament(user_id INT, unix_time_now INT, users_in_room INT) RETURNS int(11)
-BEGIN
-IF unix_time_now - (SELECT MAX(id) FROM tournaments) < 0 THEN  	
-	IF MOD((SELECT MAX(id) FROM rooms_users), users_in_room) != 0
-		THEN INSERT INTO rooms_users (room_id, user_id) VALUES ((SELECT MAX(id) FROM rooms), user_id); 
-	ELSE 
-		INSERT INTO rooms (tournament_id) VALUES ((SELECT MAX(id) FROM tournaments));
-		INSERT INTO rooms_users (room_id, user_id) VALUES ((SELECT MAX(id) FROM rooms), user_id); 
-	END IF;
-	RETURN 1;
-ELSE RETURN -1;
-END IF;    
-END`
-
-	//CreateFunctionStartTournament - query to create function CreateFunctionStartTournament
-	CreateFunctionStartTournament = `
-CREATE FUNCTION IF NOT EXISTS start_tournament(expired_tournament_time INT, tournaments_interval INT) RETURNS int(11)
-BEGIN
-	IF (unix_time_now - IFNULL((SELECT MAX(id) FROM tournaments), 0)) > tournaments_interval
-		THEN 
-        INSERT INTO tournaments (id) VALUES (expired_tournament_time);
-        INSERT INTO rooms (tournament_id) VALUES (expired_tournament_time); 
-        RETURN 1;
-    ELSE 
-		RETURN -1;
-    END IF;    
-END`
+	//CreateUsersTournamentsTable - query to create table users in tournament
+	CreateUsersTournamentsTable = `CREATE TABLE IF NOT EXISTS gamelink.users_tournaments (
+  tournament_id INT NOT NULL,
+  user_id INT(11) NOT NULL,
+  PRIMARY KEY (user_id, tournament_id),
+  INDEX fk_users_tournaments_tournaments1_idx (tournament_id ASC),
+  INDEX fk_users_tournaments_users1_idx (user_id ASC),
+  CONSTRAINT fk_users_tournaments_tournaments1
+    FOREIGN KEY (tournament_id)
+    REFERENCES gamelink.tournaments (id)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT fk_users_tournaments_users1
+    FOREIGN KEY (user_id)
+    REFERENCES gamelink.users (id)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB;`
 )

@@ -52,41 +52,55 @@ func (dbs *DBS) CheckTables() (err error) {
 	if dbs.mySQL == nil {
 		return errors.New("mysql database not connected")
 	}
-	if _, err = dbs.mySQL.Exec(queries.CreateTableUsers); err != nil {
-		return
-	}
-	if _, err = dbs.mySQL.Exec(queries.CreateTableFriends); err != nil {
-		return
-	}
-
-	if _, err = dbs.mySQL.Exec(queries.CreateTableSaves); err != nil {
-		return
-	}
-	if _, err = dbs.mySQL.Exec(queries.CreateTableTournaments); err != nil {
-		return
-	}
-
-	if _, err = dbs.mySQL.Exec(queries.CreateTableRooms); err != nil {
-		return
-	}
-
-	if _, err = dbs.mySQL.Exec(queries.CreateTableRoomsUsers); err != nil {
-		return
-	}
-
-	if _, err = dbs.mySQL.Exec(queries.CreateFunctionStartTournament); err != nil {
-		return
-	}
-
-	if _, err = dbs.mySQL.Exec(queries.CreateFunctionJoinTournament); err != nil {
-		return
-	}
-
-	for k := 1; k < NumOfLeaderBoards+1; k++ {
-		viewCreationScript := fmt.Sprintf(queries.CreateLbView, k)
-		if _, err = dbs.mySQL.Exec(viewCreationScript); err != nil {
-			return
+	var transaction = func(tx *sql.Tx) error {
+		if _, err = dbs.mySQL.Exec(queries.CreateTableUsers); err != nil {
+			return err
 		}
+		if _, err = dbs.mySQL.Exec(queries.CreateTableFriends); err != nil {
+			return err
+		}
+
+		if _, err = dbs.mySQL.Exec(queries.CreateTableSaves); err != nil {
+			return err
+		}
+		if _, err = dbs.mySQL.Exec(queries.CreateTableTournaments); err != nil {
+			return err
+		}
+
+		if _, err = dbs.mySQL.Exec(queries.CreateTableRooms); err != nil {
+			return err
+		}
+
+		if _, err = dbs.mySQL.Exec(queries.CreateTableRoomsUsers); err != nil {
+			return err
+		}
+
+		if _, err = dbs.mySQL.Exec(queries.CreateUsersTournamentsTable); err != nil {
+			return err
+		}
+
+		for k := 1; k < NumOfLeaderBoards+1; k++ {
+			viewCreationScript := fmt.Sprintf(queries.CreateLbView, k)
+			if _, err = dbs.mySQL.Exec(viewCreationScript); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	tx, err := dbs.mySQL.Begin()
+	if err != nil {
+		return err
+	}
+	err = transaction(tx)
+	if err != nil {
+		if e := tx.Rollback(); e != nil {
+			return e
+		}
+		return err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
 	}
 	return nil
 }
