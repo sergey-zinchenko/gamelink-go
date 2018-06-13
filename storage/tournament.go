@@ -6,6 +6,7 @@ import (
 	C "gamelink-go/common"
 	"github.com/go-sql-driver/mysql"
 	"time"
+	"gamelink-go/storage/queries"
 )
 
 //tournamentLifeTime - tournament lifetime in seconds
@@ -28,7 +29,7 @@ func (dbs DBS) StartTournament() error {
 	var lastExpiredTournamentTime int64
 	tournamentExpiredTime := time.Now().Unix() + tournamentLifeTime
 	var transaction = func(expiredTime int64, tx *sql.Tx) error {
-		err := tx.QueryRow("SELECT IFNULL((SELECT MAX(expired_time) FROM tournaments),0)").Scan(&lastExpiredTournamentTime)
+		err := tx.QueryRow(queries.SelectLastTournament).Scan(&lastExpiredTournamentTime)
 		if err != nil {
 			return err
 		}
@@ -36,11 +37,11 @@ func (dbs DBS) StartTournament() error {
 			err = errors.New("to early to start new tournament")
 			return err
 		}
-		_, err = tx.Exec("INSERT INTO tournaments (expired_time) VALUES (?)", expiredTime)
+		_, err = tx.Exec(queries.CreateNewTournament, expiredTime)
 		if err != nil {
 			return err
 		}
-		_, err = tx.Exec("INSERT INTO rooms (expired_time) VALUES (?)", expiredTime)
+		_, err = tx.Exec(queries.CreateNewRoom, expiredTime)
 		return nil
 	}
 	tx, err := dbs.mySQL.Begin()
@@ -65,31 +66,31 @@ func (dbs DBS) StartTournament() error {
 func (u User) Join() error {
 	var countUsersInRoom, expiredTime int64
 	var transaction = func(userID int64, tx *sql.Tx) error {
-		_, err := tx.Exec("INSERT INTO users_tournaments (tournament_id, user_id) VALUES ((SELECT MAX(id) FROM tournaments), ?)", userID)
+		_, err := tx.Exec(queries.JoinTournament, userID)
 		if err != nil {
 			if err.(*mysql.MySQLError).Number == mysqlKeyExist {
 				return errors.New("you have been already registered in tournament")
 			}
 			return err
 		}
-		err = tx.QueryRow("SELECT IFNULL((SELECT MAX(id) FROM rooms_users),0), MAX(t.expired_time) from tournaments t").Scan(&countUsersInRoom, &expiredTime)
+		err = tx.QueryRow(queries.GetCountUsersInRoomAndTournamentExpiredTime).Scan(&countUsersInRoom, &expiredTime)
 		if err != nil {
 			return err
 		}
 		if expiredTime < time.Now().Unix() {
 			return errors.New("there is no active tournaments")
 		}
-		if countUsersInRoom%usersInRoom != 1 {
-			_, err = tx.Exec("INSERT INTO rooms_users (room_id,expired_time, user_id) VALUES ((SELECT MAX(id) FROM rooms),(SELECT MAX(expired_time) FROM tournaments), ?)", userID)
+		if countUsersInRoom % usersInRoom != 1 {
+			_, err = tx.Exec(queries.JoinUserToExistRoom, userID)
 			if err != nil {
 				return err
 			}
 		} else {
-			_, err = tx.Exec("INSERT INTO rooms (expired_time) VALUES ((SELECT MAX(expired_time) FROM tournaments))")
+			_, err = tx.Exec(queries.CreateNewRoomInCurrentTournament)
 			if err != nil {
 				return err
 			}
-			_, err = tx.Exec("INSERT INTO rooms_users (room_id,expired_time, user_id) VALUES ((SELECT MAX(id) FROM rooms),(SELECT MAX(expired_time) FROM tournaments), ?)", userID)
+			_, err = tx.Exec(queries.JoinNewRoom, userID)
 		}
 		if err != nil {
 			return err
@@ -119,7 +120,7 @@ func (u User) Join() error {
 //UpdateTournamentScore - method to update user score
 func (u User) UpdateTournamentScore(data C.J) error {
 	score := data["score"]
-	_, err := u.dbs.mySQL.Exec("UPDATE rooms_users ru SET ru.score = ? WHERE user_id = ? AND expired_time > ?", score, u.ID(), time.Now().Unix())
+	_, err := u.dbs.mySQL.Exec(queries.UpdateUserTournamentScore, score, u.ID(), time.Now().Unix())
 	if err != nil {
 		return err
 	}
