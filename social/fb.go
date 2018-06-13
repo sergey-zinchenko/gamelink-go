@@ -98,7 +98,7 @@ func (token FbToken) debugToken() (string, error) {
 	return f.Data.UserID, nil
 }
 
-func (token FbToken) get(userID string) (string, []ThirdPartyID, string, *string, *string, *string, error) {
+func (token FbToken) get(userID string, userInfo *FbInfo) error {
 	type (
 		fbFriends struct {
 			FbFriendID string `json:"id"`
@@ -110,7 +110,7 @@ func (token FbToken) get(userID string) (string, []ThirdPartyID, string, *string
 
 		fbLocInfo struct {
 			LocName string  `json:"city"`
-			Country *string `json:"country,omitempty"`
+			Country *string `json:"country"`
 		}
 
 		fbLocation struct {
@@ -118,24 +118,24 @@ func (token FbToken) get(userID string) (string, []ThirdPartyID, string, *string
 		}
 
 		fbGetResponse struct {
-			Name     string         `json:"name"`
+			Name     *string        `json:"name"`
 			ID       string         `json:"id"`
 			Friends  *fbFriendsData `json:"friends"`
-			Sex      string         `json:"gender"`
+			Sex      *string        `json:"gender"`
 			Bdate    *string        `json:"birthday"`
 			Email    *string        `json:"email"`
-			Location *fbLocation    `json:"location,omitempty"`
+			Location *fbLocation    `json:"location"`
 			Error    *fbError       `json:"error"`
 		}
 	)
 	u, err := url.Parse("https://graph.facebook.com/v2.8")
 	if err != nil {
-		return "", nil, "", nil, nil, nil, err
+		return err
 	}
 	u.Path = path.Join(u.Path, userID)
 	req, err := http.NewRequest("GET", u.String(), nil)
 	if err != nil {
-		return "", nil, "", nil, nil, nil, err
+		return err
 	}
 	q := req.URL.Query()
 	q.Add("fields", "id, name, friends,gender,birthday,email,location{location}")
@@ -144,39 +144,54 @@ func (token FbToken) get(userID string) (string, []ThirdPartyID, string, *string
 	req.URL.RawQuery = q.Encode()
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", nil, "", nil, nil, nil, err
+		return err
 	}
 	defer resp.Body.Close()
 	var f fbGetResponse
 	err = json.NewDecoder(resp.Body).Decode(&f)
 
 	if err != nil {
-		return "", nil, "", nil, nil, nil, err
+		return err
 	}
 	if f.Error != nil {
-		return "", nil, "", nil, nil, nil, NewFbError(f.Error.Message, f.Error.Code)
+		return NewFbError(f.Error.Message, f.Error.Code)
 	}
 	if f.ID != userID {
-		return "", nil, "", nil, nil, nil, errors.New("user id not match")
+		return errors.New("user id not match")
 	}
+	if f.Name != nil {
+		userInfo.FullName = *f.Name
+	} else {
+		return errors.New("name or last name can not be blank")
+	}
+
+	if f.Bdate != nil {
+		birth := *f.Bdate
+		birth = strings.Replace(birth, "/", ".", 3)
+		userInfo.Bdate = &birth
+	}
+	if f.Sex != nil {
+		if *f.Sex == "male" {
+			userInfo.Sex = "M"
+		} else if *f.Sex == "female" {
+			userInfo.Sex = "F"
+		}
+	}
+	if f.Email != nil {
+		userInfo.UserEmail = f.Email
+	}
+	if f.Location != nil && f.Location.LocInfo.Country != nil {
+		userInfo.UserCountry = f.Location.LocInfo.Country
+	}
+
+	if f.Friends != nil && f.Friends.Data != nil{
 	friendsIds := make([]ThirdPartyID, len(f.Friends.Data))
 	for k := range friendsIds {
 		friendsIds[k] = FbIdentifier(f.Friends.Data[k].FbFriendID)
 	}
-	var country, bdate, email *string
-	if f.Location != nil {
-		country = f.Location.LocInfo.Country
+		userInfo.friends = friendsIds
 	}
-	if f.Bdate != nil {
-		birth := *f.Bdate
-		birth = strings.Replace(birth, "/", ".", 3)
-		bdate = &birth
-	}
-	if f.Email != nil {
-		email = f.Email
-	}
-
-	return f.Name, friendsIds, f.Sex, bdate, email, country, nil
+	return nil
 }
 
 //UserInfo - method to get user information (name and identifier) of a valid user token and returns error (d = NotFound) if invalid
@@ -188,19 +203,10 @@ func (token FbToken) UserInfo() (ThirdPartyUser, error) {
 	if err != nil {
 		return nil, err
 	}
-	name, friendsIds, sex, bdate, email, country, err := token.get(id)
+	userInfo := FbInfo{FbIdentifier(id), commonInfo{"", nil, "X", nil, nil, nil}}
+	err = token.get(id, &userInfo)
 	if err != nil {
 		return nil, err
 	}
-	var userSex string
-	if sex == "male" {
-		userSex = "M"
-	} else if sex == "female" {
-		userSex = "F"
-	} else {
-		userSex = "X"
-	}
-
-	userInfo := FbInfo{FbIdentifier(id), commonInfo{name, bdate, userSex, email, country, friendsIds}}
 	return userInfo, nil
 }

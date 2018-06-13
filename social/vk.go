@@ -180,7 +180,7 @@ func (token VkToken) checkToken() (userID string, err error) {
 	return
 }
 
-func (token VkToken) get(userID string) (string, *string, int64, *string, error) {
+func (token VkToken) get(userID string, userInfo *VkInfo) error {
 	type (
 		vkLocation struct {
 			LocID   int64   `json:"id"`
@@ -189,11 +189,11 @@ func (token VkToken) get(userID string) (string, *string, int64, *string, error)
 
 		vkUsersGetData struct {
 			ID        int64       `json:"id"`
-			FirstName string      `json:"first_name"`
-			LastName  string      `json:"last_name"`
-			Bdate     *string     `json:"bdate,omitempty"`
-			Sex       int64       `json:"sex"`
-			Country   *vkLocation `json:"country,omitempty"`
+			FirstName *string     `json:"first_name"`
+			LastName  *string     `json:"last_name"`
+			Bdate     *string     `json:"bdate"`
+			Sex       *int64      `json:"sex"`
+			Country   *vkLocation `json:"country"`
 		}
 
 		vkUsersGetResponse struct {
@@ -203,7 +203,7 @@ func (token VkToken) get(userID string) (string, *string, int64, *string, error)
 	)
 	req, err := http.NewRequest("GET", "https://api.vk.com/method/users.get", nil)
 	if err != nil {
-		return "", nil, 0, nil, err
+		return err
 	}
 	q := req.URL.Query()
 	q.Add("fields", "sex,bdate, country")
@@ -214,29 +214,42 @@ func (token VkToken) get(userID string) (string, *string, int64, *string, error)
 	req.URL.RawQuery = q.Encode()
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", nil, 0, nil, err
+		return err
 	}
 	defer resp.Body.Close()
 	var f vkUsersGetResponse
 	err = json.NewDecoder(resp.Body).Decode(&f)
 	if err != nil {
-		return "", nil, 0, nil, err
+		return err
 	}
 	if f.Error != nil {
-		return "", nil, 0, nil, NewVkError(f.Error.Message, f.Error.Code)
+		return NewVkError(f.Error.Message, f.Error.Code)
 	}
 	if len(f.Response) != 1 || fmt.Sprint(f.Response[0].ID) != userID {
-		return "", nil, 0, nil, errors.New("user id not match or empty response")
-	}
-	var country, bdate *string
-	if f.Response[0].Country.LocName != nil {
-		country = f.Response[0].Country.LocName
-	}
-	if f.Response[0].Bdate != nil {
-		bdate = f.Response[0].Bdate
+		return errors.New("user id not match or empty response")
 	}
 
-	return f.Response[0].FirstName + " " + f.Response[0].LastName, bdate, f.Response[0].Sex, country, nil
+	if f.Response[0].FirstName != nil && f.Response[0].LastName != nil {
+		userInfo.FullName = *f.Response[0].FirstName + " " + *f.Response[0].LastName
+	} else {
+		return errors.New("name or last name can not be blank")
+	}
+
+	if f.Response[0].Country !=nil && f.Response[0].Country.LocName != nil {
+		userInfo.UserCountry = f.Response[0].Country.LocName
+	}
+	if f.Response[0].Bdate != nil {
+		userInfo.Bdate = f.Response[0].Bdate
+	}
+	if f.Response[0].Sex != nil {
+		if *f.Response[0].Sex == 1 {
+			userInfo.Sex = "F"
+		} else if  *f.Response[0].Sex == 2 {
+			userInfo.Sex = "M"
+		}
+	}
+
+	return nil
 }
 
 //UserInfo - method to check validity and get user information about the token if it valid. Returns NotFound error if token is not valid
@@ -244,31 +257,25 @@ func (token VkToken) UserInfo() (ThirdPartyUser, error) {
 	if token == "" {
 		return nil, graceful.UnauthorizedError{Message: "empty token"}
 	}
+
 	id, err := token.checkToken()
 	if err != nil {
 		return nil, err
 	}
-	name, bdate, sex, country, err := token.get(id)
+	userInfo := VkInfo{VkIdentifier(id), commonInfo{"", nil, "X", nil, nil, nil}}
+	err = token.get(id, &userInfo)
 	if err != nil {
 		return nil, err
 	}
-	friendsIds, err := token.getFriends(id)
+	err = token.getFriends(id, &userInfo)
 	if err != nil {
-		friendsIds = nil
+		fmt.Println("friends error") // What shall we do here? We've already got nil friends, and this error should't crush response
 	}
-	var userSex string
-	if sex == 1 {
-		userSex = "F"
-	} else if sex == 2 {
-		userSex = "M"
-	} else {
-		userSex = "X"
-	}
-	userInfo := VkInfo{VkIdentifier(id), commonInfo{name, bdate, userSex, nil, country, friendsIds}}
+
 	return userInfo, nil
 }
 
-func (token VkToken) getFriends(userID string) ([]ThirdPartyID, error) {
+func (token VkToken) getFriends(userID string, userInfo *VkInfo) error {
 	type (
 		vkFriendsGetResponse struct {
 			Data  []int    `json:"response"`
@@ -277,7 +284,7 @@ func (token VkToken) getFriends(userID string) ([]ThirdPartyID, error) {
 	)
 	req, err := http.NewRequest("GET", "https://api.vk.com/method/friends.getAppUsers", nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	q := req.URL.Query()
 	q.Add("access_token", string(token))
@@ -285,21 +292,23 @@ func (token VkToken) getFriends(userID string) ([]ThirdPartyID, error) {
 	req.URL.RawQuery = q.Encode()
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer resp.Body.Close()
 	var f vkFriendsGetResponse
 	err = json.NewDecoder(resp.Body).Decode(&f)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if f.Error != nil {
-		return nil, NewVkError(f.Error.Message, f.Error.Code)
+		return NewVkError(f.Error.Message, f.Error.Code)
 	}
 
 	friendsIds := make([]ThirdPartyID, len(f.Data))
 	for k := range friendsIds {
 		friendsIds[k] = VkIdentifier(strconv.Itoa(f.Data[k]))
 	}
-	return friendsIds, nil
+	userInfo.friends = friendsIds
+
+	return nil
 }
