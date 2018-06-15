@@ -53,35 +53,35 @@ func (dbs *DBS) CheckTables() (err error) {
 		return errors.New("mysql database not connected")
 	}
 	var transaction = func(tx *sql.Tx) error {
-		if _, err = dbs.mySQL.Exec(queries.CreateTableUsers); err != nil {
+		if _, err = tx.Exec(queries.CreateTableUsers); err != nil {
 			return err
 		}
-		if _, err = dbs.mySQL.Exec(queries.CreateTableFriends); err != nil {
-			return err
-		}
-
-		if _, err = dbs.mySQL.Exec(queries.CreateTableSaves); err != nil {
-			return err
-		}
-		if _, err = dbs.mySQL.Exec(queries.CreateTableTournaments); err != nil {
+		if _, err = tx.Exec(queries.CreateTableFriends); err != nil {
 			return err
 		}
 
-		if _, err = dbs.mySQL.Exec(queries.CreateTableRooms); err != nil {
+		if _, err = tx.Exec(queries.CreateTableSaves); err != nil {
+			return err
+		}
+		if _, err = tx.Exec(queries.CreateTableTournaments); err != nil {
 			return err
 		}
 
-		if _, err = dbs.mySQL.Exec(queries.CreateTableRoomsUsers); err != nil {
+		if _, err = tx.Exec(queries.CreateTableRooms); err != nil {
 			return err
 		}
 
-		if _, err = dbs.mySQL.Exec(queries.CreateUsersTournamentsTable); err != nil {
+		if _, err = tx.Exec(queries.CreateTableRoomsUsers); err != nil {
+			return err
+		}
+
+		if _, err = tx.Exec(queries.CreateUsersTournamentsTable); err != nil {
 			return err
 		}
 
 		for k := 1; k < NumOfLeaderBoards+1; k++ {
 			viewCreationScript := fmt.Sprintf(queries.CreateLbView, k)
-			if _, err = dbs.mySQL.Exec(viewCreationScript); err != nil {
+			if _, err = tx.Exec(viewCreationScript); err != nil {
 				return err
 			}
 		}
