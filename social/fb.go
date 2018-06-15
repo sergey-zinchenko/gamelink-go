@@ -201,7 +201,7 @@ func (token FbToken) get(userInfo *FbInfo) error {
 }
 
 //UserInfo - method to get user information (name and identifier) of a valid user token and returns error (d = NotFound) if invalid
-func (token FbToken) UserInfo() (ThirdPartyUser, error) {
+func (token FbToken) UserInfo() (ThirdPartyUser, error)  {
 	if token == "" {
 		return nil, graceful.UnauthorizedError{Message: "empty token"}
 	}
