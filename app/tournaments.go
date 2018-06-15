@@ -16,7 +16,7 @@ func (a *App) startTournament(ctx iris.Context) {
 		handleError(err, ctx)
 		return
 	}
-	ctx.StatusCode(http.StatusOK)
+	ctx.StatusCode(http.StatusNoContent)
 }
 
 //joinTournament - function to join tournament
@@ -28,6 +28,7 @@ func (a *App) joinTournament(ctx iris.Context) {
 		handleError(err, ctx)
 		return
 	}
+	ctx.StatusCode(http.StatusNoContent)
 }
 
 //updatePts - method to update users pts in tournament
@@ -50,6 +51,7 @@ func (a *App) updatePts(ctx iris.Context) {
 	if err != nil {
 		return
 	}
+	ctx.StatusCode(http.StatusNoContent)
 }
 
 //getRoomLeaderboard - method to get leaderboard from user tournament room

@@ -7,12 +7,16 @@ type (
 	UnauthorizedError struct {
 		Message string
 	}
-	//BadRequestError - specific error class for bar requests handing
+	//BadRequestError - specific error class for bar requests handling
 	BadRequestError struct {
 		Message string
 	}
-	//NotFoundError - specific error class for not found object handing
+	//NotFoundError - specific error class for not found object handling
 	NotFoundError struct {
+		Message string
+	}
+	//ForbiddenError - specific error class for forbidden object handling
+	ForbiddenError struct {
 		Message string
 	}
 	//StatusCode - interface for getting http status code from errors
@@ -40,6 +44,19 @@ func (br BadRequestError) Error() string {
 		return br.Message
 	}
 	return "badrequest"
+}
+
+//Error - function required by error interface; It returns default message if not defined.
+func (fb ForbiddenError) Error() string {
+	if fb.Message != "" {
+		return fb.Message
+	}
+	return "forbidden"
+}
+
+//StatusCode - function to meet StatusCode interface - returns Unauthorized http code
+func (fb ForbiddenError) StatusCode() int {
+	return http.StatusForbidden
 }
 
 //StatusCode - function to meet StatusCode interface - returns BadRequest http code
