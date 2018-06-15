@@ -180,7 +180,7 @@ func (token VkToken) checkToken() (userID string, err error) {
 	return
 }
 
-func (token VkToken) get(userID string, userInfo *VkInfo) error {
+func (token VkToken) get(userInfo *VkInfo) error {
 	type (
 		vkLocation struct {
 			LocID   int64   `json:"id"`
@@ -201,6 +201,12 @@ func (token VkToken) get(userID string, userInfo *VkInfo) error {
 			Error    *vkError         `json:"error"`
 		}
 	)
+	if userInfo == nil {
+		return errors.New("userInfo pointer is nil")
+	}
+	if userInfo.VkID == "" {
+		return errors.New("userInfo VK id must be set")
+	}
 	req, err := http.NewRequest("GET", "https://api.vk.com/method/users.get", nil)
 	if err != nil {
 		return err
@@ -208,7 +214,7 @@ func (token VkToken) get(userID string, userInfo *VkInfo) error {
 	q := req.URL.Query()
 	q.Add("fields", "sex,bdate, country")
 	q.Add("access_token", string(token))
-	q.Add("user_ids", userID)
+	q.Add("user_ids", userInfo.VkID.Value())
 	q.Add("lang", "en")
 	q.Add("v", "5.68")
 	req.URL.RawQuery = q.Encode()
@@ -225,7 +231,7 @@ func (token VkToken) get(userID string, userInfo *VkInfo) error {
 	if f.Error != nil {
 		return NewVkError(f.Error.Message, f.Error.Code)
 	}
-	if len(f.Response) != 1 || fmt.Sprint(f.Response[0].ID) != userID {
+	if len(f.Response) != 1 || fmt.Sprint(f.Response[0].ID) != userInfo.VkID.Value() {
 		return errors.New("user id not match or empty response")
 	}
 
@@ -236,16 +242,18 @@ func (token VkToken) get(userID string, userInfo *VkInfo) error {
 	}
 
 	if f.Response[0].Country !=nil && f.Response[0].Country.LocName != nil {
-		userInfo.UserCountry = f.Response[0].Country.LocName
+		userInfo.UserCountry = *f.Response[0].Country.LocName
 	}
 	if f.Response[0].Bdate != nil {
-		userInfo.Bdate = f.Response[0].Bdate
+		userInfo.Bdate = *f.Response[0].Bdate
 	}
 	if f.Response[0].Sex != nil {
 		if *f.Response[0].Sex == 1 {
 			userInfo.Sex = "F"
 		} else if  *f.Response[0].Sex == 2 {
 			userInfo.Sex = "M"
+		} else {
+			userInfo.Sex = "X"
 		}
 	}
 
@@ -262,20 +270,22 @@ func (token VkToken) UserInfo() (ThirdPartyUser, error) {
 	if err != nil {
 		return nil, err
 	}
-	userInfo := VkInfo{VkIdentifier(id), commonInfo{"", nil, "X", nil, nil, nil}}
-	err = token.get(id, &userInfo)
+	userInfo := VkInfo{VkIdentifier(id), commonInfo{}}
+	err = token.get(&userInfo)
 	if err != nil {
 		return nil, err
 	}
-	err = token.getFriends(id, &userInfo)
+	err = token.getFriends(&userInfo)
 	if err != nil {
-		fmt.Println("friends error") // What shall we do here? We've already got nil friends, and this error should't crush response
+		if _, ok := err.(VkError); !ok {
+			return nil, err
+		}
 	}
 
 	return userInfo, nil
 }
 
-func (token VkToken) getFriends(userID string, userInfo *VkInfo) error {
+func (token VkToken) getFriends(userInfo *VkInfo) error {
 	type (
 		vkFriendsGetResponse struct {
 			Data  []int    `json:"response"`

@@ -14,12 +14,10 @@ const (
 	JoinTournament = `INSERT INTO users_tournaments (tournament_id, user_id) VALUES ((SELECT MAX(id) FROM tournaments), ?)`
 
 	//GetCountUsersInRoomAndTournamentExpiredTime - query to get count of users in room to allow us to check max count users in room in current tournament
-	GetCountUsersInRoomAndTournamentExpiredTime = `SELECT IFNULL((SELECT MAX(id) FROM rooms_users),0), MAX(t.expired_time) from tournaments t`
-
+	GetCountUsersInRoomAndTournamentExpiredTime = `SELECT COUNT(user_id), expired_time FROM rooms_users WHERE room_id = (SELECT MAX(room_id) FROM rooms_users) `
 
 	//JoinUserToExistRoom - query to join user in existed room
 	JoinUserToExistRoom = `INSERT INTO rooms_users (room_id,expired_time, user_id) VALUES ((SELECT MAX(id) FROM rooms),(SELECT MAX(expired_time) FROM tournaments), ?)`
-
 
 	//CreateNewRoomInCurrentTournament - query to create new room if there max users in last created room
 	CreateNewRoomInCurrentTournament = `INSERT INTO rooms (expired_time) VALUES ((SELECT MAX(expired_time) FROM tournaments))`

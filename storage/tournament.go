@@ -19,7 +19,7 @@ const (
 	tournamentInterval = 180
 
 	//usersInRoom = 200
-	usersInRoom = 2
+	usersInRoom = 4
 
 	mysqlKeyExist = 1062
 )
@@ -80,7 +80,7 @@ func (u User) Join() error {
 		if expiredTime < time.Now().Unix() {
 			return errors.New("there is no active tournaments")
 		}
-		if countUsersInRoom % usersInRoom != 1 {
+		if countUsersInRoom % usersInRoom != 1 && countUsersInRoom < usersInRoom {
 			_, err = tx.Exec(queries.JoinUserToExistRoom, userID)
 			if err != nil {
 				return err

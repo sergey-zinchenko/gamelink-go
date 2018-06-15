@@ -98,7 +98,7 @@ func (token FbToken) debugToken() (string, error) {
 	return f.Data.UserID, nil
 }
 
-func (token FbToken) get(userID string, userInfo *FbInfo) error {
+func (token FbToken) get(userInfo *FbInfo) error {
 	type (
 		fbFriends struct {
 			FbFriendID string `json:"id"`
@@ -128,11 +128,17 @@ func (token FbToken) get(userID string, userInfo *FbInfo) error {
 			Error    *fbError       `json:"error"`
 		}
 	)
+	if userInfo == nil {
+		return errors.New("userInfo pointer is nil")
+	}
+	if userInfo.FbID == ""{
+		errors.New("userInfo Fb ID must be set")
+	}
 	u, err := url.Parse("https://graph.facebook.com/v2.8")
 	if err != nil {
 		return err
 	}
-	u.Path = path.Join(u.Path, userID)
+	u.Path = path.Join(u.Path, userInfo.FbID.Value())
 	req, err := http.NewRequest("GET", u.String(), nil)
 	if err != nil {
 		return err
@@ -156,32 +162,32 @@ func (token FbToken) get(userID string, userInfo *FbInfo) error {
 	if f.Error != nil {
 		return NewFbError(f.Error.Message, f.Error.Code)
 	}
-	if f.ID != userID {
+	if f.ID != userInfo.FbID.Value() {
 		return errors.New("user id not match")
 	}
 	if f.Name != nil {
 		userInfo.FullName = *f.Name
 	} else {
-		return errors.New("name or last name can not be blank")
+		return errors.New("fb API return blank name")
 	}
 
 	if f.Bdate != nil {
-		birth := *f.Bdate
-		birth = strings.Replace(birth, "/", ".", 3)
-		userInfo.Bdate = &birth
+		userInfo.Bdate = strings.Replace(*f.Bdate, "/", ".", 3)
 	}
 	if f.Sex != nil {
 		if *f.Sex == "male" {
 			userInfo.Sex = "M"
 		} else if *f.Sex == "female" {
 			userInfo.Sex = "F"
+		} else {
+			userInfo.Sex = "X"
 		}
 	}
 	if f.Email != nil {
-		userInfo.UserEmail = f.Email
+		userInfo.UserEmail = *f.Email
 	}
 	if f.Location != nil && f.Location.LocInfo.Country != nil {
-		userInfo.UserCountry = f.Location.LocInfo.Country
+		userInfo.UserCountry = *f.Location.LocInfo.Country
 	}
 
 	if f.Friends != nil && f.Friends.Data != nil{
@@ -203,8 +209,8 @@ func (token FbToken) UserInfo() (ThirdPartyUser, error) {
 	if err != nil {
 		return nil, err
 	}
-	userInfo := FbInfo{FbIdentifier(id), commonInfo{"", nil, "X", nil, nil, nil}}
-	err = token.get(id, &userInfo)
+	userInfo := FbInfo{FbIdentifier(id), commonInfo{}}
+	err = token.get(&userInfo)
 	if err != nil {
 		return nil, err
 	}
