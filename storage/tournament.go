@@ -2,6 +2,7 @@ package storage
 
 import (
 	"database/sql"
+	"fmt"
 	C "gamelink-go/common"
 	"gamelink-go/graceful"
 	"gamelink-go/storage/queries"
@@ -13,10 +14,10 @@ import (
 
 const (
 	//const tournamentLifeTime  = 28800
-	tournamentLifeTime = 60
+	tournamentLifeTime = 540
 
 	//const tournamentInterval  = 72*time.Hour
-	tournamentInterval = 180
+	tournamentInterval = 600
 
 	//usersInRoom = 200
 	usersInRoom = 4
@@ -77,14 +78,16 @@ func (u User) Join() error {
 				return err
 			}
 		}
-		err = tx.QueryRow(queries.GetCountUsersInRoomAndTournamentExpiredTime).Scan(&countUsersInRoom, &expiredTime)
+		err = tx.QueryRow(queries.GetCountUsersInRoomAndTournamentExpiredTime).Scan(&expiredTime, &countUsersInRoom)
 		if err != nil {
 			return err
 		}
 		if expiredTime < time.Now().Unix() {
+			fmt.Println(expiredTime)
+			fmt.Println(time.Now().Unix())
 			return graceful.ForbiddenError{Message: "there is no active tournaments"}
 		}
-		if countUsersInRoom <= usersInRoom {
+		if countUsersInRoom < usersInRoom {
 			_, err = tx.Exec(queries.JoinUserToExistRoom, userID)
 			if err != nil {
 				return err
@@ -124,7 +127,7 @@ func (u User) Join() error {
 //UpdateTournamentScore - method to update user score
 func (u User) UpdateTournamentScore(data C.J) error {
 	score := data["score"]
-	_, err := u.dbs.mySQL.Exec(queries.UpdateUserTournamentScore, score, u.ID(), time.Now().Unix())
+	_, err := u.dbs.mySQL.Exec(queries.UpdateUserTournamentScore, score, time.Now().Unix(), u.ID())
 	if err != nil {
 		return err
 	}
