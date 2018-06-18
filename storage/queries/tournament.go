@@ -28,7 +28,7 @@ const (
 	JoinNewRoom = `INSERT INTO rooms_users (room_id,expired_time, user_id) VALUES ((SELECT MAX(id) FROM rooms),(SELECT MAX(expired_time) FROM tournaments), ?)`
 
 	//UpdateUserTournamentScore - query to update user tournament score
-	UpdateUserTournamentScore = `UPDATE rooms_users ru SET ru.score = ? WHERE user_id = ? AND MAX(expired_time) > ?`
+	UpdateUserTournamentScore = `UPDATE rooms_users SET score = ? WHERE (SELECT MAX(expired_time)) > ? AND user_id = ?`
 
 	//GetRoomLeaderboard - query to get leaderboard from current user room in current tournament
 	GetRoomLeaderboard = `SELECT CAST(CONCAT(
