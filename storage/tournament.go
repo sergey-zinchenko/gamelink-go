@@ -137,7 +137,13 @@ func (u User) UpdateTournamentScore(data C.J) error {
 //GetLeaderboard - method to get leaderbord from tournament room
 func (u User) GetLeaderboard() (string, error) {
 	var result string
-	err := u.dbs.mySQL.QueryRow(queries.GetRoomLeaderboard, u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID()).Scan(&result)
+	var roomID, score, expiredTime int64
+	err := u.dbs.mySQL.QueryRow(queries.GetRoomScoreExpiredTime, u.ID()).Scan(&roomID, &score, &expiredTime)
+	if err != nil {
+		fmt.Println("sad")
+		return "", err
+	}
+	err = u.dbs.mySQL.QueryRow(queries.GetRoomLeaderboard, score, u.ID(), roomID, u.ID(), roomID, expiredTime, score).Scan(&result)
 	if err != nil {
 		return "", err
 	}

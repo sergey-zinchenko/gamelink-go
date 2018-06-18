@@ -30,11 +30,14 @@ const (
 	//UpdateUserTournamentScore - query to update user tournament score
 	UpdateUserTournamentScore = `UPDATE rooms_users SET score = ? WHERE (SELECT MAX(expired_time)) > ? AND user_id = ?`
 
+	//GetRoomScoreExpiredTime - query to get room_id, user score and expired tournament time
+	GetRoomScoreExpiredTime = `SELECT room_id, IFNULL(score,0), expired_time FROM rooms_users WHERE user_id = ? ORDER BY expired_time DESC LIMIT 1`
+
 	//GetRoomLeaderboard - query to get leaderboard from current user room in current tournament
 	GetRoomLeaderboard = `SELECT CAST(CONCAT(
     '{"id":', i.id, ',',
     '"nickname":', JSON_QUOTE(IFNULL(i.nickname,i.name)), ',',
-    '"score":', IFNULL(score, 0), ',',
+    '"score":', ?, ',',
     '"rank":', rank, ',',
     IFNULL(CONCAT('"country":', JSON_QUOTE(i.country), ','),''),
     IFNULL(CONCAT('"meta":', i.lbmeta, ','),''),
@@ -49,7 +52,6 @@ const (
                                                                           '}')), ']'), "[]") AS JSON)) as leaderboard 
 	FROM 
 	(SELECT u.id, u.name, u.nickname, u.lbmeta, ru.score, u.country, ru.room_id 
-	FROM users u, rooms_users ru WHERE u.id=ru.user_id AND ru.room_id=(SELECT MAX(room_id) FROM rooms_users r WHERE r.user_id = ?) LIMIT 10)  l WHERE l.id != ?) as q,
-	(SELECT score from rooms_users ru WHERE ru.user_id=? AND ru.room_id=(SELECT MAX(room_id) FROM rooms_users r WHERE r.user_id = ?)) as score,
-	(SELECT COUNT(*) + 1 as rank FROM rooms_users j WHERE j.user_id=? AND j.room_id=(SELECT MAX(room_id) FROM rooms_users r WHERE r.user_id = ?) AND j.score > score) as rank`
+	FROM users u, rooms_users ru WHERE u.id=ru.user_id AND ru.room_id=? LIMIT 10)  l WHERE l.id != ?) as q,
+	(SELECT count(*)+1 as rank FROM rooms_users WHERE room_id=? AND expired_time = ? AND score > ?) as rank`
 )
