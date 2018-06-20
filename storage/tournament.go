@@ -3,7 +3,6 @@ package storage
 import (
 	"database/sql"
 	"fmt"
-	C "gamelink-go/common"
 	"gamelink-go/graceful"
 	"gamelink-go/storage/queries"
 	"github.com/go-sql-driver/mysql"
@@ -13,43 +12,29 @@ import (
 //tournamentLifeTime - tournament lifetime in seconds
 
 const (
-	//const tournamentLifeTime  = 28800
-	tournamentLifeTime = 540
-
-	//const tournamentInterval  = 72*time.Hour
-	tournamentInterval = 600
-
-	//usersInRoom = 200
-	usersInRoom = 4
-
 	mysqlKeyExist = 1062
 )
 
 //StartTournament - func to start new tournament
-func (dbs DBS) StartTournament() error {
-	var lastExpiredTournamentTime int64
-	tournamentExpiredTime := time.Now().Unix() + tournamentLifeTime
-	var transaction = func(expiredTime int64, tx *sql.Tx) error {
-		err := tx.QueryRow(queries.SelectMaxExpiredTime).Scan(&lastExpiredTournamentTime)
+func (dbs DBS) StartTournament(usersInRoom int64, tournamentDuration int64, registrationDuration int64) error {
+	tournamentExpiredTime := time.Now().Unix() + tournamentDuration
+	registrationExpiredTime := time.Now().Unix() + registrationDuration
+	var transaction = func(usersInRoom int64, registrationExpiredTime int64, tournamentExpiredTime int64, tx *sql.Tx) error {
+		_, err := tx.Exec(queries.CreateNewTournament, usersInRoom, registrationExpiredTime, tournamentExpiredTime)
 		if err != nil {
 			return err
 		}
-		if time.Since(time.Unix(lastExpiredTournamentTime, 0)) < tournamentInterval {
-			err = graceful.ForbiddenError{Message: "to early to start new tournament"}
-			return err
-		}
-		_, err = tx.Exec(queries.CreateNewTournament, expiredTime)
+		_, err = tx.Exec(queries.CreateNewRoom)
 		if err != nil {
 			return err
 		}
-		_, err = tx.Exec(queries.CreateNewRoom, expiredTime)
 		return nil
 	}
 	tx, err := dbs.mySQL.Begin()
 	if err != nil {
 		return err
 	}
-	err = transaction(tournamentExpiredTime, tx)
+	err = transaction(usersInRoom, registrationExpiredTime, tournamentExpiredTime, tx)
 	if err != nil {
 		if e := tx.Rollback(); e != nil {
 			return e
@@ -64,10 +49,10 @@ func (dbs DBS) StartTournament() error {
 }
 
 //Join - func to join user to tournament
-func (u User) Join() error {
-	var countUsersInRoom, expiredTime int64
+func (u User) Join(tournamentID int) error {
+	var expiredTime, countUsersInRoom, maxUsersInRoom int64
 	var transaction = func(userID int64, tx *sql.Tx) error {
-		_, err := tx.Exec(queries.JoinTournament, userID)
+		_, err := tx.Exec(queries.JoinTournament, tournamentID, userID)
 		if err != nil {
 			switch v := err.(type) {
 			case *mysql.MySQLError:
@@ -78,26 +63,26 @@ func (u User) Join() error {
 				return err
 			}
 		}
-		err = tx.QueryRow(queries.GetCountUsersInRoomAndTournamentExpiredTime).Scan(&expiredTime, &countUsersInRoom)
+		err = tx.QueryRow(queries.GetCountUsersInRoomAndTournamentExpiredTime, tournamentID, tournamentID, tournamentID).Scan(&expiredTime, &countUsersInRoom, &maxUsersInRoom)
 		if err != nil {
 			return err
 		}
 		if expiredTime < time.Now().Unix() {
 			fmt.Println(expiredTime)
 			fmt.Println(time.Now().Unix())
-			return graceful.ForbiddenError{Message: "there is no active tournaments"}
+			return graceful.ForbiddenError{Message: "registration time have been expired"}
 		}
-		if countUsersInRoom < usersInRoom {
-			_, err = tx.Exec(queries.JoinUserToExistRoom, userID)
+		if countUsersInRoom < maxUsersInRoom {
+			_, err = tx.Exec(queries.JoinUserToRoom, tournamentID, tournamentID, userID)
 			if err != nil {
 				return err
 			}
 		} else {
-			_, err = tx.Exec(queries.CreateNewRoomInCurrentTournament)
+			_, err = tx.Exec(queries.CreateNewRoomInCurrentTournament, tournamentID)
 			if err != nil {
 				return err
 			}
-			_, err = tx.Exec(queries.JoinNewRoom, userID)
+			_, err = tx.Exec(queries.JoinUserToRoom, tournamentID, tournamentID, userID)
 		}
 		if err != nil {
 			return err
@@ -125,9 +110,8 @@ func (u User) Join() error {
 }
 
 //UpdateTournamentScore - method to update user score
-func (u User) UpdateTournamentScore(data C.J) error {
-	score := data["score"]
-	_, err := u.dbs.mySQL.Exec(queries.UpdateUserTournamentScore, score, time.Now().Unix(), u.ID())
+func (u User) UpdateTournamentScore(tournamentID int, score int) error {
+	_, err := u.dbs.mySQL.Exec(queries.UpdateUserTournamentScore, score, tournamentID, u.ID())
 	if err != nil {
 		return err
 	}
@@ -135,15 +119,9 @@ func (u User) UpdateTournamentScore(data C.J) error {
 }
 
 //GetLeaderboard - method to get leaderbord from tournament room
-func (u User) GetLeaderboard() (string, error) {
+func (u User) GetLeaderboard(tournamentID int) (string, error) {
 	var result string
-	var roomID, score, expiredTime int64
-	err := u.dbs.mySQL.QueryRow(queries.GetRoomScoreExpiredTime, u.ID()).Scan(&roomID, &score, &expiredTime)
-	if err != nil {
-		fmt.Println("sad")
-		return "", err
-	}
-	err = u.dbs.mySQL.QueryRow(queries.GetRoomLeaderboard, score, u.ID(), roomID, u.ID(), roomID, expiredTime, score).Scan(&result)
+	err := u.dbs.mySQL.QueryRow(queries.GetRoomLeaderboard, u.ID(), tournamentID, u.ID(), u.ID(), tournamentID, u.ID(), tournamentID, u.ID(), tournamentID, u.ID()).Scan(&result)
 	if err != nil {
 		return "", err
 	}
