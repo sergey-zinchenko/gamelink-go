@@ -79,7 +79,7 @@ func (u User) Join(tournamentID int) error {
 			if err != nil {
 				return err
 			}
-			_, err = tx.Exec(queries.JoinUserToRoom, tournamentID, tournamentID, userID)
+			_, err = tx.Exec(queries.JoinUserToRoom, tournamentID, tournamentID, userID, tournamentExpiredTime)
 		}
 		if err != nil {
 			return err

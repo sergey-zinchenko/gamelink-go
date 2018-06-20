@@ -47,7 +47,7 @@ const (
 	(SELECT u.id, u.name, u.nickname, u.lbmeta, ru.score, u.country, ru.room_id 
 	FROM users u, rooms_users ru WHERE u.id=ru.user_id AND ru.room_id=(SELECT room_id FROM rooms_users WHERE tournament_id = ? AND user_id =?) ORDER BY score LIMIT 10 ) l WHERE l.id != ? ) as q,
     (SELECT score FROM rooms_users WHERE tournament_id = ? AND user_id = ?) as score,
-	(SELECT count(*)+1 as rank FROM rooms_users WHERE room_id=(SELECT room_id FROM rooms_users WHERE tournament_id = ? AND user_id = ?) AND score > (SELECT score FROM rooms_users WHERE tournament_id = ? AND user_id = ?)) as rank`
+	(SELECT count(*)+1 as rank FROM rooms_users WHERE room_id=(SELECT room_id FROM rooms_users WHERE tournament_id = ? AND user_id = ?) AND score > IFNULL((SELECT score FROM rooms_users WHERE tournament_id = ? AND user_id = ?),0)) as rank`
 
 	//GetAvailableTournaments - query to get all available tournaments
 	GetAvailableTournaments = ` SELECT IFNULL(CAST(CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('{',
