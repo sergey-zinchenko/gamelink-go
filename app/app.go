@@ -70,6 +70,7 @@ func NewApp() (a *App) {
 		tournaments.Get("/{tournament_id:int}/join", a.joinTournament)
 		tournaments.Post("/{tournament_id:int}/updatepts", a.updatePts)
 		tournaments.Get("/{tournament_id:int}/leaderboard", a.getRoomLeaderboard)
+		tournaments.Get("/list", a.getAvailableTournaments)
 	}
 	a.iris.OnAnyErrorCode(func(ctx iris.Context) {
 		if config.IsDevelopmentEnv() {

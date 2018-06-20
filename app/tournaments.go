@@ -100,3 +100,14 @@ func (a *App) getRoomLeaderboard(ctx iris.Context) {
 	ctx.ContentType(context.ContentJSONHeaderValue)
 	ctx.WriteString(leaderboard)
 }
+
+//getAvailiableTournaments - metgod to get available tournaments
+func (a *App) getAvailableTournaments(ctx iris.Context) {
+	availableTournaments, err := a.dbs.GetTournaments()
+	if err != nil {
+		handleError(err, ctx)
+		return
+	}
+	ctx.ContentType(context.ContentJSONHeaderValue)
+	ctx.WriteString(availableTournaments)
+}

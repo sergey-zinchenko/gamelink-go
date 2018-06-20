@@ -2,7 +2,6 @@ package storage
 
 import (
 	"database/sql"
-	"fmt"
 	"gamelink-go/graceful"
 	"gamelink-go/storage/queries"
 	"github.com/go-sql-driver/mysql"
@@ -50,7 +49,7 @@ func (dbs DBS) StartTournament(usersInRoom int64, tournamentDuration int64, regi
 
 //Join - func to join user to tournament
 func (u User) Join(tournamentID int) error {
-	var expiredTime, countUsersInRoom, maxUsersInRoom int64
+	var registrationExpiredTime, tournamentExpiredTime, countUsersInRoom, maxUsersInRoom int64
 	var transaction = func(userID int64, tx *sql.Tx) error {
 		_, err := tx.Exec(queries.JoinTournament, tournamentID, userID)
 		if err != nil {
@@ -63,17 +62,15 @@ func (u User) Join(tournamentID int) error {
 				return err
 			}
 		}
-		err = tx.QueryRow(queries.GetCountUsersInRoomAndTournamentExpiredTime, tournamentID, tournamentID, tournamentID).Scan(&expiredTime, &countUsersInRoom, &maxUsersInRoom)
+		err = tx.QueryRow(queries.GetCountUsersInRoomAndTournamentExpiredTime, tournamentID, tournamentID, tournamentID).Scan(&registrationExpiredTime, &tournamentExpiredTime, &countUsersInRoom, &maxUsersInRoom)
 		if err != nil {
 			return err
 		}
-		if expiredTime < time.Now().Unix() {
-			fmt.Println(expiredTime)
-			fmt.Println(time.Now().Unix())
+		if registrationExpiredTime < time.Now().Unix() {
 			return graceful.ForbiddenError{Message: "registration time have been expired"}
 		}
 		if countUsersInRoom < maxUsersInRoom {
-			_, err = tx.Exec(queries.JoinUserToRoom, tournamentID, tournamentID, userID)
+			_, err = tx.Exec(queries.JoinUserToRoom, tournamentID, tournamentID, userID, tournamentExpiredTime)
 			if err != nil {
 				return err
 			}
@@ -111,7 +108,7 @@ func (u User) Join(tournamentID int) error {
 
 //UpdateTournamentScore - method to update user score
 func (u User) UpdateTournamentScore(tournamentID int, score int) error {
-	_, err := u.dbs.mySQL.Exec(queries.UpdateUserTournamentScore, score, tournamentID, u.ID())
+	_, err := u.dbs.mySQL.Exec(queries.UpdateUserTournamentScore, score, tournamentID, u.ID(), time.Now().Unix())
 	if err != nil {
 		return err
 	}
@@ -122,6 +119,16 @@ func (u User) UpdateTournamentScore(tournamentID int, score int) error {
 func (u User) GetLeaderboard(tournamentID int) (string, error) {
 	var result string
 	err := u.dbs.mySQL.QueryRow(queries.GetRoomLeaderboard, u.ID(), tournamentID, u.ID(), u.ID(), tournamentID, u.ID(), tournamentID, u.ID(), tournamentID, u.ID()).Scan(&result)
+	if err != nil {
+		return "", err
+	}
+	return result, nil
+}
+
+//GetTournaments - method to Get Available Tournaments
+func (dbs DBS) GetTournaments() (string, error) {
+	var result string
+	err := dbs.mySQL.QueryRow(queries.GetAvailableTournaments, time.Now().Unix()).Scan(&result)
 	if err != nil {
 		return "", err
 	}

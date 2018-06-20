@@ -12,19 +12,19 @@ const (
 	JoinTournament = `INSERT INTO users_tournaments (tournament_id, user_id) VALUES (?, ?)`
 
 	//GetCountUsersInRoomAndTournamentExpiredTime - query to get count of users in room to allow us to check max count users in room in current tournament
-	GetCountUsersInRoomAndTournamentExpiredTime = `SELECT t.registration_expired_time, c.users_count, d.users_in_room  FROM 
-		(SELECT registration_expired_time FROM tournaments WHERE id = ?) as t,
+	GetCountUsersInRoomAndTournamentExpiredTime = `SELECT t.registration_expired_time, t.tournament_expired_time, c.users_count, d.users_in_room  FROM 
+		(SELECT registration_expired_time, tournament_expired_time FROM tournaments WHERE id = ?) as t,
 		(SELECT IFNULL(count(user_id),0) as users_count FROM rooms_users WHERE room_id = (SELECT MAX(room_id) FROM rooms_users WHERE tournament_id = ?)) as c,
 		(SELECT users_in_room FROM tournaments WHERE id=?) as d`
 
 	//JoinUserToRoom - query to join user in room
-	JoinUserToRoom = `INSERT INTO rooms_users (room_id,tournament_id, user_id) VALUES ((SELECT MAX(id) FROM rooms WHERE tournament_id=?),?, ?)`
+	JoinUserToRoom = `INSERT INTO rooms_users (room_id,tournament_id, user_id, tournament_expired_time) VALUES ((SELECT MAX(id) FROM rooms WHERE tournament_id=?),?, ?, ?)`
 
 	//CreateNewRoomInCurrentTournament - query to create new room if there max users in last created room
 	CreateNewRoomInCurrentTournament = `INSERT INTO rooms (tournament_id) VALUES (?)`
 
 	//UpdateUserTournamentScore - query to update user tournament score
-	UpdateUserTournamentScore = `UPDATE rooms_users SET score = ? WHERE tournament_id = ? AND user_id = ?`
+	UpdateUserTournamentScore = `UPDATE rooms_users SET score = ? WHERE tournament_id = ? AND user_id = ? AND tournament_expired_time > ?`
 
 	//GetRoomLeaderboard - query to get tournament leaderboard
 	GetRoomLeaderboard = `SELECT CAST(CONCAT(
@@ -48,4 +48,10 @@ const (
 	FROM users u, rooms_users ru WHERE u.id=ru.user_id AND ru.room_id=(SELECT room_id FROM rooms_users WHERE tournament_id = ? AND user_id =?) ORDER BY score LIMIT 10 ) l WHERE l.id != ? ) as q,
     (SELECT score FROM rooms_users WHERE tournament_id = ? AND user_id = ?) as score,
 	(SELECT count(*)+1 as rank FROM rooms_users WHERE room_id=(SELECT room_id FROM rooms_users WHERE tournament_id = ? AND user_id = ?) AND score > (SELECT score FROM rooms_users WHERE tournament_id = ? AND user_id = ?)) as rank`
+
+	//GetAvailableTournaments - query to get all available tournaments
+	GetAvailableTournaments = ` SELECT IFNULL(CAST(CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('{',
+									'"id":', t.id,
+									',', '"registration_expired_time":', t.registration_expired_time,
+									'}')), ']') AS JSON),"") FROM tournaments t WHERE registration_expired_time > ?`
 )
