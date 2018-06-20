@@ -134,3 +134,13 @@ func (dbs DBS) GetTournaments() (string, error) {
 	}
 	return result, nil
 }
+
+//GetResults - method to get user results from last 100 tournaments
+func (u User) GetResults() (string, error) {
+	var result string
+	err := u.dbs.mySQL.QueryRow(queries.GetResults, u.ID()).Scan(&result)
+	if err != nil {
+		return "", err
+	}
+	return result, nil
+}

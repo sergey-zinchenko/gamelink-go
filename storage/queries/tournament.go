@@ -53,5 +53,14 @@ const (
 	GetAvailableTournaments = ` SELECT IFNULL(CAST(CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('{',
 									'"id":', t.id,
 									',', '"registration_expired_time":', t.registration_expired_time,
-									'}')), ']') AS JSON),"") FROM tournaments t WHERE registration_expired_time > ?`
+									'}')), ']') AS JSON),"[]") FROM tournaments t WHERE registration_expired_time > ?`
+
+	//GetResults - query to get all user results from last 100 tournaments
+	GetResults = ` SELECT IFNULL(CAST(CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('{',
+									'"tournament":', p.tournament_id,
+								 	',', '"rank":',  p.rank,
+									',', '"score":', p.score,
+									'}')), ']') AS JSON),"[]") as results
+FROM (SELECT t.tournament_id, t.score, (SELECT count(*)+1 as rank FROM rooms_users WHERE room_id=t.room_id AND score > t.score) as rank 
+FROM (SELECT tournament_id, room_id, score FROM rooms_users t WHERE user_id = ? LIMIT 100) as t) as p `
 )

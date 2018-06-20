@@ -111,3 +111,15 @@ func (a *App) getAvailableTournaments(ctx iris.Context) {
 	ctx.ContentType(context.ContentJSONHeaderValue)
 	ctx.WriteString(availableTournaments)
 }
+
+//getUsersResults - method to get all user results in last 100 tournaments
+func (a *App) getUsersResults(ctx iris.Context) {
+	user := ctx.Values().Get(userCtxKey).(*storage.User)
+	availableTournaments, err := user.GetResults()
+	if err != nil {
+		handleError(err, ctx)
+		return
+	}
+	ctx.ContentType(context.ContentJSONHeaderValue)
+	ctx.WriteString(availableTournaments)
+}
