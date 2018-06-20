@@ -63,13 +63,15 @@ func NewApp() (a *App) {
 
 	startTournament := a.iris.Party("/tournaments")
 	{
-		startTournament.Get("/start", a.startTournament)
+		startTournament.Post("/start", a.startTournament)
 	}
 	tournaments := a.iris.Party("/tournaments", a.authMiddleware)
 	{
-		tournaments.Get("/join", a.joinTournament)
-		tournaments.Post("/updatepts", a.updatePts)
-		tournaments.Get("/leaderboard", a.getRoomLeaderboard)
+		tournaments.Get("/{tournament_id:int}/join", a.joinTournament)
+		tournaments.Get("/{tournament_id:int}/updatepts", a.updatePts)
+		tournaments.Get("/{tournament_id:int}/leaderboard", a.getRoomLeaderboard)
+		tournaments.Get("/list", a.getAvailableTournaments)
+		tournaments.Get("/results", a.getUsersResults)
 	}
 	a.iris.OnAnyErrorCode(func(ctx iris.Context) {
 		if config.IsDevelopmentEnv() {
