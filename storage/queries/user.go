@@ -13,14 +13,16 @@ WHERE u. %s = ?`
 
 	//GetExtraUserDataQuery - mysql query to get extended user data json
 	GetExtraUserDataQuery = `
-SELECT IFNULL((SELECT JSON_INSERT(u.data, '$.friends', fj.friends)
-               FROM users u,
+SELECT IFNULL((SELECT JSON_INSERT(u.data, 
+								'$.friends', fj.friends, 
+                                '$.saves', 	w.saves,
+                                '$.tournaments', q.tournaments)
+               FROM users u, (SELECT CAST(CONCAT('[',GROUP_CONCAT(DISTINCT CONCAT('{','"id":', s.id,'}')), ']') AS JSON) as saves FROM (SELECT id from saves WHERE user_id = ?)s) w,
+               (SELECT CAST(CONCAT('[',GROUP_CONCAT(DISTINCT CONCAT('{','"tournament_id":', t.tournament_id,'}')), ']') AS JSON) as tournaments FROM (SELECT tournament_id from users_tournaments WHERE user_id = ?)t) q,
                  (SELECT CAST(CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('{',
-                                                                       '\"id\":', b.id,
-                                                                       ',', '\"name\":', JSON_QUOTE(b.name),
-                                                                       '}')), ']') AS JSON
-                         )
-                   AS friends
+                                                                       '"id":', b.id,
+                                                                       ',', '"name":', JSON_QUOTE(b.name),
+                                                                       '}')), ']') AS JSON) AS friends
                   FROM
                     (SELECT
                        u.id,
