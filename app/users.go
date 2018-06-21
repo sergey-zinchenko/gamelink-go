@@ -105,4 +105,5 @@ func (a *App) delete(ctx iris.Context) {
 	} else {
 		ctx.JSON(data)
 	}
+
 }
