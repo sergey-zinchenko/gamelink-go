@@ -35,10 +35,7 @@ func (a *App) postSave(ctx iris.Context) {
 	if err != nil {
 		return
 	}
-	saveID, err := ctx.Params().GetInt("id")
-	if err != nil {
-		return
-	}
+	saveID, _ := ctx.Params().GetInt("id")
 	if saveID != 0 {
 		save, err = user.UpdateSave(data, saveID)
 	} else {

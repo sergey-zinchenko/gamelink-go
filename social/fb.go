@@ -131,8 +131,8 @@ func (token FbToken) get(userInfo *FbInfo) error {
 	if userInfo == nil {
 		return errors.New("userInfo pointer is nil")
 	}
-	if userInfo.FbID == ""{
-		errors.New("userInfo Fb ID must be set")
+	if userInfo.FbID == "" {
+		return errors.New("userInfo Fb ID must be set")
 	}
 	u, err := url.Parse("https://graph.facebook.com/v2.8")
 	if err != nil {
@@ -179,9 +179,9 @@ func (token FbToken) get(userInfo *FbInfo) error {
 			userInfo.Sex = "M"
 		} else if *f.Sex == "female" {
 			userInfo.Sex = "F"
-		} else {
-			userInfo.Sex = "X"
 		}
+	} else {
+		userInfo.Sex = "X"
 	}
 	if f.Email != nil {
 		userInfo.UserEmail = *f.Email
@@ -190,18 +190,18 @@ func (token FbToken) get(userInfo *FbInfo) error {
 		userInfo.UserCountry = *f.Location.LocInfo.Country
 	}
 
-	if f.Friends != nil && f.Friends.Data != nil{
-	friendsIds := make([]ThirdPartyID, len(f.Friends.Data))
-	for k := range friendsIds {
-		friendsIds[k] = FbIdentifier(f.Friends.Data[k].FbFriendID)
-	}
+	if f.Friends != nil && f.Friends.Data != nil {
+		friendsIds := make([]ThirdPartyID, len(f.Friends.Data))
+		for k := range friendsIds {
+			friendsIds[k] = FbIdentifier(f.Friends.Data[k].FbFriendID)
+		}
 		userInfo.friends = friendsIds
 	}
 	return nil
 }
 
 //UserInfo - method to get user information (name and identifier) of a valid user token and returns error (d = NotFound) if invalid
-func (token FbToken) UserInfo() (ThirdPartyUser, error)  {
+func (token FbToken) UserInfo() (ThirdPartyUser, error) {
 	if token == "" {
 		return nil, graceful.UnauthorizedError{Message: "empty token"}
 	}

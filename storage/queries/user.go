@@ -8,6 +8,12 @@ SELECT id
 FROM users u
 WHERE u. %s = ?`
 
+	//CheckFlag - mysql query to check if user deleted when login
+	CheckFlag = `SELECT deleted FROM users u WHERE u.%s = ?`
+
+	//IternalCheckFlag - mysql query to iternal check if user deleted
+	IternalCheckFlag = `SELECT deleted FROM users u WHERE u.id = ?`
+
 	//RegisterUserQuery - mysql query to register user
 	RegisterUserQuery = `INSERT INTO users (data) VALUES (?)`
 
@@ -38,30 +44,32 @@ SELECT IFNULL((SELECT JSON_INSERT(u.data,
                      FROM friends f, users u
                      WHERE user_id1 = ? AND f.user_id2 = u.id) b
                   GROUP BY b.g) fj
-               WHERE u.id = ?), q.data) data
+               WHERE u.id = ? AND deleted != 1), q.data) data
 FROM users q
-WHERE q.id = ?;`
+WHERE q.id = ? AND q.deleted != 1;`
 
 	//GetUserDataQuery - mysql query to get user's data json
 	GetUserDataQuery = `
 SELECT data
 FROM users u
-WHERE u.id = ?`
+WHERE u.id = ? AND u.deleted != 1`
 
 	//UpdateUserDataQuery - mysql query to update data field of the user record
 	UpdateUserDataQuery = `
 UPDATE users u
 SET u.data = ?
-WHERE u.id = ?`
+WHERE u.id = ? AND u.deleted != 1`
 
-	//DeleteUserQuery - mysql query to delete user
+	//DeleteUserQuery - mysql query to mark deleted user
 	DeleteUserQuery = `
-DELETE FROM users
-WHERE id = ?`
+	UPDATE users u SET u.deleted=1 WHERE u.id=?`
+
+	//DeleteUserFromFriends - mysql query to delete user from table friends
+	DeleteUserFromFriends = `DELETE FROM friends WHERE user_id1 = ? OR user_id2 = ?`
 
 	//MakeFriendshipQuery - mysql query to make friendship between two users
 	MakeFriendshipQuery = `
 INSERT IGNORE INTO friends (user_id1, user_id2) VALUES 
-(?, (SELECT id from users u WHERE u.%[1]s =?)),
-((SELECT id from users u WHERE u.%[1]s =?), ?)`
+(?, (SELECT id from users u WHERE u.%[1]s =? AND u.deleted != 1)),
+((SELECT id from users u WHERE u.%[1]s =? AND u.deleted != 1), ?)`
 )

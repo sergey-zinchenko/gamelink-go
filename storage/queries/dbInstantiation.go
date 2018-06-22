@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMP NOT NULL     DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NULL         DEFAULT NULL,
   country    VARCHAR(45)            GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.country'))),
+  deleted 	 TINYINT(1) NOT NULL DEFAULT 0, 
   PRIMARY KEY (id),
   UNIQUE INDEX vk_id_UNIQUE (vk_id ASC),
   UNIQUE INDEX fb_id_UNIQUE (fb_id ASC),
@@ -31,7 +32,8 @@ CREATE TABLE IF NOT EXISTS users (
   INDEX bdate (bdate ASC),
   INDEX email (email ASC),
   INDEX nickname (nickname ASC),
-  INDEX name (name ASC)
+  INDEX name (name ASC),
+  INDEX deleted (deleted ASC)
 )
   ENGINE = InnoDB
   DEFAULT CHARACTER SET = utf8;`

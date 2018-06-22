@@ -103,7 +103,8 @@ func (a *App) getRoomLeaderboard(ctx iris.Context) {
 
 //getAvailiableTournaments - metgod to get available tournaments
 func (a *App) getAvailableTournaments(ctx iris.Context) {
-	availableTournaments, err := a.dbs.GetTournaments()
+	user := ctx.Values().Get(userCtxKey).(*storage.User)
+	availableTournaments, err := user.GetTournaments()
 	if err != nil {
 		handleError(err, ctx)
 		return

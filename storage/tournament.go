@@ -51,7 +51,7 @@ func (dbs DBS) StartTournament(usersInRoom int64, tournamentDuration int64, regi
 func (u User) Join(tournamentID int) error {
 	var registrationExpiredTime, tournamentExpiredTime, countUsersInRoom, maxUsersInRoom int64
 	var transaction = func(userID int64, tx *sql.Tx) error {
-		_, err := tx.Exec(queries.JoinTournament, tournamentID, userID)
+		rows, err := tx.Exec(queries.JoinTournament, tournamentID, userID)
 		if err != nil {
 			switch v := err.(type) {
 			case *mysql.MySQLError:
@@ -62,6 +62,14 @@ func (u User) Join(tournamentID int) error {
 				return err
 			}
 		}
+		count, err := rows.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if count == 0 {
+			return graceful.NotFoundError{Message: "user or tournament doesn't found"}
+		}
+
 		err = tx.QueryRow(queries.GetCountUsersInRoomAndTournamentExpiredTime, tournamentID, tournamentID, tournamentID).Scan(&registrationExpiredTime, &tournamentExpiredTime, &countUsersInRoom, &maxUsersInRoom)
 		if err != nil {
 			return err
@@ -108,9 +116,16 @@ func (u User) Join(tournamentID int) error {
 
 //UpdateTournamentScore - method to update user score
 func (u User) UpdateTournamentScore(tournamentID int, score int) error {
-	_, err := u.dbs.mySQL.Exec(queries.UpdateUserTournamentScore, score, tournamentID, u.ID(), time.Now().Unix())
+	rows, err := u.dbs.mySQL.Exec(queries.UpdateUserTournamentScore, score, tournamentID, u.ID(), time.Now().Unix())
 	if err != nil {
 		return err
+	}
+	count, err := rows.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return graceful.NotFoundError{Message: "can't update score"}
 	}
 	return nil
 }
@@ -118,7 +133,16 @@ func (u User) UpdateTournamentScore(tournamentID int, score int) error {
 //GetLeaderboard - method to get leaderbord from tournament room
 func (u User) GetLeaderboard(tournamentID int) (string, error) {
 	var result string
-	err := u.dbs.mySQL.QueryRow(queries.GetRoomLeaderboard, u.ID(), tournamentID, u.ID(), u.ID(), tournamentID, u.ID(), tournamentID, u.ID(), tournamentID, u.ID()).Scan(&result)
+	var flag int
+	err := u.dbs.mySQL.QueryRow(queries.IternalCheckFlag, u.ID()).Scan(&flag)
+	if err != nil {
+		return "", err
+	}
+	if flag == 1 {
+		err = graceful.ForbiddenError{Message: "request from deleted user"}
+		return "", err
+	}
+	err = u.dbs.mySQL.QueryRow(queries.GetRoomLeaderboard, u.ID(), tournamentID, u.ID(), u.ID(), tournamentID, u.ID(), tournamentID, u.ID(), tournamentID, u.ID()).Scan(&result)
 	if err != nil {
 		return "", err
 	}
@@ -126,9 +150,18 @@ func (u User) GetLeaderboard(tournamentID int) (string, error) {
 }
 
 //GetTournaments - method to Get Available Tournaments
-func (dbs DBS) GetTournaments() (string, error) {
+func (u User) GetTournaments() (string, error) {
 	var result string
-	err := dbs.mySQL.QueryRow(queries.GetAvailableTournaments, time.Now().Unix()).Scan(&result)
+	var flag int
+	err := u.dbs.mySQL.QueryRow(queries.IternalCheckFlag, u.ID()).Scan(&flag)
+	if err != nil {
+		return "", err
+	}
+	if flag == 1 {
+		err = graceful.ForbiddenError{Message: "request from deleted user"}
+		return "", err
+	}
+	err = u.dbs.mySQL.QueryRow(queries.GetAvailableTournaments, time.Now().Unix()).Scan(&result)
 	if err != nil {
 		return "", err
 	}
@@ -138,7 +171,16 @@ func (dbs DBS) GetTournaments() (string, error) {
 //GetResults - method to get user results from last 100 tournaments
 func (u User) GetResults() (string, error) {
 	var result string
-	err := u.dbs.mySQL.QueryRow(queries.GetResults, u.ID()).Scan(&result)
+	var flag int
+	err := u.dbs.mySQL.QueryRow(queries.IternalCheckFlag, u.ID()).Scan(&flag)
+	if err != nil {
+		return "", err
+	}
+	if flag == 1 {
+		err = graceful.ForbiddenError{Message: "request from deleted user"}
+		return "", err
+	}
+	err = u.dbs.mySQL.QueryRow(queries.GetResults, u.ID()).Scan(&result)
 	if err != nil {
 		return "", err
 	}
