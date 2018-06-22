@@ -17,8 +17,17 @@ const (
 func (u User) Leaderboard(lbType string, lbNum int) (string, error) {
 	var result string
 	var err error
+	var flag int
 	if u.dbs.mySQL == nil {
 		return "", errors.New("databases not initialized")
+	}
+	err = u.dbs.mySQL.QueryRow(queries.IternalCheckFlag, u.ID()).Scan(&flag)
+	if err != nil {
+		return "", err
+	}
+	if flag == 1 {
+		err = graceful.ForbiddenError{Message: "request from deleted user"}
+		return "", err
 	}
 	if lbNum == 1 || lbNum == 2 || lbNum == 3 {
 		switch lbType {
