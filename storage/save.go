@@ -33,7 +33,15 @@ func (u User) Saves(saveID int) (string, error) {
 //txSaveData - returns save data in C.J format
 func (u User) txSaveData(saveID int, tx *sql.Tx) (C.J, error) {
 	var bytes []byte
-	err := tx.QueryRow(queries.GetSaveDataQuery, saveID, u.ID()).Scan(&bytes)
+	var flag int
+	err := tx.QueryRow(queries.IternalCheckFlag, u.ID()).Scan(&flag)
+	if err != nil {
+		return nil, err
+	}
+	if flag == 1 {
+		return nil, graceful.ForbiddenError{Message: "cant't update deleted user save"}
+	}
+	err = tx.QueryRow(queries.GetSaveDataQuery, saveID, u.ID()).Scan(&bytes)
 	if err != nil {
 		return nil, err
 	}
@@ -51,22 +59,24 @@ func (u User) txUpdateSaveData(data C.J, saveID int, tx *sql.Tx) error {
 	if err != nil {
 		return err
 	}
-	rows, err := tx.Exec(queries.UpdateSaveDataQuery, upd, saveID, u.ID())
+	_, err = tx.Exec(queries.UpdateSaveDataQuery, upd, saveID, u.ID())
 	if err != nil {
 		return err
 	}
-	count, err := rows.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if count == 0 {
-		return graceful.ForbiddenError{Message: "can't update save"}
-	}
+
 	return nil
 }
 
 func (u User) txDeleteSave(saveID int, tx *sql.Tx) error {
-	_, err := tx.Exec(queries.DeleteSaveQuery, saveID, u.ID())
+	var flag int
+	err := tx.QueryRow(queries.IternalCheckFlag, u.ID()).Scan(&flag)
+	if err != nil {
+		return err
+	}
+	if flag == 1 {
+		return graceful.ForbiddenError{Message: "cant't delete deleted user save"}
+	}
+	_, err = tx.Exec(queries.DeleteSaveQuery, saveID, u.ID())
 	return err
 }
 
@@ -120,7 +130,7 @@ func (u User) CreateSave(data C.J) (C.J, error) {
 		return nil, err
 	}
 	if count == 0 {
-		err = graceful.ForbiddenError{Message: "can't create save"}
+		return nil, graceful.ForbiddenError{Message: "can't create save"}
 	}
 	return data, nil
 }

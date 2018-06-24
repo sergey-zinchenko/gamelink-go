@@ -272,14 +272,12 @@ func (u User) Delete(token string, fields []string) (C.J, error) {
 			if err != nil {
 				return nil, err
 			}
-			fmt.Println("asf")
 			return data, nil
 		}
 		err := u.txDelete(tx)
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println(token)
 		u.dbs.rc.Del(authRedisKeyPref + token)
 		return nil, nil
 	}
