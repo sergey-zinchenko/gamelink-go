@@ -255,8 +255,8 @@ func (u User) Update(data C.J) (C.J, error) {
 }
 
 // Delete - allow user delete data about him or delete account
-func (u User) Delete(token string, fields []string) (C.J, error) {
-	var transaction = func(token string, fields []string, tx *sql.Tx) (C.J, error) {
+func (u User) Delete(fields []string) (C.J, error) {
+	var transaction = func(fields []string, tx *sql.Tx) (C.J, error) {
 		if len(fields) != 0 {
 			data, err := u.txData(tx)
 			if err != nil {
@@ -278,14 +278,13 @@ func (u User) Delete(token string, fields []string) (C.J, error) {
 		if err != nil {
 			return nil, err
 		}
-		u.dbs.rc.Del(authRedisKeyPref + token)
 		return nil, nil
 	}
 	tx, err := u.dbs.mySQL.Begin()
 	if err != nil {
 		return nil, err
 	}
-	updData, err := transaction(token, fields, tx)
+	updData, err := transaction(fields, tx)
 	if err != nil {
 		if e := tx.Rollback(); e != nil {
 			return nil, err

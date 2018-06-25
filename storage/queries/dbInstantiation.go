@@ -95,7 +95,6 @@ ENGINE = InnoDB;`
 CREATE TABLE IF NOT EXISTS rooms (
   id INT(11) NOT NULL AUTO_INCREMENT,
   tournament_id INT(11) NOT NULL,
-  created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   INDEX id (id ASC),
   INDEX fk_rooms_1_idx (tournament_id ASC),
   CONSTRAINT fk_rooms_1
@@ -113,7 +112,6 @@ tournament_expired_time INT(11) NOT NULL,
 room_id INT(11) NOT NULL,
 user_id INT(11) NOT NULL,
 score INT(11) UNSIGNED NULL DEFAULT NULL,
-created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   INDEX fk_rooms_users_rooms1_idx (room_id ASC),
   INDEX fk_rooms_users_users1_idx (user_id ASC),

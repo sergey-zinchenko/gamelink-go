@@ -139,7 +139,7 @@ func (u User) GetLeaderboard(tournamentID int) (string, error) {
 		return "", err
 	}
 	if flag == 1 {
-		err = graceful.ForbiddenError{Message: "request from deleted user"}
+		err = graceful.ForbiddenError{Message: "request for deleted user"}
 		return "", err
 	}
 	err = u.dbs.mySQL.QueryRow(queries.GetRoomLeaderboard, u.ID(), tournamentID, u.ID(), u.ID(), tournamentID, u.ID(), tournamentID, u.ID(), tournamentID, u.ID()).Scan(&result)
@@ -158,7 +158,7 @@ func (u User) GetTournaments() (string, error) {
 		return "", err
 	}
 	if flag == 1 {
-		err = graceful.ForbiddenError{Message: "request from deleted user"}
+		err = graceful.ForbiddenError{Message: "request for deleted user"}
 		return "", err
 	}
 	err = u.dbs.mySQL.QueryRow(queries.GetAvailableTournaments, time.Now().Unix()).Scan(&result)
@@ -177,7 +177,7 @@ func (u User) GetResults() (string, error) {
 		return "", err
 	}
 	if flag == 1 {
-		err = graceful.ForbiddenError{Message: "request from deleted user"}
+		err = graceful.ForbiddenError{Message: "request for deleted user"}
 		return "", err
 	}
 	err = u.dbs.mySQL.QueryRow(queries.GetResults, u.ID()).Scan(&result)

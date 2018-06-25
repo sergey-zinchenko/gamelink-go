@@ -26,7 +26,7 @@ func (u User) Leaderboard(lbType string, lbNum int) (string, error) {
 		return "", err
 	}
 	if flag == 1 {
-		err = graceful.ForbiddenError{Message: "request from deleted user"}
+		err = graceful.ForbiddenError{Message: "request for deleted user"}
 		return "", err
 	}
 	if lbNum == 1 || lbNum == 2 || lbNum == 3 {
