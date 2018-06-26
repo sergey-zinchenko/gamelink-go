@@ -19,12 +19,23 @@ WHERE u. %s = ?`
 
 	//GetExtraUserDataQuery - mysql query to get extended user data json
 	GetExtraUserDataQuery = `
-SELECT (SELECT CAST(CONCAT( 	'{"data":'  , 	u.data, ',',
-					 			'"friends":',   IFNULL(q.friends,"[]"), ',',
-                                '"saves":'  , 	IFNULL(w.saves, "[]"), ',',
+SELECT (SELECT CAST(CONCAT( 	'{"id":'  , 	u.id, 
+								IFNULL(CONCAT(',"vk_id":'  , 	JSON_QUOTE(u.vk_id)),""), 
+                                IFNULL(CONCAT(',"fb_id":'  , 	JSON_QUOTE(u.fb_id)),""),
+                                IFNULL(CONCAT(',"name":'  , 	JSON_QUOTE(u.name)),""),
+                                IFNULL(CONCAT(',"nickname":'  , 	JSON_QUOTE(u.nickname)),""),
+								IFNULL(CONCAT(',"sex":'  , 	JSON_QUOTE(u.sex)),""),
+                                IFNULL(CONCAT(',"lb1":'  , 	u.lb1),""), 
+                                IFNULL(CONCAT(',"lb1":'  , 	u.lb1),""),
+                                IFNULL(CONCAT(',"lb1":'  , 	u.lb1),""),
+                                IFNULL(CONCAT(',"bdate":'  , 	UNIX_TIMESTAMP(STR_TO_DATE(u.bdate, '%d.%m.%Y'))),""), 
+                                IFNULL(CONCAT(',"meta":'  , 	JSON_QUOTE(u.lbmeta)),""),
+                                IFNULL(CONCAT(',"country":'  , 	JSON_QUOTE(u.country)),""),',',
+					 			'"friends":',   	IFNULL(q.friends,"[]"), ',',
+                                '"saves":'  , 		IFNULL(w.saves, "[]"), ',',
                                 '"tournaments":', IFNULL(v.tournaments, "[]"),
                                 '}') AS JSON)) AS userdata
-               FROM (SELECT data FROM users  WHERE id = ?) AS u,
+               FROM (SELECT id, vk_id, fb_id, name, nickname, sex, lb1, lb2, lb3, bdate, lbmeta, country FROM users  WHERE id = ?) AS u,
                (SELECT CAST(CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('{',
 														'"id":',   b.id, ',' ,
                                                         '"nickname":', 	JSON_QUOTE(IFNULL(b.nickname,b.name)),
@@ -32,7 +43,12 @@ SELECT (SELECT CAST(CONCAT( 	'{"data":'  , 	u.data, ',',
 			   FROM (SELECT u.id, u.nickname, u.name FROM friends f, users u WHERE user_id2 = ? AND f.user_id1 = u.id
 				UNION
 				SELECT u.id, u.nickname, u.name FROM friends f, users u WHERE user_id1 = ? AND f.user_id2 = u.id) b) q,
-                (SELECT CAST(CONCAT('[',GROUP_CONCAT(DISTINCT CONCAT('{','"id":', s.id, ',', '"name":', IFNULL(JSON_QUOTE(s.name), ""), '}')), ']') AS JSON) as saves FROM (SELECT id, name from saves WHERE user_id = ?)s) w,
+                (SELECT CAST(CONCAT('[',GROUP_CONCAT(DISTINCT CONCAT('{',
+							'"id":', 	s.id, ',', 
+                            '"name":', 	IFNULL(JSON_QUOTE(s.name), ""), ',', 
+                            '"state":', s.state, ',', 
+                            '"date":',	s.created_at, 
+                            '}')), ']') AS JSON) as saves FROM (SELECT id, name, state, UNIX_TIMESTAMP(created_at) as created_at from saves WHERE user_id = ?)s) w,
                 (SELECT CAST(CONCAT('[',GROUP_CONCAT(DISTINCT CONCAT('{','"id":', t.tournament_id,'}')), ']') AS JSON) as tournaments FROM (SELECT tournament_id from users_tournaments WHERE user_id = ?)t) v`
 
 	//GetUserDataQuery - mysql query to get user's data json
