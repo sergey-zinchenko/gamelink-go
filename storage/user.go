@@ -25,12 +25,19 @@ func (u User) ID() int64 {
 }
 
 func (u *User) txCheck(userData social.ThirdPartyUser, tx *sql.Tx) (bool, error) {
+	var deletedFlag int
 	queryString := fmt.Sprintf(queries.CheckUserQuery, userData.ID().Name())
 	err := tx.QueryRow(queryString, userData.ID().Value()).Scan(&u.id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return false, nil
 		}
+		return false, err
+	}
+	q := fmt.Sprintf(queries.CheckFlag, userData.ID().Name())
+	err = tx.QueryRow(q, userData.ID().Value()).Scan(&deletedFlag)
+	if deletedFlag == 1 {
+		err = graceful.ForbiddenError{Message: "user was deleted"}
 		return false, err
 	}
 	return true, nil
@@ -100,7 +107,7 @@ func (u User) DataString() (string, error) {
 	if u.dbs.mySQL == nil {
 		return "", errors.New("databases not initialized")
 	}
-	err := u.dbs.mySQL.QueryRow(queries.GetExtraUserDataQuery, u.ID(), u.ID(), u.ID(), u.ID()).Scan(&str)
+	err := u.dbs.mySQL.QueryRow(queries.GetExtraUserDataQuery, u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID()).Scan(&str)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return "", graceful.NotFoundError{Message: "user not found"}
@@ -117,7 +124,7 @@ func (u User) Data() (C.J, error) {
 	if u.dbs.mySQL == nil {
 		return nil, errors.New("databases not initialized")
 	}
-	err := u.dbs.mySQL.QueryRow(queries.GetExtraUserDataQuery, u.ID(), u.ID(), u.ID(), u.ID()).Scan(&bytes)
+	err := u.dbs.mySQL.QueryRow(queries.GetExtraUserDataQuery, u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID()).Scan(&bytes)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, graceful.NotFoundError{Message: "user not found"}
@@ -159,7 +166,19 @@ func (u User) txUpdate(data C.J, tx *sql.Tx) error {
 }
 
 func (u User) txDelete(tx *sql.Tx) error {
-	_, err := tx.Exec(queries.DeleteUserQuery, u.ID())
+	_, err := tx.Exec(queries.DeleteAllSaves, u.ID())
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(queries.DeleteUserQuery, u.ID())
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(queries.DeleteUserFromFriends, u.ID(), u.ID())
+	if err != nil {
+		return err
+	}
+
 	return err
 }
 
@@ -236,8 +255,8 @@ func (u User) Update(data C.J) (C.J, error) {
 }
 
 // Delete - allow user delete data about him or delete account
-func (u User) Delete(fields []string) (C.J, error) {
-	var transaction = func(fields []string, tx *sql.Tx) (C.J, error) {
+func (u User) Delete(token string, fields []string) (C.J, error) {
+	var transaction = func(token string, fields []string, tx *sql.Tx) (C.J, error) {
 		if len(fields) != 0 {
 			data, err := u.txData(tx)
 			if err != nil {
@@ -259,17 +278,14 @@ func (u User) Delete(fields []string) (C.J, error) {
 		if err != nil {
 			return nil, err
 		}
-		err = u.logout() // Redis Call - Delete tokens from Redis
-		if err != nil {
-			return nil, err
-		}
+		u.dbs.rc.Del(authRedisKeyPref + token)
 		return nil, nil
 	}
 	tx, err := u.dbs.mySQL.Begin()
 	if err != nil {
 		return nil, err
 	}
-	updData, err := transaction(fields, tx)
+	updData, err := transaction(token, fields, tx)
 	if err != nil {
 		if e := tx.Rollback(); e != nil {
 			return nil, err

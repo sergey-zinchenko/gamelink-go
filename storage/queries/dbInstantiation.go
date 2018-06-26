@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMP NOT NULL     DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NULL         DEFAULT NULL,
   country    VARCHAR(45)            GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.country'))),
+  deleted 	 TINYINT(1) NOT NULL DEFAULT 0, 
   PRIMARY KEY (id),
   UNIQUE INDEX vk_id_UNIQUE (vk_id ASC),
   UNIQUE INDEX fb_id_UNIQUE (fb_id ASC),
@@ -31,7 +32,8 @@ CREATE TABLE IF NOT EXISTS users (
   INDEX bdate (bdate ASC),
   INDEX email (email ASC),
   INDEX nickname (nickname ASC),
-  INDEX name (name ASC)
+  INDEX name (name ASC),
+  INDEX deleted (deleted ASC)
 )
   ENGINE = InnoDB
   DEFAULT CHARACTER SET = utf8;`
@@ -79,54 +81,63 @@ DEFAULT CHARACTER SET = utf8;`
 	//CreateTableTournaments - query to create tournaments table
 	CreateTableTournaments = `
 CREATE TABLE IF NOT EXISTS tournaments (
-  id INT NOT NULL AUTO_INCREMENT,	
-  expired_time INT NOT NULL,
-  UNIQUE INDEX id (expired_time ASC),
-  PRIMARY KEY (id))
+  id INT(11) NOT NULL AUTO_INCREMENT,
+  tournament_expired_time INT(11) NOT NULL,
+  registration_expired_time INT(11) NOT NULL,
+  users_in_room INT(11) NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE INDEX id (tournament_expired_time ASC),
+  INDEX tournament_exp_time (tournament_expired_time ASC))
 ENGINE = InnoDB;`
 
 	//CreateTableRooms - query to create rooms table
 	CreateTableRooms = `
 CREATE TABLE IF NOT EXISTS rooms (
-  id INT NOT NULL AUTO_INCREMENT,
-  expired_time INT NOT NULL,
+  id INT(11) NOT NULL AUTO_INCREMENT,
+  tournament_id INT(11) NOT NULL,
   created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
-  INDEX tournament_expired_time (expired_time ASC),
   INDEX id (id ASC),
+  INDEX fk_rooms_1_idx (tournament_id ASC),
   CONSTRAINT fk_rooms_1
-    FOREIGN KEY (expired_time)
-    REFERENCES tournaments (expired_time)
+    FOREIGN KEY (tournament_id)
+    REFERENCES gamelink.tournaments (id)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;`
 
 	//CreateTableRoomsUsers - query to create table rooms_users
-	CreateTableRoomsUsers = `
-CREATE TABLE IF NOT EXISTS rooms_users (
-  id INT NOT NULL AUTO_INCREMENT,
-  room_id INT NOT NULL,
-  expired_time INT NOT NULL,
-  user_id INT(11) NOT NULL,
-  score INT UNSIGNED NULL,
-  created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+	CreateTableRoomsUsers = `CREATE TABLE IF NOT EXISTS gamelink.rooms_users (
+id INT(11) NOT NULL AUTO_INCREMENT,
+tournament_id INT(11) NOT NULL,
+tournament_expired_time INT(11) NOT NULL,
+room_id INT(11) NOT NULL,
+user_id INT(11) NOT NULL,
+score INT(11) UNSIGNED NULL DEFAULT NULL,
+created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   INDEX fk_rooms_users_rooms1_idx (room_id ASC),
   INDEX fk_rooms_users_users1_idx (user_id ASC),
-  INDEX fk_rooms_users_tournament_idx (expired_time ASC),
+  INDEX fk_rooms_users_1_idx (tournament_id ASC),
+  INDEX index5 (score ASC),
+  INDEX fk_rooms_users_2_idx (tournament_expired_time ASC),
+  CONSTRAINT fk_rooms_users_1
+    FOREIGN KEY (tournament_id)
+    REFERENCES gamelink.tournaments (id)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT fk_rooms_users_2
+    FOREIGN KEY (tournament_expired_time)
+    REFERENCES gamelink.tournaments (tournament_expired_time)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
   CONSTRAINT fk_rooms_users_rooms1
     FOREIGN KEY (room_id)
-    REFERENCES rooms (id)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION, 
-  CONSTRAINT fk_rooms_users_tournament_idx
-    FOREIGN KEY (expired_time)
-    REFERENCES tournaments (expired_time)
+    REFERENCES gamelink.rooms (id)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
   CONSTRAINT fk_rooms_users_users1
     FOREIGN KEY (user_id)
-    REFERENCES users (id)
+     REFERENCES gamelink.users (id)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;`
@@ -147,7 +158,7 @@ VIEW leader_board%[1]d AS
     ORDER BY u.lb%[1]d DESC`
 	//CreateUsersTournamentsTable - query to create table users in tournament
 	CreateUsersTournamentsTable = `CREATE TABLE IF NOT EXISTS gamelink.users_tournaments (
-  tournament_id INT NOT NULL,
+  tournament_id INT(11) NOT NULL,
   user_id INT(11) NOT NULL,
   PRIMARY KEY (user_id, tournament_id),
   INDEX fk_users_tournaments_tournaments1_idx (tournament_id ASC),
