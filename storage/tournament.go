@@ -8,11 +8,22 @@ import (
 	"time"
 )
 
-//tournamentLifeTime - tournament lifetime in seconds
+type (
+	//Tournament - structure to work with tournament in our system. Developed to be passed through context of request.
+	Tournament struct {
+		id  int64
+		dbs *DBS
+	}
+)
 
 const (
 	mysqlKeyExist = 1062
 )
+
+//TID - returns tournament id from database
+func (t Tournament) TID() int64 {
+	return t.id
+}
 
 //StartTournament - func to start new tournament
 func (dbs DBS) StartTournament(usersInRoom int64, tournamentDuration int64, registrationDuration int64) error {
@@ -51,7 +62,11 @@ func (dbs DBS) StartTournament(usersInRoom int64, tournamentDuration int64, regi
 func (u User) Join(tournamentID int) error {
 	var registrationExpiredTime, tournamentExpiredTime, countUsersInRoom, maxUsersInRoom int64
 	var transaction = func(userID int64, tx *sql.Tx) error {
-		rows, err := tx.Exec(queries.JoinTournament, tournamentID, userID)
+		_, err := tx.Exec(queries.LockTableRoomsUsers)
+		if err != nil {
+			return err
+		}
+		result, err := tx.Exec(queries.JoinTournament, tournamentID, userID)
 		if err != nil {
 			switch v := err.(type) {
 			case *mysql.MySQLError:
@@ -62,7 +77,7 @@ func (u User) Join(tournamentID int) error {
 				return err
 			}
 		}
-		count, err := rows.RowsAffected()
+		count, err := result.RowsAffected()
 		if err != nil {
 			return err
 		}
@@ -92,7 +107,10 @@ func (u User) Join(tournamentID int) error {
 		if err != nil {
 			return err
 		}
-
+		_, err = tx.Exec(queries.UnlockTableRoomsUsers)
+		if err != nil {
+			return err
+		}
 		return nil
 	}
 	tx, err := u.dbs.mySQL.Begin()
@@ -102,6 +120,10 @@ func (u User) Join(tournamentID int) error {
 	userID := u.ID()
 	err = transaction(userID, tx)
 	if err != nil {
+		_, err = tx.Exec(queries.UnlockTableRoomsUsers)
+		if err != nil {
+			return err
+		}
 		if e := tx.Rollback(); e != nil {
 			return e
 		}
@@ -116,11 +138,11 @@ func (u User) Join(tournamentID int) error {
 
 //UpdateTournamentScore - method to update user score
 func (u User) UpdateTournamentScore(tournamentID int, score int) error {
-	rows, err := u.dbs.mySQL.Exec(queries.UpdateUserTournamentScore, score, tournamentID, u.ID(), time.Now().Unix())
+	result, err := u.dbs.mySQL.Exec(queries.UpdateUserTournamentScore, score, tournamentID, u.ID(), time.Now().Unix())
 	if err != nil {
 		return err
 	}
-	count, err := rows.RowsAffected()
+	count, err := result.RowsAffected()
 	if err != nil {
 		return err
 	}
@@ -139,7 +161,7 @@ func (u User) GetLeaderboard(tournamentID int) (string, error) {
 		return "", err
 	}
 	if flag == 1 {
-		err = graceful.ForbiddenError{Message: "request from deleted user"}
+		err = graceful.ForbiddenError{Message: "request for deleted user"}
 		return "", err
 	}
 	err = u.dbs.mySQL.QueryRow(queries.GetRoomLeaderboard, u.ID(), tournamentID, u.ID(), u.ID(), tournamentID, u.ID(), tournamentID, u.ID(), tournamentID, u.ID()).Scan(&result)
@@ -158,7 +180,7 @@ func (u User) GetTournaments() (string, error) {
 		return "", err
 	}
 	if flag == 1 {
-		err = graceful.ForbiddenError{Message: "request from deleted user"}
+		err = graceful.ForbiddenError{Message: "request for deleted user"}
 		return "", err
 	}
 	err = u.dbs.mySQL.QueryRow(queries.GetAvailableTournaments, time.Now().Unix()).Scan(&result)
@@ -177,7 +199,7 @@ func (u User) GetResults() (string, error) {
 		return "", err
 	}
 	if flag == 1 {
-		err = graceful.ForbiddenError{Message: "request from deleted user"}
+		err = graceful.ForbiddenError{Message: "request for deleted user"}
 		return "", err
 	}
 	err = u.dbs.mySQL.QueryRow(queries.GetResults, u.ID()).Scan(&result)

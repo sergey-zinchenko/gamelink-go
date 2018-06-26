@@ -51,10 +51,10 @@ func NewApp() (a *App) {
 	instances := a.iris.Party("/saves", a.authMiddleware)
 	{
 		instances.Get("/", a.getSave)
-		instances.Get("/{id}", a.getSave)
+		instances.Get("/{id:int}", a.getSave)
 		instances.Post("/", a.postSave)
-		instances.Post("/{id}", a.postSave)
-		instances.Delete("/{id}", a.deleteSave)
+		instances.Post("/{id:int}", a.postSave)
+		instances.Delete("/{id:int}", a.deleteSave)
 	}
 	leaderboards := a.iris.Party("/leaderboards", a.authMiddleware)
 	{
@@ -67,9 +67,9 @@ func NewApp() (a *App) {
 	}
 	tournaments := a.iris.Party("/tournaments", a.authMiddleware)
 	{
-		tournaments.Get("/{tournament_id:int}/join", a.joinTournament)
-		tournaments.Get("/{tournament_id:int}/updatepts", a.updatePts)
-		tournaments.Get("/{tournament_id:int}/leaderboard", a.getRoomLeaderboard)
+		tournaments.Get("/join", a.joinTournament)
+		tournaments.Get("/updatepts", a.updateScore)
+		tournaments.Get("/leaderboard", a.getRoomLeaderboard)
 		tournaments.Get("/list", a.getAvailableTournaments)
 		tournaments.Get("/results", a.getUsersResults)
 	}

@@ -7,6 +7,7 @@ import (
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
 	"net/url"
+	"strings"
 )
 
 const (
@@ -37,6 +38,12 @@ func (a *App) authMiddleware(ctx iris.Context) {
 		ctx.Next()
 	}()
 	token := ctx.GetHeader("Authorization")
+	ok := strings.HasPrefix(token, "Bearer ")
+	if !ok {
+		err = graceful.BadRequestError{Message: "authorization token not valid"}
+		return
+	}
+	token = strings.TrimPrefix(token, "Bearer ")
 	if token == "" {
 		err = graceful.UnauthorizedError{Message: "authorization token not set"}
 		return

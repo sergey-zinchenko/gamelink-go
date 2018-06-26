@@ -53,8 +53,7 @@ func (a *App) deleteUser(ctx iris.Context) {
 		}
 	}()
 	user := ctx.Values().Get(userCtxKey).(*storage.User)
-	token := ctx.GetHeader("Authorization")
-	data, err = user.Delete(token, ctx.Request().URL.Query()["fields"])
+	data, err = user.Delete(ctx.Request().URL.Query()["fields"])
 	if err != nil {
 		return
 	}
@@ -87,24 +86,3 @@ func (a *App) addAuth(ctx iris.Context) {
 	}
 	ctx.JSON(data)
 }
-
-//func (a *App) delete(ctx iris.Context) {
-//	var (
-//		err  error
-//		data map[string]interface{}
-//	)
-//	defer func() {
-//		handleError(err, ctx)
-//	}()
-//	user := ctx.Values().Get(userCtxKey).(*storage.User)
-//	data, err = user.Delete(ctx.Request().URL.Query()["fields"])
-//	if err != nil {
-//		return
-//	}
-//	if data == nil {
-//		ctx.StatusCode(http.StatusNoContent)
-//	} else {
-//		ctx.JSON(data)
-//	}
-//
-//}
