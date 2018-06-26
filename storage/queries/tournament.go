@@ -57,7 +57,7 @@ const (
 
 	//GetResults - query to get all user results from last 100 tournaments
 	GetResults = ` SELECT IFNULL(CAST(CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('{',
-									'"tournament":', p.tournament_id,
+									'"id":', p.tournament_id,
 								 	',', '"rank":',  p.rank,
 									',', '"score":', p.score,
 									'}')), ']') AS JSON),"[]") as results

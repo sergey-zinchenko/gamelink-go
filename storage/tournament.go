@@ -8,22 +8,22 @@ import (
 	"time"
 )
 
-//type (
-//	//Tournament - structure to work with tournament in our system. Developed to be passed through context of request.
-//	Tournament struct {
-//		id  int64
-//		dbs *DBS
-//	}
-//)
+type (
+	//Tournament - structure to work with tournament in our system. Developed to be passed through context of request.
+	Tournament struct {
+		id  int64
+		dbs *DBS
+	}
+)
 
 const (
 	mysqlKeyExist = 1062
 )
 
-////TID - returns tournament id from database
-//func (t Tournament) TID() int64 {
-//	return t.id
-//}
+//TID - returns tournament id from database
+func (t Tournament) TID() int64 {
+	return t.id
+}
 
 //StartTournament - func to start new tournament
 func (dbs DBS) StartTournament(usersInRoom int64, tournamentDuration int64, registrationDuration int64) error {

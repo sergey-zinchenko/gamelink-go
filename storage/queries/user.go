@@ -33,7 +33,7 @@ SELECT (SELECT CAST(CONCAT( 	'{"data":'  , 	u.data, ',',
 				UNION
 				SELECT u.id, u.nickname, u.name FROM friends f, users u WHERE user_id1 = ? AND f.user_id2 = u.id) b) q,
                 (SELECT CAST(CONCAT('[',GROUP_CONCAT(DISTINCT CONCAT('{','"id":', s.id, ',', '"name":', IFNULL(JSON_QUOTE(s.name), ""), '}')), ']') AS JSON) as saves FROM (SELECT id, name from saves WHERE user_id = ?)s) w,
-                (SELECT CAST(CONCAT('[',GROUP_CONCAT(DISTINCT CONCAT('{','"tournament_id":', t.tournament_id,'}')), ']') AS JSON) as tournaments FROM (SELECT tournament_id from users_tournaments WHERE user_id = ?)t) v`
+                (SELECT CAST(CONCAT('[',GROUP_CONCAT(DISTINCT CONCAT('{','"id":', t.tournament_id,'}')), ']') AS JSON) as tournaments FROM (SELECT tournament_id from users_tournaments WHERE user_id = ?)t) v`
 
 	//GetUserDataQuery - mysql query to get user's data json
 	GetUserDataQuery = `
