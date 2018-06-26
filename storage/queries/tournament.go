@@ -63,4 +63,10 @@ const (
 									'}')), ']') AS JSON),"[]") as results
 FROM (SELECT t.tournament_id, t.score, (SELECT count(*)+1 as rank FROM rooms_users WHERE room_id=t.room_id AND score > t.score) as rank 
 FROM (SELECT tournament_id, room_id, score FROM rooms_users t WHERE user_id = (SELECT id FROM users u WHERE u.id = ? AND u.deleted != 1) LIMIT 100) as t) as p `
+
+	//LockTableRoomsUsers - query to lock table when join transaction started
+	LockTableRoomsUsers = `LOCK TABLE rooms_users WRITE`
+
+	//UnlockTableRoomsUsers - query to unlock table when join transaction started or failed
+	UnlockTableRoomsUsers = `UNLOCK TABLES`
 )

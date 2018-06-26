@@ -13,8 +13,8 @@ const (
 	allUsersLeaderboard = "all"
 )
 
-//Leaderboard - return leaderboards
-func (u User) Leaderboard(lbType string, lbNum int) (string, error) {
+//LeaderboardString - return leaderboards
+func (u User) LeaderboardString(lbType string, lbNum int) (string, error) {
 	var result string
 	var err error
 	var flag int

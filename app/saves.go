@@ -9,11 +9,23 @@ import (
 )
 
 func (a *App) getSave(ctx iris.Context) {
+	var saveID int
+	var err error
+	defer func() {
+		if err != nil {
+			handleError(err, ctx)
+		}
+	}()
 	user := ctx.Values().Get(userCtxKey).(*storage.User)
-	saveID, _ := ctx.Params().GetInt("id")
-	instances, err := user.Saves(saveID)
+	_, flag := ctx.Params().GetEntry("id")
+	if flag != false {
+		saveID, err = ctx.Params().GetInt("id")
+		if err != nil {
+			return
+		}
+	}
+	instances, err := user.SavesString(saveID)
 	if err != nil {
-		handleError(err, ctx)
 		return
 	}
 	ctx.ContentType(context.ContentJSONHeaderValue)
@@ -23,6 +35,7 @@ func (a *App) getSave(ctx iris.Context) {
 func (a *App) postSave(ctx iris.Context) {
 	var (
 		data, save C.J
+		saveID     int
 		err        error
 	)
 	defer func() {
@@ -35,7 +48,13 @@ func (a *App) postSave(ctx iris.Context) {
 	if err != nil {
 		return
 	}
-	saveID, _ := ctx.Params().GetInt("id")
+	_, flag := ctx.Params().GetEntry("id")
+	if flag != false {
+		saveID, err = ctx.Params().GetInt("id")
+		if err != nil {
+			return
+		}
+	}
 	if saveID != 0 {
 		save, err = user.UpdateSave(data, saveID)
 	} else {

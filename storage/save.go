@@ -9,8 +9,8 @@ import (
 	"gamelink-go/storage/queries"
 )
 
-// Saves - return saves from db all or one by instance id
-func (u User) Saves(saveID int) (string, error) {
+// SavesString - return saves from db all or one by instance id
+func (u User) SavesString(saveID int) (string, error) {
 	var str string
 	var err error
 	if u.dbs.mySQL == nil {
@@ -120,12 +120,12 @@ func (u User) CreateSave(data C.J) (C.J, error) {
 	if err != nil {
 		return nil, err
 	}
-	rows, err := u.dbs.mySQL.Exec(queries.CreateSaveQuery, s, u.ID())
+	result, err := u.dbs.mySQL.Exec(queries.CreateSaveQuery, s, u.ID())
 	if err != nil {
 		return nil, err
 	}
 
-	count, err := rows.RowsAffected()
+	count, err := result.RowsAffected()
 	if err != nil {
 		return nil, err
 	}
