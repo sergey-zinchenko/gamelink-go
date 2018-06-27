@@ -20,7 +20,7 @@ const (
 	mysqlKeyExist = 1062
 )
 
-//ID - returns tournament id from database
+//ID - func returns tournament id from database
 func (t Tournament) ID() int {
 	return t.id
 }
