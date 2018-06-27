@@ -38,9 +38,9 @@ type (
 	}
 
 	commonInfo struct {
-		FullName    string  `json:"name"`
-		Bdate       string `json:"age,omitempty"`
-		Sex         string  `json:"sex"`
+		FullName    string `json:"name"`
+		Bdate       string `json:"bdate,omitempty"`
+		Sex         string `json:"sex"`
 		UserEmail   string `json:"email,omitempty"`
 		UserCountry string `json:"country,omitempty"`
 		friends     []ThirdPartyID

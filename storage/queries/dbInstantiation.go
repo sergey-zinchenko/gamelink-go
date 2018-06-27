@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS users (
   lb1        INT(11)                GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.lb1'))) VIRTUAL,
   lb2        INT(11)                GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.lb2'))) VIRTUAL,
   lb3        INT(11)                GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.lb3'))),
-  bdate      TIMESTAMP              GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.bdate'))),
+  bdate      VARCHAR(45)            GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.bdate'))),
   email      VARCHAR(45)            GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.email'))),
   lbmeta     JSON                   GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.lbmeta'))),
   data       JSON      NOT NULL,
@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS friends (
 	CreateTableSaves = `CREATE TABLE IF NOT EXISTS saves (
  id INT(11) NOT NULL AUTO_INCREMENT,
  name VARCHAR(45) GENERATED ALWAYS AS (json_unquote(json_extract(data,'$.name'))) VIRTUAL,
+ state JSON GENERATED ALWAYS AS (json_unquote(json_extract(data,'$.state'))) VIRTUAL,
  data JSON NOT NULL,
  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
  updated_at TIMESTAMP NULL DEFAULT NULL,

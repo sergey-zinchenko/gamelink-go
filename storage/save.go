@@ -7,6 +7,7 @@ import (
 	C "gamelink-go/common"
 	"gamelink-go/graceful"
 	"gamelink-go/storage/queries"
+	"time"
 )
 
 // SavesString - return saves from db all or one by instance id
@@ -124,7 +125,6 @@ func (u User) CreateSave(data C.J) (C.J, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	count, err := result.RowsAffected()
 	if err != nil {
 		return nil, err
@@ -132,6 +132,11 @@ func (u User) CreateSave(data C.J) (C.J, error) {
 	if count == 0 {
 		return nil, graceful.ForbiddenError{Message: "can't create save"}
 	}
+	data["id"], err = result.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+	data["created_at"] = time.Now().Unix()
 	return data, nil
 }
 
