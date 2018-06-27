@@ -58,7 +58,11 @@ func (a *App) joinTournament(ctx iris.Context) {
 	if err != nil {
 		return
 	}
-	err = user.Join(tournamentID)
+	tournament, err := a.dbs.Tournament(tournamentID)
+	if err != nil {
+		return
+	}
+	err = tournament.Join(user.ID())
 	if err != nil {
 		return
 	}
@@ -78,12 +82,16 @@ func (a *App) updateScore(ctx iris.Context) {
 	if err != nil {
 		return
 	}
+	tournament, err := a.dbs.Tournament(tournamentID)
+	if err != nil {
+		return
+	}
 	s := ctx.Request().URL.Query()["score"][0]
 	score, err := strconv.Atoi(s)
 	if err != nil {
 		return
 	}
-	err = user.UpdateTournamentScore(tournamentID, score)
+	err = tournament.UpdateTournamentScore(user.ID(), score)
 	if err != nil {
 		return
 	}
@@ -98,7 +106,12 @@ func (a *App) getRoomLeaderboard(ctx iris.Context) {
 		handleError(err, ctx)
 		return
 	}
-	leaderboard, err := user.GetLeaderboard(tournamentID)
+	tournament, err := a.dbs.Tournament(tournamentID)
+	if err != nil {
+		handleError(err, ctx)
+		return
+	}
+	leaderboard, err := tournament.GetLeaderboard(user.ID())
 	if err != nil {
 		handleError(err, ctx)
 		return

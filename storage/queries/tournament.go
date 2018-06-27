@@ -33,18 +33,18 @@ const (
     '"score":', IFNULL(score,0), ',',
     '"rank":', rank, ',',
     IFNULL(CONCAT('"country":', JSON_QUOTE(i.country), ','),''),
-    IFNULL(CONCAT('"meta":', i.lbmeta, ','),''),
+    IFNULL(CONCAT('"meta":', i.meta, ','),''),
     '"leaderboard":', leaderboard,'}') AS JSON) as leaderboard 
-           FROM (SELECT u.id, u.name, u.nickname, u.country,u.lbmeta FROM users u WHERE u.id=?) as i,
+           FROM (SELECT u.id, u.name, u.nickname, u.country,u.meta FROM users u WHERE u.id=?) as i,
 					 (SELECT (CAST(IFNULL(CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('{',
 																		  '"id":', 			l.id, ',',
                                                                           '"nickname":', 	JSON_QUOTE(IFNULL(l.nickname,l.name)), ',',
                                                                           '"score":', 		IFNULL(l.score, 0),
 																		   IFNULL(CONCAT(',"country":', JSON_QUOTE(l.country)),''),
-																		   IFNULL(CONCAT(',"meta":', l.lbmeta),''),
+																		   IFNULL(CONCAT(',"meta":', l.meta),''),
                                                                           '}')), ']'), "[]") AS JSON)) as leaderboard 
 	FROM 
-	(SELECT u.id, u.name, u.nickname, u.lbmeta, ru.score, u.country, ru.room_id 
+	(SELECT u.id, u.name, u.nickname, u.meta, ru.score, u.country, ru.room_id 
 	FROM users u, rooms_users ru WHERE u.id=ru.user_id AND ru.room_id=(SELECT room_id FROM rooms_users WHERE tournament_id = ? AND user_id =?) ORDER BY score LIMIT 10 ) l WHERE l.id != ? ) as q,
     (SELECT score FROM rooms_users WHERE tournament_id = ? AND user_id = ?) as score,
 	(SELECT count(*)+1 as rank FROM rooms_users WHERE room_id=(SELECT room_id FROM rooms_users WHERE tournament_id = ? AND user_id = ?) AND score > IFNULL((SELECT score FROM rooms_users WHERE tournament_id = ? AND user_id = ?),0)) as rank`
@@ -65,7 +65,7 @@ FROM (SELECT t.tournament_id, t.score, (SELECT count(*)+1 as rank FROM rooms_use
 FROM (SELECT tournament_id, room_id, score FROM rooms_users t WHERE user_id = (SELECT id FROM users u WHERE u.id = ? AND u.deleted != 1) LIMIT 100) as t) as p `
 
 	//LockTableRoomsUsers - query to lock table when join transaction started
-	LockTableRoomsUsers = `LOCK TABLE rooms_users WRITE`
+	LockTableRoomsUsers = `LOCK TABLE rooms_users READ`
 
 	//UnlockTableRoomsUsers - query to unlock table when join transaction started or failed
 	UnlockTableRoomsUsers = `UNLOCK TABLES`

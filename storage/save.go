@@ -112,6 +112,7 @@ func (u User) UpdateSave(data C.J, saveID int) (C.J, error) {
 	if err != nil {
 		return nil, err
 	}
+	data["updated_at"] = time.Now().Unix()
 	return data, nil
 }
 
@@ -136,7 +137,7 @@ func (u User) CreateSave(data C.J) (C.J, error) {
 	if err != nil {
 		return nil, err
 	}
-	data["created_at"] = time.Now().Unix()
+	data["updated_at"] = time.Now().Unix()
 	return data, nil
 }
 
