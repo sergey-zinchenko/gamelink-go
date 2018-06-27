@@ -44,9 +44,8 @@ func (a *App) authMiddleware(ctx iris.Context) {
 		err = graceful.BadRequestError{Message: "authorization token not valid"}
 		return
 	}
-	ok := strings.HasPrefix(strings.ToUpper(arr[0]), "BEARER")
-	if !ok {
-		err = graceful.BadRequestError{Message: "authorization token not valid"}
+	if strings.ToUpper(arr[0]) != "BEARER" {
+		err = graceful.BadRequestError{Message: "authorization header not valid"}
 		return
 	}
 	if arr[1] == "" {
