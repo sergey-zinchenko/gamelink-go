@@ -20,6 +20,15 @@ const (
 	mysqlKeyExist = 1062
 )
 
+//Tournament - method to make tournament struct
+func (dbs DBS) Tournament(id int) (*Tournament, error) {
+	if id < 1 {
+		err := graceful.BadRequestError{Message: "wrong tournament id"}
+		return nil, err
+	}
+	return &Tournament{id, &dbs}, nil
+}
+
 //ID - func returns tournament id from database
 func (t Tournament) ID() int {
 	return t.id
@@ -62,10 +71,6 @@ func (dbs DBS) StartTournament(usersInRoom int64, tournamentDuration int64, regi
 func (t Tournament) Join(userID int64) error {
 	var registrationExpiredTime, tournamentExpiredTime, countUsersInRoom, maxUsersInRoom int64
 	var transaction = func(userID int64, tx *sql.Tx) error {
-		//_, err := tx.Exec(queries.LockTableRoomsUsers)
-		//if err != nil {
-		//	return err
-		//}
 		result, err := tx.Exec(queries.JoinTournament, t.ID(), userID)
 		if err != nil {
 			switch v := err.(type) {
@@ -76,6 +81,9 @@ func (t Tournament) Join(userID int64) error {
 			default:
 				return err
 			}
+		}
+		if result == nil {
+			return graceful.ForbiddenError{Message: "can't join tournament"}
 		}
 		count, err := result.RowsAffected()
 		if err != nil {
@@ -107,10 +115,6 @@ func (t Tournament) Join(userID int64) error {
 		if err != nil {
 			return err
 		}
-		_, err = tx.Exec(queries.UnlockTableRoomsUsers)
-		if err != nil {
-			return err
-		}
 		return nil
 	}
 	tx, err := t.dbs.mySQL.Begin()
@@ -119,10 +123,6 @@ func (t Tournament) Join(userID int64) error {
 	}
 	err = transaction(userID, tx)
 	if err != nil {
-		_, err = tx.Exec(queries.UnlockTableRoomsUsers)
-		if err != nil {
-			return err
-		}
 		if e := tx.Rollback(); e != nil {
 			return e
 		}
@@ -140,6 +140,9 @@ func (t Tournament) UpdateTournamentScore(userID int64, score int) error {
 	result, err := t.dbs.mySQL.Exec(queries.UpdateUserTournamentScore, score, t.ID(), userID, time.Now().Unix())
 	if err != nil {
 		return err
+	}
+	if result == nil {
+		return graceful.NotFoundError{Message: "can't update score"}
 	}
 	count, err := result.RowsAffected()
 	if err != nil {
@@ -165,6 +168,9 @@ func (t Tournament) GetLeaderboard(userID int64) (string, error) {
 	}
 	err = t.dbs.mySQL.QueryRow(queries.GetRoomLeaderboard, userID, t.ID(), userID, userID, t.ID(), userID, t.ID(), userID, t.ID(), userID).Scan(&result)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", graceful.NotFoundError{Message: "no such tournament"}
+		}
 		return "", err
 	}
 	return result, nil
