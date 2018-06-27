@@ -17,10 +17,10 @@ CREATE TABLE IF NOT EXISTS users (
   lb3        INT(11)                GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.lb3'))),
   bdate      VARCHAR(45)            GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.bdate'))),
   email      VARCHAR(45)            GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.email'))),
-  lbmeta     JSON                   GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.lbmeta'))),
+  meta     JSON                   GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.meta'))),
   data       JSON      NOT NULL,
   created_at TIMESTAMP NOT NULL     DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NULL         DEFAULT NULL,
+  updated_at TIMESTAMP NULL         DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   country    VARCHAR(45)            GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.country'))),
   deleted 	 TINYINT(1) NOT NULL DEFAULT 0, 
   PRIMARY KEY (id),
@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS friends (
  state JSON GENERATED ALWAYS AS (json_unquote(json_extract(data,'$.state'))) VIRTUAL,
  data JSON NOT NULL,
  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
- updated_at TIMESTAMP NULL DEFAULT NULL,
+ updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
  user_id INT(11) NOT NULL,
  PRIMARY KEY (id),
  INDEX fk_saves_users_idx (user_id ASC),
@@ -150,7 +150,7 @@ VIEW leader_board%[1]d AS
         u.id AS id,
         IFNULL(u.nickname, u.name) AS nickname,
         u.country AS country,
-        u.lbmeta AS meta,
+        u.meta AS meta,
         IFNULL(u.lb%[1]d, 0) AS score
     FROM
         users u

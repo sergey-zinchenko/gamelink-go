@@ -6,6 +6,7 @@ import (
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
 	"net/http"
+	"time"
 )
 
 func (a *App) getSave(ctx iris.Context) {
@@ -71,21 +72,21 @@ func (a *App) deleteSave(ctx iris.Context) {
 		data C.J
 		err  error
 	)
-	defer func() {
-		handleError(err, ctx)
-	}()
 	user := ctx.Values().Get(userCtxKey).(*storage.User)
 	saveID, err := ctx.Params().GetInt("id")
 	if err != nil {
+		handleError(err, ctx)
 		return
 	}
 	data, err = user.DeleteSave(saveID, ctx.Request().URL.Query()["fields"])
 	if err != nil {
+		handleError(err, ctx)
 		return
 	}
 	if data == nil {
 		ctx.StatusCode(http.StatusNoContent)
 	} else {
+		data["updated_at"] = time.Now().Unix()
 		ctx.JSON(data)
 	}
 }
