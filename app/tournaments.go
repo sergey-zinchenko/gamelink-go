@@ -48,20 +48,22 @@ func (a *App) startTournament(ctx iris.Context) {
 //joinTournament - function to join tournament
 func (a *App) joinTournament(ctx iris.Context) {
 	var err error
+	defer func() {
+		if err != nil {
+			handleError(err, ctx)
+		}
+	}()
 	user := ctx.Values().Get(userCtxKey).(*storage.User)
 	tournamentID, err := ctx.Params().GetInt("tournament_id")
 	if err != nil {
-		handleError(err, ctx)
 		return
 	}
 	tournament, err := a.dbs.Tournament(tournamentID)
 	if err != nil {
-		handleError(err, ctx)
 		return
 	}
 	err = tournament.Join(user.ID())
 	if err != nil {
-		handleError(err, ctx)
 		return
 	}
 	ctx.StatusCode(http.StatusNoContent)
