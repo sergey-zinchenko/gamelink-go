@@ -90,7 +90,7 @@ func LoadEnvironment() {
 		if mysqlDatabase == "" {
 			log.Fatal("mysql database name must be set")
 		}
-		MysqlDsn = fmt.Sprintf("%s:%s@tcp(%s)/%s", mysqlUserName, mysqlPassword, mysqlAddress, mysqlDatabase)
+		MysqlDsn = fmt.Sprintf("%s:%s@tcp(%s)/%s?sql_mode=''", mysqlUserName, mysqlPassword, mysqlAddress, mysqlDatabase)
 	} else if MysqlDsn == "" {
 		log.Fatal("mysql data source name must be set")
 	}

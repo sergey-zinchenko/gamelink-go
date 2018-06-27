@@ -48,7 +48,7 @@ SELECT (SELECT CAST(CONCAT( 	'{"id":'  , 	u.id,
 							'"id":', 	s.id, ',', 
                             '"name":', 	IFNULL(JSON_QUOTE(s.name), ""), ',', 
                             '"state":', s.state, ',', 
-                            '"date":',	s.created_at,
+                            '"date":',	s.updated_at,
                             '}')), ']') AS JSON) as saves FROM (SELECT id, name, state, UNIX_TIMESTAMP(updated_at) as updated_at from saves WHERE user_id = ?)s) w,
                 (SELECT CAST(CONCAT('[',GROUP_CONCAT(DISTINCT CONCAT('{','"id":', t.tournament_id,'}')), ']') AS JSON) as tournaments FROM (SELECT tournament_id from users_tournaments WHERE user_id = ?)t) v`
 
