@@ -68,7 +68,7 @@ func NewApp() (a *App) {
 	tournaments := a.iris.Party("/tournaments", a.authMiddleware)
 	{
 		tournaments.Get("/{tournament_id:int}/join", a.joinTournament)
-		tournaments.Get("/{tournament_id:int}/updatepts", a.updateScore)
+		tournaments.Post("/{tournament_id:int}/updatescore", a.updateScore)
 		tournaments.Get("/{tournament_id:int}/leaderboard", a.getRoomLeaderboard)
 		tournaments.Get("/list", a.getAvailableTournaments)
 		tournaments.Get("/results", a.getUsersResults)
