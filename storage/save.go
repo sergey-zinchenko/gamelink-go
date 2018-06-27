@@ -24,7 +24,7 @@ func (u User) SavesString(saveID int) (string, error) {
 	}
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return "[]", nil
+			return "", graceful.NotFoundError{Message: "can't find save"}
 		}
 		return "", err
 	}

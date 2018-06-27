@@ -168,6 +168,9 @@ func (t Tournament) GetLeaderboard(userID int64) (string, error) {
 	}
 	err = t.dbs.mySQL.QueryRow(queries.GetRoomLeaderboard, userID, t.ID(), userID, userID, t.ID(), userID, t.ID(), userID, t.ID(), userID).Scan(&result)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", graceful.NotFoundError{Message: "no such tournament"}
+		}
 		return "", err
 	}
 	return result, nil
