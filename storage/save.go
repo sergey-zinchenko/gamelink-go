@@ -126,6 +126,9 @@ func (u User) CreateSave(data C.J) (C.J, error) {
 	if err != nil {
 		return nil, err
 	}
+	if result == nil {
+		return nil, graceful.ForbiddenError{Message: "can't create save"}
+	}
 	count, err := result.RowsAffected()
 	if err != nil {
 		return nil, err
