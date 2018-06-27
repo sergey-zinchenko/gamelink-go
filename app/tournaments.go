@@ -6,7 +6,6 @@ import (
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
 	"net/http"
-	"strconv"
 )
 
 //startTournament - func to start tournament from cron
@@ -86,8 +85,7 @@ func (a *App) updateScore(ctx iris.Context) {
 	if err != nil {
 		return
 	}
-	s := ctx.Request().URL.Query()["score"][0]
-	score, err := strconv.Atoi(s)
+	score, err := ctx.PostValueInt64("score")
 	if err != nil {
 		return
 	}
