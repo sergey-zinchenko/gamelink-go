@@ -72,15 +72,18 @@ func (a *App) deleteSave(ctx iris.Context) {
 		data C.J
 		err  error
 	)
+	defer func() {
+		if err != nil {
+			handleError(err, ctx)
+		}
+	}()
 	user := ctx.Values().Get(userCtxKey).(*storage.User)
 	saveID, err := ctx.Params().GetInt("id")
 	if err != nil {
-		handleError(err, ctx)
 		return
 	}
 	data, err = user.DeleteSave(saveID, ctx.Request().URL.Query()["fields"])
 	if err != nil {
-		handleError(err, ctx)
 		return
 	}
 	if data == nil {

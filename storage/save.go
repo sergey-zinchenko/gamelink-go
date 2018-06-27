@@ -24,7 +24,7 @@ func (u User) SavesString(saveID int) (string, error) {
 	}
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return "[]", nil
+			return "", graceful.NotFoundError{Message: "can't find save"}
 		}
 		return "", err
 	}
@@ -125,6 +125,9 @@ func (u User) CreateSave(data C.J) (C.J, error) {
 	result, err := u.dbs.mySQL.Exec(queries.CreateSaveQuery, s, u.ID())
 	if err != nil {
 		return nil, err
+	}
+	if result == nil {
+		return nil, graceful.ForbiddenError{Message: "can't create save"}
 	}
 	count, err := result.RowsAffected()
 	if err != nil {

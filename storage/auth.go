@@ -67,12 +67,3 @@ func (u User) AuthToken() (string, error) {
 	}
 	return authToken, nil
 }
-
-//Tournament - metod to make tournament struct
-func (dbs DBS) Tournament(id int) (*Tournament, error) {
-	if id < 1 {
-		err := graceful.BadRequestError{Message: "wrong tournament id"}
-		return nil, err
-	}
-	return &Tournament{id, &dbs}, nil
-}

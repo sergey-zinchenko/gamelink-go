@@ -38,17 +38,22 @@ func (a *App) authMiddleware(ctx iris.Context) {
 		ctx.Next()
 	}()
 	token := ctx.GetHeader("Authorization")
-	ok := strings.HasPrefix(token, "Bearer ")
+	token = strings.TrimSpace(token)
+	arr := strings.Split(token, " ")
+	if len(arr) < 2 {
+		err = graceful.BadRequestError{Message: "authorization token not valid"}
+		return
+	}
+	ok := strings.HasPrefix(strings.ToUpper(arr[0]), "BEARER")
 	if !ok {
 		err = graceful.BadRequestError{Message: "authorization token not valid"}
 		return
 	}
-	token = strings.TrimPrefix(token, "Bearer ")
-	if token == "" {
+	if arr[1] == "" {
 		err = graceful.UnauthorizedError{Message: "authorization token not set"}
 		return
 	}
-	user, err = a.dbs.AuthorizedUser(token)
+	user, err = a.dbs.AuthorizedUser(arr[1])
 	if err != nil {
 		return
 	}
