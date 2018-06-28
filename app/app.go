@@ -34,9 +34,9 @@ func (a *App) ConnectDataBases() error {
 //router will be configured but not database connections
 func NewApp() (a *App) {
 	a = new(App)
-
 	a.iris = iris.New()
 	a.dbs = &storage.DBS{}
+
 	auth := a.iris.Party("/auth")
 	{
 		auth.Get("/", a.registerLogin)
@@ -61,10 +61,11 @@ func NewApp() (a *App) {
 		leaderboards.Get("/{id:int}/{lbtype: string}", a.getLeaderboard)
 	}
 
-	startTournament := a.iris.Party("/tournaments")
+	needAuth := a.iris.Party("/tournaments", a.basicAuthMiddleware)
 	{
-		startTournament.Post("/start", a.startTournament)
+		needAuth.Post("/start", a.startTournament)
 	}
+
 	tournaments := a.iris.Party("/tournaments", a.authMiddleware)
 	{
 		tournaments.Get("/{tournament_id:int}/join", a.joinTournament)

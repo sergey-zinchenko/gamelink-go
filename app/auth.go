@@ -2,6 +2,7 @@ package app
 
 import (
 	C "gamelink-go/common"
+	"gamelink-go/config"
 	"gamelink-go/graceful"
 	"gamelink-go/social"
 	"gamelink-go/storage"
@@ -24,6 +25,43 @@ var (
 		return nil
 	}
 )
+
+func (a *App) basicAuthMiddleware(ctx iris.Context) {
+	var err error
+	defer func() {
+		if err != nil {
+			handleError(err, ctx)
+			ctx.StopExecution()
+		}
+		ctx.Next()
+	}()
+	header := ctx.GetHeader("Authorization")
+	header = strings.TrimSpace(header)
+	if strings.ToUpper(header) != "BASIC" {
+		err = graceful.BadRequestError{Message: "authorization header not valid"}
+		return
+	}
+	login := ctx.PostValue("login")
+	if login == "" {
+		err = graceful.BadRequestError{Message: "login can not be blank"}
+		return
+	}
+	if login != config.AdminLogin {
+		err = graceful.ForbiddenError{Message: "wrong login or password"}
+		return
+	}
+	password := ctx.PostValue("password")
+	if password == "" {
+		err = graceful.BadRequestError{Message: "password can not be blank"}
+		return
+	}
+	if password != config.AdminPassword {
+		err = graceful.ForbiddenError{Message: "wrong login or password"}
+		return
+	}
+	return
+
+}
 
 func (a *App) authMiddleware(ctx iris.Context) {
 	var (
