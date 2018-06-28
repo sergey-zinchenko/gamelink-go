@@ -175,5 +175,5 @@ VIEW leader_board%[1]d AS
 ENGINE = InnoDB;`
 
 	//IncreaseGroupCocncatBuferSize - query to increase bufer size
-	IncreaseGroupCocncatBuferSize = `SET @@global.group_concat_max_len=4096000\g`
+	IncreaseGroupCocncatBuferSize = `SET @@global.group_concat_max_len=4096000`
 )
