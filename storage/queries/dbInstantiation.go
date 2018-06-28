@@ -173,7 +173,4 @@ VIEW leader_board%[1]d AS
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;`
-
-	//IncreaseGroupCocncatBuferSize - query to increase bufer size
-	IncreaseGroupCocncatBuferSize = `SET @@global.group_concat_max_len=4096000`
 )

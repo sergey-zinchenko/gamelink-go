@@ -5,6 +5,8 @@ import (
 	"gamelink-go/config"
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
+	"github.com/kataras/iris/middleware/basicauth"
+	"time"
 )
 
 const (
@@ -60,10 +62,17 @@ func NewApp() (a *App) {
 	{
 		leaderboards.Get("/{id:int}/{lbtype: string}", a.getLeaderboard)
 	}
+	authConfig := basicauth.Config{
+		Users:   map[string]string{"myusername": "mypassword", "mySecondusername": "mySecondpassword"},
+		Realm:   "Authorization Required", // defaults to "Authorization Required"
+		Expires: time.Duration(30) * time.Minute,
+	}
 
-	needAuth := a.iris.Party("/tournaments", a.basicAuthMiddleware)
+	authentication := basicauth.New(authConfig)
+
+	needAuth := a.iris.Party("/tournaments", authentication)
 	{
-		needAuth.Post("/start", a.startTournament)
+		needAuth.Get("/start", a.startTournament)
 	}
 
 	tournaments := a.iris.Party("/tournaments", a.authMiddleware)

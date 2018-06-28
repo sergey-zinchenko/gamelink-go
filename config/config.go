@@ -29,10 +29,6 @@ var (
 	RedisPassword string
 	//RedisDb - concrete database of the redis server to work with
 	RedisDb int
-	//AdminLogin - login to start tournament
-	AdminLogin string
-	//AdminPassword - password to start tournament
-	AdminPassword string
 )
 
 const (
@@ -51,8 +47,6 @@ const (
 	redisAddrKey     = "REDISADDR"
 	redisPwdKey      = "REDISPWD"
 	redisDbKey       = "REDISDB"
-	login            = "ADMINLOGIN"
-	password         = "ADMINPWD"
 )
 
 //GetEnvironment - this function returns mode string of the os environment or "development" mode if empty or not defined
@@ -125,6 +119,4 @@ func LoadEnvironment() {
 	if VkontakteAppSecret == "" {
 		log.Fatal("vk app secret must be set")
 	}
-	AdminLogin = os.Getenv(login)
-	AdminPassword = os.Getenv(password)
 }

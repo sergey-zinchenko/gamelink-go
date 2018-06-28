@@ -78,9 +78,6 @@ func (dbs *DBS) CheckTables() (err error) {
 		if _, err = tx.Exec(queries.CreateUsersTournamentsTable); err != nil {
 			return err
 		}
-		if _, err = tx.Exec(queries.IncreaseGroupCocncatBuferSize); err != nil {
-			return err
-		}
 
 		for k := 1; k < NumOfLeaderBoards+1; k++ {
 			viewCreationScript := fmt.Sprintf(queries.CreateLbView, k)
