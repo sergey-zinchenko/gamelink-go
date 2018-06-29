@@ -29,6 +29,12 @@ var (
 	RedisPassword string
 	//RedisDb - concrete database of the redis server to work with
 	RedisDb int
+	//TournamentsSupported - tournaments support enabled
+	TournamentsSupported bool
+	//TournamentsAdminUsername - username for base auth tournament admin (creation)
+	TournamentsAdminUsername string
+	//TournamentsAdminPassword - password for base auth tournament admin (creation)
+	TournamentsAdminPassword string
 )
 
 const (
@@ -47,6 +53,8 @@ const (
 	redisAddrKey     = "REDISADDR"
 	redisPwdKey      = "REDISPWD"
 	redisDbKey       = "REDISDB"
+	taUnameKey       = "TAUSERNAME"
+	taPwdKey         = "TAPASSWORD"
 )
 
 //GetEnvironment - this function returns mode string of the os environment or "development" mode if empty or not defined
@@ -118,5 +126,19 @@ func LoadEnvironment() {
 	VkontakteAppSecret = os.Getenv(vkAppSecKey)
 	if VkontakteAppSecret == "" {
 		log.Fatal("vk app secret must be set")
+	}
+	VkontakteAppSecret = os.Getenv(vkAppSecKey)
+	if VkontakteAppSecret == "" {
+		log.Fatal("vk app secret must be set")
+	}
+	TournamentsAdminUsername, TournamentsSupported = os.LookupEnv(taUnameKey)
+	if TournamentsSupported {
+		if TournamentsAdminUsername == "" {
+			log.Fatal("tournament admin username must be set")
+		}
+		TournamentsAdminPassword = os.Getenv(taPwdKey)
+		if TournamentsAdminPassword == "" {
+			log.Fatal("tournament admin password must be set")
+		}
 	}
 }

@@ -62,26 +62,29 @@ func NewApp() (a *App) {
 	{
 		leaderboards.Get("/{id:int}/{lbtype: string}", a.getLeaderboard)
 	}
-	authConfig := basicauth.Config{
-		Users:   map[string]string{"myusername": "mypassword", "mySecondusername": "mySecondpassword"},
-		Realm:   "Authorization Required", // defaults to "Authorization Required"
-		Expires: time.Duration(30) * time.Minute,
-	}
 
-	authentication := basicauth.New(authConfig)
+	if config.TournamentsSupported {
+		authConfig := basicauth.Config{
+			Users:   map[string]string{config.TournamentsAdminUsername: config.TournamentsAdminPassword},
+			Realm:   "Authorization Required", // defaults to "Authorization Required"
+			Expires: time.Duration(30) * time.Minute,
+		}
 
-	needAuth := a.iris.Party("/tournaments", authentication)
-	{
-		needAuth.Get("/start", a.startTournament)
-	}
+		authentication := basicauth.New(authConfig)
 
-	tournaments := a.iris.Party("/tournaments", a.authMiddleware)
-	{
-		tournaments.Get("/{tournament_id:int}/join", a.joinTournament)
-		tournaments.Post("/{tournament_id:int}/updatescore", a.updateScore)
-		tournaments.Get("/{tournament_id:int}/leaderboard", a.getRoomLeaderboard)
-		tournaments.Get("/list", a.getAvailableTournaments)
-		tournaments.Get("/results", a.getUsersResults)
+		needAuth := a.iris.Party("/tournaments", authentication)
+		{
+			needAuth.Get("/start", a.startTournament)
+		}
+
+		tournaments := a.iris.Party("/tournaments", a.authMiddleware)
+		{
+			tournaments.Get("/{tournament_id:int}/join", a.joinTournament)
+			tournaments.Post("/{tournament_id:int}/updatescore", a.updateScore)
+			tournaments.Get("/{tournament_id:int}/leaderboard", a.getRoomLeaderboard)
+			tournaments.Get("/list", a.getAvailableTournaments)
+			tournaments.Get("/results", a.getUsersResults)
+		}
 	}
 	a.iris.OnAnyErrorCode(func(ctx iris.Context) {
 		if config.IsDevelopmentEnv() {
