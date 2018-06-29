@@ -18,6 +18,9 @@ spec:
       containers:
       - image: mysql:5.7
         name: mysql
+        args:
+         - --group_concat_max_len=4194304
+         - --max_allowed_packet=4194304
         env:
         - name: MYSQL_ROOT_PASSWORD
           valueFrom:
