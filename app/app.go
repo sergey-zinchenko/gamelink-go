@@ -63,7 +63,7 @@ func NewApp() (a *App) {
 		leaderboards.Get("/{id:int}/{lbtype: string}", a.getLeaderboard)
 	}
 	authConfig := basicauth.Config{
-		Users:   map[string]string{"myusername": "mypassword", "mySecondusername": "mySecondpassword"},
+		Users:   map[string]string{config.TournamentsAdminUsername: config.TournamentsAdminPassword},
 		Realm:   "Authorization Required", // defaults to "Authorization Required"
 		Expires: time.Duration(30) * time.Minute,
 	}

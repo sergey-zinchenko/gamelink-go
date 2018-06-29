@@ -22,16 +22,19 @@ func (a *App) startTournament(ctx iris.Context) {
 	getUsersInRoom = ctx.Request().URL.Query()["users_in_room"]
 	if getUsersInRoom == nil || getUsersInRoom[0] == "" {
 		err = graceful.BadRequestError{Message: "invalid param users in room"}
+		return
 	}
 
 	getTournamentDuration = ctx.Request().URL.Query()["tournament_duration"]
 	if getTournamentDuration == nil || getTournamentDuration[0] == "" {
 		err = graceful.BadRequestError{Message: "invalid tournament duration"}
+		return
 	}
 
 	getRegistrationDuration = ctx.Request().URL.Query()["registration_duration"]
 	if getRegistrationDuration == nil || getRegistrationDuration[0] == "" {
 		err = graceful.BadRequestError{Message: "invalid registration duration"}
+		return
 	}
 	usersInRoom, err := strconv.ParseInt(getUsersInRoom[0], 10, 64)
 	if err != nil {
@@ -101,7 +104,7 @@ func (a *App) updateScore(ctx iris.Context) {
 	if err != nil {
 		return
 	}
-	score, err := ctx.PostValueInt64("score")
+	score, err := ctx.PostValueFloat64("score")
 	if err != nil {
 		return
 	}
