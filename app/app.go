@@ -5,6 +5,8 @@ import (
 	"gamelink-go/config"
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
+	"github.com/kataras/iris/middleware/basicauth"
+	"time"
 )
 
 const (
@@ -34,9 +36,9 @@ func (a *App) ConnectDataBases() error {
 //router will be configured but not database connections
 func NewApp() (a *App) {
 	a = new(App)
-
 	a.iris = iris.New()
 	a.dbs = &storage.DBS{}
+
 	auth := a.iris.Party("/auth")
 	{
 		auth.Get("/", a.registerLogin)
@@ -60,11 +62,19 @@ func NewApp() (a *App) {
 	{
 		leaderboards.Get("/{id:int}/{lbtype: string}", a.getLeaderboard)
 	}
-
-	startTournament := a.iris.Party("/tournaments")
-	{
-		startTournament.Post("/start", a.startTournament)
+	authConfig := basicauth.Config{
+		Users:   map[string]string{"myusername": "mypassword", "mySecondusername": "mySecondpassword"},
+		Realm:   "Authorization Required", // defaults to "Authorization Required"
+		Expires: time.Duration(30) * time.Minute,
 	}
+
+	authentication := basicauth.New(authConfig)
+
+	needAuth := a.iris.Party("/tournaments", authentication)
+	{
+		needAuth.Get("/start", a.startTournament)
+	}
+
 	tournaments := a.iris.Party("/tournaments", a.authMiddleware)
 	{
 		tournaments.Get("/{tournament_id:int}/join", a.joinTournament)

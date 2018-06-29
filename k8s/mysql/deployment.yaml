@@ -20,6 +20,9 @@ spec:
         args:
         - "--ignore-db-dir=lost+found"
         name: mysql
+        args:
+         - --group_concat_max_len=4194304
+         - --max_allowed_packet=4194304
         env:
         - name: MYSQL_ROOT_PASSWORD
           valueFrom:

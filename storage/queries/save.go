@@ -3,16 +3,24 @@ package queries
 const (
 	//GetAllSavesQuery - mysql query to get all saves of given user
 	GetAllSavesQuery = `
-SELECT 
-  CAST(CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('{', '"id":', s.id, ',', '"name":', JSON_QUOTE(s.name), '}')), ']')
-       AS JSON)
-FROM saves s
-WHERE s.user_id = (SELECT u.id from users u WHERE u.id=? AND u.deleted != 1)`
+SELECT CAST(CONCAT('[',GROUP_CONCAT(DISTINCT CONCAT('{',
+							'"id":', 	s.id, ',', 
+                            '"name":', 	IFNULL(JSON_QUOTE(s.name), ""), ',', 
+                            '"state":', s.state, ',', 
+                            '"date":',	s.updated_at,
+                            '}')), ']') AS JSON) as saves
+    FROM (SELECT s.id, s.name, s.state, UNIX_TIMESTAMP(s.updated_at) as updated_at 
+    from saves s, users u WHERE u.id=? AND u.deleted != 1  AND s.user_id=u.id) s`
 	//GetSaveQuery - mysql query to get specified save of given user
 	GetSaveQuery = `
-SELECT JSON_OBJECT('id', s.id, 'name', s.name)
-FROM saves s
-WHERE s.id = ? AND s.user_id = (SELECT id from users WHERE id=? AND deleted != 1)`
+SELECT CAST(CONCAT(
+    '{"id":'  , 	s.id, 
+	IFNULL(CONCAT(',"name":' , 	JSON_QUOTE(s.name)),""),
+    IFNULL(CONCAT(',"state":', 	s.state),""), ',',
+    '"date":', s.updated_at,
+    '}') AS JSON) as save 
+    FROM (SELECT s.id, s.name, s.state, UNIX_TIMESTAMP(s.updated_at) as updated_at 
+    from saves s, users u WHERE u.id=? AND u.deleted != 1  AND s.user_id=u.id  AND s.id = ?) s`
 	//GetSaveDataQuery - mysql query to get save's json field data
 	GetSaveDataQuery = `
 SELECT data

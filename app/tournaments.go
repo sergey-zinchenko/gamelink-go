@@ -6,6 +6,7 @@ import (
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
 	"net/http"
+	"strconv"
 )
 
 //startTournament - func to start tournament from cron
@@ -16,21 +17,36 @@ func (a *App) startTournament(ctx iris.Context) {
 			handleError(err, ctx)
 		}
 	}()
-	var usersInRoom, tournamentDuration, registrationDuration int64
-	usersInRoom, err = ctx.PostValueInt64("users_in_room")
-	if err != nil {
-		return
+	var getUsersInRoom, getTournamentDuration, getRegistrationDuration []string
+
+	getUsersInRoom = ctx.Request().URL.Query()["users_in_room"]
+	if getUsersInRoom == nil || getUsersInRoom[0] == "" {
+		err = graceful.BadRequestError{Message: "invalid param users in room"}
 	}
-	tournamentDuration, err = ctx.PostValueInt64("tournament_duration")
-	if err != nil {
-		return
+
+	getTournamentDuration = ctx.Request().URL.Query()["tournament_duration"]
+	if getTournamentDuration == nil || getTournamentDuration[0] == "" {
+		err = graceful.BadRequestError{Message: "invalid tournament duration"}
 	}
-	registrationDuration, err = ctx.PostValueInt64("registration_duration")
+
+	getRegistrationDuration = ctx.Request().URL.Query()["registration_duration"]
+	if getRegistrationDuration == nil || getRegistrationDuration[0] == "" {
+		err = graceful.BadRequestError{Message: "invalid registration duration"}
+	}
+	usersInRoom, err := strconv.ParseInt(getUsersInRoom[0], 10, 64)
 	if err != nil {
 		return
 	}
 	if usersInRoom < 1 {
 		err = graceful.BadRequestError{Message: "wrong users count in room"}
+		return
+	}
+	tournamentDuration, err := strconv.ParseInt(getTournamentDuration[0], 10, 64)
+	if err != nil {
+		return
+	}
+	registrationDuration, err := strconv.ParseInt(getRegistrationDuration[0], 10, 64)
+	if err != nil {
 		return
 	}
 	if tournamentDuration < 60 || registrationDuration < 60 || tournamentDuration < registrationDuration {
