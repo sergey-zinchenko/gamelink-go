@@ -104,7 +104,7 @@ func (a *App) updateScore(ctx iris.Context) {
 	if err != nil {
 		return
 	}
-	score, err := ctx.PostValueInt64("score")
+	score, err := ctx.PostValueFloat64("score")
 	if err != nil {
 		return
 	}
