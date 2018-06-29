@@ -19,19 +19,25 @@ func (dbs DBS) AuthorizedUser(token string) (*User, error) {
 	if dbs.rc == nil {
 		return nil, errors.New("databases not initialized")
 	}
-	idStr, err := dbs.rc.Get(authRedisKeyPref + token).Result()
-	if err != nil {
-		if err == redis.Nil {
-			return nil, &graceful.UnauthorizedError{Message: "key does not exists in redis"}
+	var id int64
+	err := dbs.rc.Watch(func(tx *redis.Tx) error {
+		idStr, err := dbs.rc.Get(authRedisKeyPref + token).Result()
+		if err != nil {
+			if err == redis.Nil {
+				return &graceful.UnauthorizedError{Message: "key does not exists in redis"}
+			}
+			return err
 		}
-		return nil, err
-	}
-
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		return nil, err
-	}
-	_, err = dbs.rc.Set(authRedisKeyPref+token, id, 8*time.Hour).Result()
+		id, err = strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			return err
+		}
+		_, err = dbs.rc.Set(authRedisKeyPref+token, id, 8*time.Hour).Result()
+		if err != nil {
+			return err
+		}
+		return err
+	}, authRedisKeyPref+token)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +63,7 @@ func (u User) AuthToken() (string, error) {
 	}
 	var authToken string
 	for ok := false; !ok; {
-		authToken = C.RandStringBytes(20)
+		authToken = C.RandStringBytes(40)
 		authKey := authRedisKeyPref + authToken
 		var err error
 		ok, err = u.dbs.rc.SetNX(authKey, u.ID(), time.Hour).Result()
