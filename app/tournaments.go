@@ -6,6 +6,7 @@ import (
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
 	"net/http"
+	"regexp"
 	"strconv"
 )
 
@@ -104,8 +105,13 @@ func (a *App) updateScore(ctx iris.Context) {
 	if err != nil {
 		return
 	}
-	score, err := ctx.PostValueFloat64("score")
+	score := ctx.PostValue("score")
+	matched, err := regexp.MatchString("^[0-9]+$", score)
 	if err != nil {
+		return
+	}
+	if !matched {
+		err = graceful.BadRequestError{Message: "wrong score"}
 		return
 	}
 	err = tournament.UpdateTournamentScore(user.ID(), score)
