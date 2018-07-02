@@ -1,14 +1,14 @@
 kind: PersistentVolume
 apiVersion: v1
 metadata:
-  name: mysql-pv-volume
+  name: gamelink-mysql-pvm
   labels:
     type: local
     app: gamelink
 spec:
-  storageClassName: manual
+  storageClassName: shared
   capacity:
-    storage: 2Gi
+    storage: 5Gi
   accessModes:
     - ReadWriteOnce
   hostPath:
@@ -17,11 +17,11 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: mysql-pv-claim
+  name: gamelink-mysql-pvc
   labels:
     app: gamelink
 spec:
-  storageClassName: manual
+  storageClassName: shared
   accessModes:
     - ReadWriteOnce
   resources:

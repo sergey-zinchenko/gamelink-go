@@ -19,27 +19,32 @@ spec:
       - image: mysql:5.7
         args:
         - "--ignore-db-dir=lost+found"
+        - "--group_concat_max_len=4194304"
+        - "--max_allowed_packet=4194304"
+        - "--sql-mode="
         name: mysql
-        args:
-         - --group_concat_max_len=4194304
-         - --max_allowed_packet=4194304
         env:
-        - name: MYSQL_ROOT_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: gamelink
-              key: MYSQLROOTPASSWORD
+        - name: MYSQL_RANDOM_ROOT_PASSWORD
+          value: "true"
+#        - name: MYSQL_ROOT_PASSWORD
+#          valueFrom:
+#            secretKeyRef:
+#              name: gamelink
+#              key: MYSQLROOTPASSWORD
         - name: MYSQL_DATABASE
+#          value: gamelink
           valueFrom:
             configMapKeyRef:
               name: gamelink
               key: MYSQLDATABASE
         - name: MYSQL_USER
+#          value: gamelink
           valueFrom:
              configMapKeyRef:
                name: gamelink
                key: MYSQLUSERNAME
         - name: MYSQL_PASSWORD
+#          value: password
           valueFrom:
             secretKeyRef:
                name: gamelink
@@ -53,4 +58,4 @@ spec:
       volumes:
       - name: mysql-persistent-storage
         persistentVolumeClaim:
-          claimName: mysql-pv-claim
+          claimName: gamelink-mysql-pvc
