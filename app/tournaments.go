@@ -110,7 +110,7 @@ func (a *App) updateScore(ctx iris.Context) {
 	if err != nil {
 		return
 	}
-	if !matched {
+	if !matched || len(score) != 100 {
 		err = graceful.BadRequestError{Message: "wrong score"}
 		return
 	}
