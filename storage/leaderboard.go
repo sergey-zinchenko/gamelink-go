@@ -9,8 +9,9 @@ import (
 )
 
 const (
-	friendsLeaderboard  = "friends"
-	allUsersLeaderboard = "all"
+	friendsLeaderboard             = "friends"
+	allUsersLeaderboard            = "all"
+	friendsAndAllUsersLeaderboards = "full"
 )
 
 //LeaderboardString - return leaderboards
@@ -35,6 +36,8 @@ func (u User) LeaderboardString(lbType string, lbNum int) (string, error) {
 			err = u.dbs.mySQL.QueryRow(fmt.Sprintf(queries.AllUsersLeaderboardQuery, lbNum), u.ID(), u.ID(), u.ID()).Scan(&result)
 		case friendsLeaderboard:
 			err = u.dbs.mySQL.QueryRow(fmt.Sprintf(queries.FriendsLeaderboardQuery, lbNum), u.ID(), u.ID(), u.ID()).Scan(&result)
+		case friendsAndAllUsersLeaderboards:
+			err = u.dbs.mySQL.QueryRow(fmt.Sprintf(queries.FullLeaderboardQuery, lbNum), u.ID(), u.ID(), u.ID(), u.ID(), u.ID()).Scan(&result)
 		default:
 			return "", graceful.BadRequestError{Message: "wrong leader board type"}
 		}
