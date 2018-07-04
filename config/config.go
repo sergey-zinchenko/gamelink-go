@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
 	"os"
@@ -28,20 +29,32 @@ var (
 	RedisPassword string
 	//RedisDb - concrete database of the redis server to work with
 	RedisDb int
+	//TournamentsSupported - tournaments support enabled
+	TournamentsSupported bool
+	//TournamentsAdminUsername - username for base auth tournament admin (creation)
+	TournamentsAdminUsername string
+	//TournamentsAdminPassword - password for base auth tournament admin (creation)
+	TournamentsAdminPassword string
 )
 
 const (
-	modeKey      = "MODE"
-	devMode      = "development"
-	fbAppIDKey   = "FBAPPID"
-	fbAppSecKey  = "FBAPPSEC"
-	vkAppIDKey   = "VKAPPID"
-	vkAppSecKey  = "VKAPPSEC"
-	servAddrKey  = "SERVADDR"
-	mysqlDsnKey  = "MYSQLDSN"
-	redisAddrKey = "REDISADDR"
-	redisPwdKey  = "REDISPWD"
-	redisDbKey   = "REDISDB"
+	modeKey          = "MODE"
+	devMode          = "development"
+	fbAppIDKey       = "FBAPPID"
+	fbAppSecKey      = "FBAPPSEC"
+	vkAppIDKey       = "VKAPPID"
+	vkAppSecKey      = "VKAPPSEC"
+	servAddrKey      = "SERVADDR"
+	mysqlDsnKey      = "MYSQLDSN"
+	mysqlUserNameKey = "MYSQLUSERNAME"
+	mysqlPasswordKey = "MYSQLPASSWORD"
+	mysqlDatabase    = "MYSQLDATABASE"
+	mysqlAddrKey     = "MYSQLADDR"
+	redisAddrKey     = "REDISADDR"
+	redisPwdKey      = "REDISPWD"
+	redisDbKey       = "REDISDB"
+	taUnameKey       = "TAUSERNAME"
+	taPwdKey         = "TAPASSWORD"
 )
 
 //GetEnvironment - this function returns mode string of the os environment or "development" mode if empty or not defined
@@ -71,7 +84,22 @@ func LoadEnvironment() {
 		log.Fatal("server address must be set")
 	}
 	MysqlDsn = os.Getenv(mysqlDsnKey)
-	if MysqlDsn == "" {
+	mysqlUserName := os.Getenv(mysqlUserNameKey)
+	mysqlPassword := os.Getenv(mysqlPasswordKey)
+	mysqlDatabase := os.Getenv(mysqlDatabase)
+	mysqlAddress := os.Getenv(mysqlAddrKey)
+	if mysqlAddress != "" || mysqlUserName != "" || mysqlPassword != "" || mysqlDatabase != "" {
+		if mysqlAddress == "" {
+			log.Fatal("mysql server address must be set")
+		}
+		if mysqlUserName == "" {
+			log.Fatal("mysql user name must be set")
+		}
+		if mysqlDatabase == "" {
+			log.Fatal("mysql database name must be set")
+		}
+		MysqlDsn = fmt.Sprintf("%s:%s@%s/%s", mysqlUserName, mysqlPassword, mysqlAddress, mysqlDatabase)
+	} else if MysqlDsn == "" {
 		log.Fatal("mysql data source name must be set")
 	}
 	RedisAddr = os.Getenv(redisAddrKey)
@@ -98,5 +126,19 @@ func LoadEnvironment() {
 	VkontakteAppSecret = os.Getenv(vkAppSecKey)
 	if VkontakteAppSecret == "" {
 		log.Fatal("vk app secret must be set")
+	}
+	VkontakteAppSecret = os.Getenv(vkAppSecKey)
+	if VkontakteAppSecret == "" {
+		log.Fatal("vk app secret must be set")
+	}
+	TournamentsAdminUsername, TournamentsSupported = os.LookupEnv(taUnameKey)
+	if TournamentsSupported {
+		if TournamentsAdminUsername == "" {
+			log.Fatal("tournament admin username must be set")
+		}
+		TournamentsAdminPassword = os.Getenv(taPwdKey)
+		if TournamentsAdminPassword == "" {
+			log.Fatal("tournament admin password must be set")
+		}
 	}
 }

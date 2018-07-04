@@ -5,6 +5,8 @@ import (
 	"gamelink-go/config"
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
+	"github.com/kataras/iris/middleware/basicauth"
+	"time"
 )
 
 const (
@@ -21,7 +23,13 @@ type (
 
 //ConnectDataBases - tries to connect to all databases required to function of the app. Method can be recalled.
 func (a *App) ConnectDataBases() error {
-	return a.dbs.Connect()
+	if err := a.dbs.Connect(); err != nil {
+		return err
+	}
+	if err := a.dbs.CheckTables(); err != nil {
+		return err
+	}
+	return nil
 }
 
 //NewApp - You can construct and initialize App (application) object with that function
@@ -30,6 +38,7 @@ func NewApp() (a *App) {
 	a = new(App)
 	a.iris = iris.New()
 	a.dbs = &storage.DBS{}
+
 	auth := a.iris.Party("/auth")
 	{
 		auth.Get("/", a.registerLogin)
@@ -44,19 +53,39 @@ func NewApp() (a *App) {
 	instances := a.iris.Party("/saves", a.authMiddleware)
 	{
 		instances.Get("/", a.getSave)
-		instances.Get("/{id}", a.getSave)
+		instances.Get("/{id:int}", a.getSave)
 		instances.Post("/", a.postSave)
-		instances.Post("/{id}", a.postSave)
-		instances.Delete("/{id}", a.deleteSave)
+		instances.Post("/{id:int}", a.postSave)
+		instances.Delete("/{id:int}", a.deleteSave)
 	}
 	leaderboards := a.iris.Party("/leaderboards", a.authMiddleware)
 	{
 		leaderboards.Get("/{id:int}/{lbtype: string}", a.getLeaderboard)
 	}
-	//service := i.Party("/service")
-	//{
-	//
-	//}
+
+	if config.TournamentsSupported {
+		authConfig := basicauth.Config{
+			Users:   map[string]string{config.TournamentsAdminUsername: config.TournamentsAdminPassword},
+			Realm:   "Authorization Required", // defaults to "Authorization Required"
+			Expires: time.Duration(30) * time.Minute,
+		}
+
+		authentication := basicauth.New(authConfig)
+
+		needAuth := a.iris.Party("/tournaments", authentication)
+		{
+			needAuth.Get("/start", a.startTournament)
+		}
+
+		tournaments := a.iris.Party("/tournaments", a.authMiddleware)
+		{
+			tournaments.Get("/{tournament_id:int}/join", a.joinTournament)
+			tournaments.Post("/{tournament_id:int}/updatescore", a.updateScore)
+			tournaments.Get("/{tournament_id:int}/leaderboard", a.getRoomLeaderboard)
+			tournaments.Get("/list", a.getAvailableTournaments)
+			tournaments.Get("/results", a.getUsersResults)
+		}
+	}
 	a.iris.OnAnyErrorCode(func(ctx iris.Context) {
 		if config.IsDevelopmentEnv() {
 			if err := ctx.Values().Get(errorCtxKey); err != nil {

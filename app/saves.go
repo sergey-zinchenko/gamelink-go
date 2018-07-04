@@ -6,14 +6,27 @@ import (
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
 	"net/http"
+	"time"
 )
 
 func (a *App) getSave(ctx iris.Context) {
+	var saveID int
+	var err error
+	defer func() {
+		if err != nil {
+			handleError(err, ctx)
+		}
+	}()
 	user := ctx.Values().Get(userCtxKey).(*storage.User)
-	saveID, _ := ctx.Params().GetInt("id")
-	instances, err := user.Saves(saveID)
+	_, flag := ctx.Params().GetEntry("id")
+	if flag != false {
+		saveID, err = ctx.Params().GetInt("id")
+		if err != nil {
+			return
+		}
+	}
+	instances, err := user.SavesString(saveID)
 	if err != nil {
-		handleError(err, ctx)
 		return
 	}
 	ctx.ContentType(context.ContentJSONHeaderValue)
@@ -23,6 +36,7 @@ func (a *App) getSave(ctx iris.Context) {
 func (a *App) postSave(ctx iris.Context) {
 	var (
 		data, save C.J
+		saveID     int
 		err        error
 	)
 	defer func() {
@@ -35,9 +49,12 @@ func (a *App) postSave(ctx iris.Context) {
 	if err != nil {
 		return
 	}
-	saveID, err := ctx.Params().GetInt("id")
-	if err != nil {
-		return
+	_, flag := ctx.Params().GetEntry("id")
+	if flag != false {
+		saveID, err = ctx.Params().GetInt("id")
+		if err != nil {
+			return
+		}
 	}
 	if saveID != 0 {
 		save, err = user.UpdateSave(data, saveID)
@@ -56,7 +73,9 @@ func (a *App) deleteSave(ctx iris.Context) {
 		err  error
 	)
 	defer func() {
-		handleError(err, ctx)
+		if err != nil {
+			handleError(err, ctx)
+		}
 	}()
 	user := ctx.Values().Get(userCtxKey).(*storage.User)
 	saveID, err := ctx.Params().GetInt("id")
@@ -70,6 +89,7 @@ func (a *App) deleteSave(ctx iris.Context) {
 	if data == nil {
 		ctx.StatusCode(http.StatusNoContent)
 	} else {
+		data["updated_at"] = time.Now().Unix()
 		ctx.JSON(data)
 	}
 }

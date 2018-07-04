@@ -14,7 +14,7 @@ func (a *App) getLeaderboard(ctx iris.Context) {
 		handleError(err, ctx)
 		return
 	}
-	leaderboard, err := user.Leaderboard(ctx.Params().Get("lbtype"), lbID)
+	leaderboard, err := user.LeaderboardString(ctx.Params().Get("lbtype"), lbID)
 	if err != nil {
 		handleError(err, ctx)
 		return

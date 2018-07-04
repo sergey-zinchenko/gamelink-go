@@ -7,6 +7,7 @@ import (
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
 	"net/url"
+	"strings"
 )
 
 const (
@@ -36,12 +37,17 @@ func (a *App) authMiddleware(ctx iris.Context) {
 		}
 		ctx.Next()
 	}()
-	token := ctx.GetHeader("Authorization")
-	if token == "" {
-		err = graceful.UnauthorizedError{Message: "authorization token not set"}
+	header := strings.TrimSpace(ctx.GetHeader("Authorization"))
+	arr := strings.Split(header, " ")
+	if len(arr) < 2 {
+		err = graceful.BadRequestError{Message: "authorization header not valid"}
 		return
 	}
-	user, err = a.dbs.AuthorizedUser(token)
+	if strings.ToUpper(arr[0]) != "BEARER" {
+		err = graceful.BadRequestError{Message: "authorization header not valid"}
+		return
+	}
+	user, err = a.dbs.AuthorizedUser(arr[1])
 	if err != nil {
 		return
 	}

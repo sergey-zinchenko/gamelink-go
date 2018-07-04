@@ -25,12 +25,19 @@ func (u User) ID() int64 {
 }
 
 func (u *User) txCheck(userData social.ThirdPartyUser, tx *sql.Tx) (bool, error) {
+	var deletedFlag int
 	queryString := fmt.Sprintf(queries.CheckUserQuery, userData.ID().Name())
 	err := tx.QueryRow(queryString, userData.ID().Value()).Scan(&u.id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return false, nil
 		}
+		return false, err
+	}
+	q := fmt.Sprintf(queries.CheckFlag, userData.ID().Name())
+	err = tx.QueryRow(q, userData.ID().Value()).Scan(&deletedFlag)
+	if deletedFlag == 1 {
+		err = graceful.ForbiddenError{Message: "user was deleted"}
 		return false, err
 	}
 	return true, nil
@@ -100,10 +107,10 @@ func (u User) DataString() (string, error) {
 	if u.dbs.mySQL == nil {
 		return "", errors.New("databases not initialized")
 	}
-	err := u.dbs.mySQL.QueryRow(queries.GetExtraUserDataQuery, u.ID()).Scan(&str)
+	err := u.dbs.mySQL.QueryRow(queries.GetExtraUserDataQuery, u.ID(), u.ID(), u.ID(), u.ID(), u.ID()).Scan(&str)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return "", graceful.NotFoundError{"user not found"}
+			return "", graceful.NotFoundError{Message: "user not found"}
 		}
 		return "", err
 	}
@@ -117,10 +124,10 @@ func (u User) Data() (C.J, error) {
 	if u.dbs.mySQL == nil {
 		return nil, errors.New("databases not initialized")
 	}
-	err := u.dbs.mySQL.QueryRow(queries.GetExtraUserDataQuery, u.ID()).Scan(&bytes)
+	err := u.dbs.mySQL.QueryRow(queries.GetExtraUserDataQuery, u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID()).Scan(&bytes)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, graceful.NotFoundError{"user not found"}
+			return nil, graceful.NotFoundError{Message: "user not found"}
 		}
 		return nil, err
 	}
@@ -159,7 +166,19 @@ func (u User) txUpdate(data C.J, tx *sql.Tx) error {
 }
 
 func (u User) txDelete(tx *sql.Tx) error {
-	_, err := tx.Exec(queries.DeleteUserQuery, u.ID())
+	_, err := tx.Exec(queries.DeleteAllSaves, u.ID())
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(queries.DeleteUserQuery, u.ID())
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(queries.DeleteUserFromFriends, u.ID(), u.ID())
+	if err != nil {
+		return err
+	}
+
 	return err
 }
 
@@ -178,9 +197,9 @@ func (u User) txSyncFriends(friendsIds []social.ThirdPartyID, tx *sql.Tx) error 
 	for _, v := range friendsIds {
 		switch v.(type) {
 		case social.VkIdentifier:
-			_, err = vkStmt.Exec(u.ID(), v.Value())
+			_, err = vkStmt.Exec(u.ID(), v.Value(), v.Value(), u.ID())
 		case social.FbIdentifier:
-			_, err = fbStmt.Exec(u.ID(), v.Value())
+			_, err = fbStmt.Exec(u.ID(), v.Value(), v.Value(), u.ID())
 		}
 		if err != nil {
 			return err
@@ -212,6 +231,11 @@ func (u User) Update(data C.J) (C.J, error) {
 	}
 	delete(data, "fb_id")
 	delete(data, "vk_id")
+	delete(data, "name")
+	delete(data, "country")
+	delete(data, "bdate")
+	delete(data, "email")
+	delete(data, "sex")
 	tx, err := u.dbs.mySQL.Begin()
 	if err != nil {
 		return nil, err
@@ -239,7 +263,7 @@ func (u User) Delete(fields []string) (C.J, error) {
 				return nil, err
 			}
 			for _, v := range fields {
-				if v == "fb_id" || v == "vk_id" {
+				if v == "fb_id" || v == "vk_id" || v == "name" || v == "country" || v == "bdate" || v == "email" || v == "sex" {
 					continue
 				}
 				delete(data, v)
@@ -251,10 +275,6 @@ func (u User) Delete(fields []string) (C.J, error) {
 			return data, nil
 		}
 		err := u.txDelete(tx)
-		if err != nil {
-			return nil, err
-		}
-		err = u.logout() // Redis Call - Delete tokens from Redis
 		if err != nil {
 			return nil, err
 		}

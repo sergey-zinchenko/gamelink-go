@@ -9,23 +9,35 @@ import (
 )
 
 const (
-	friendsLeaderboard  = "friends"
-	allUsersLeaderboard = "all"
+	friendsLeaderboard             = "friends"
+	allUsersLeaderboard            = "all"
+	friendsAndAllUsersLeaderboards = "full"
 )
 
-//Leaderboard - return leaderboards
-func (u User) Leaderboard(lbType string, lbNum int) (string, error) {
+//LeaderboardString - return leaderboards
+func (u User) LeaderboardString(lbType string, lbNum int) (string, error) {
 	var result string
 	var err error
+	var flag int
 	if u.dbs.mySQL == nil {
 		return "", errors.New("databases not initialized")
 	}
-	if lbNum == 1 || lbNum == 2 {
+	err = u.dbs.mySQL.QueryRow(queries.IternalCheckFlag, u.ID()).Scan(&flag)
+	if err != nil {
+		return "", err
+	}
+	if flag == 1 {
+		err = graceful.ForbiddenError{Message: "request for deleted user"}
+		return "", err
+	}
+	if lbNum == 1 || lbNum == 2 || lbNum == 3 {
 		switch lbType {
 		case allUsersLeaderboard:
-			err = u.dbs.mySQL.QueryRow(fmt.Sprintf(queries.AllUsersLeaderboardQuery, lbNum), u.ID()).Scan(&result)
+			err = u.dbs.mySQL.QueryRow(fmt.Sprintf(queries.AllUsersLeaderboardQuery, lbNum), u.ID(), u.ID(), u.ID()).Scan(&result)
 		case friendsLeaderboard:
-			err = u.dbs.mySQL.QueryRow(fmt.Sprintf(queries.FriendsLeaderboardQuery, lbNum), u.ID()).Scan(&result)
+			err = u.dbs.mySQL.QueryRow(fmt.Sprintf(queries.FriendsLeaderboardQuery, lbNum), u.ID(), u.ID(), u.ID()).Scan(&result)
+		case friendsAndAllUsersLeaderboards:
+			err = u.dbs.mySQL.QueryRow(fmt.Sprintf(queries.FullLeaderboardQuery, lbNum), u.ID(), u.ID(), u.ID(), u.ID(), u.ID()).Scan(&result)
 		default:
 			return "", graceful.BadRequestError{Message: "wrong leader board type"}
 		}

@@ -7,10 +7,11 @@ import (
 	C "gamelink-go/common"
 	"gamelink-go/graceful"
 	"gamelink-go/storage/queries"
+	"time"
 )
 
-// Saves - return saves from db all or one by instance id
-func (u User) Saves(saveID int) (string, error) {
+// SavesString - return saves from db all or one by instance id
+func (u User) SavesString(saveID int) (string, error) {
 	var str string
 	var err error
 	if u.dbs.mySQL == nil {
@@ -23,7 +24,7 @@ func (u User) Saves(saveID int) (string, error) {
 	}
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return "", graceful.NotFoundError{Message: "saves not found"}
+			return "", graceful.NotFoundError{Message: "can't find save"}
 		}
 		return "", err
 	}
@@ -33,7 +34,15 @@ func (u User) Saves(saveID int) (string, error) {
 //txSaveData - returns save data in C.J format
 func (u User) txSaveData(saveID int, tx *sql.Tx) (C.J, error) {
 	var bytes []byte
-	err := tx.QueryRow(queries.GetSaveDataQuery, saveID).Scan(&bytes)
+	var flag int
+	err := tx.QueryRow(queries.IternalCheckFlag, u.ID()).Scan(&flag)
+	if err != nil {
+		return nil, err
+	}
+	if flag == 1 {
+		return nil, graceful.ForbiddenError{Message: "cant't update deleted user save"}
+	}
+	err = tx.QueryRow(queries.GetSaveDataQuery, saveID, u.ID()).Scan(&bytes)
 	if err != nil {
 		return nil, err
 	}
@@ -51,15 +60,24 @@ func (u User) txUpdateSaveData(data C.J, saveID int, tx *sql.Tx) error {
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(queries.UpdateSaveDataQuery, upd, saveID)
+	_, err = tx.Exec(queries.UpdateSaveDataQuery, upd, saveID, u.ID())
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
 func (u User) txDeleteSave(saveID int, tx *sql.Tx) error {
-	_, err := tx.Exec(queries.DeleteSaveQuery, saveID)
+	var flag int
+	err := tx.QueryRow(queries.IternalCheckFlag, u.ID()).Scan(&flag)
+	if err != nil {
+		return err
+	}
+	if flag == 1 {
+		return graceful.ForbiddenError{Message: "cant't delete deleted user save"}
+	}
+	_, err = tx.Exec(queries.DeleteSaveQuery, saveID, u.ID())
 	return err
 }
 
@@ -94,6 +112,7 @@ func (u User) UpdateSave(data C.J, saveID int) (C.J, error) {
 	if err != nil {
 		return nil, err
 	}
+	data["updated_at"] = time.Now().Unix()
 	return data, nil
 }
 
@@ -103,10 +122,25 @@ func (u User) CreateSave(data C.J) (C.J, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = u.dbs.mySQL.Exec(queries.CreateSaveQuery, s, u.ID())
+	result, err := u.dbs.mySQL.Exec(queries.CreateSaveQuery, s, u.ID())
 	if err != nil {
 		return nil, err
 	}
+	if result == nil {
+		return nil, graceful.ForbiddenError{Message: "can't create save"}
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return nil, err
+	}
+	if count == 0 {
+		return nil, graceful.ForbiddenError{Message: "can't create save"}
+	}
+	data["id"], err = result.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+	data["updated_at"] = time.Now().Unix()
 	return data, nil
 }
 
