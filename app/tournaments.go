@@ -106,11 +106,11 @@ func (a *App) updateScore(ctx iris.Context) {
 		return
 	}
 	score := ctx.PostValue("score")
-	matched, err := regexp.MatchString("^[0-9]+$", score)
+	matched, err := regexp.MatchString("^\\d{100}$", score)
 	if err != nil {
 		return
 	}
-	if !matched || len(score) != 100 {
+	if !matched {
 		err = graceful.BadRequestError{Message: "wrong score"}
 		return
 	}
