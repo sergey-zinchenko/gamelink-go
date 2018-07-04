@@ -29,6 +29,9 @@ SELECT (SELECT CAST(CONCAT( 	'{"id":'  , 	u.id,
                                 IFNULL(CONCAT(',"lb1":'  , 	u.lb1),""), 
                                 IFNULL(CONCAT(',"lb2":'  , 	u.lb2),""),
                                 IFNULL(CONCAT(',"lb3":'  , 	u.lb3),""),
+								IFNULL(CONCAT(',"rank1":'  , 	rank1),""),
+                                IFNULL(CONCAT(',"rank2":'  , 	rank2),""),
+                                IFNULL(CONCAT(',"rank3":'  , 	rank3),""),
                                 IFNULL(CONCAT(',"bdate":'  , 	UNIX_TIMESTAMP(STR_TO_DATE(u.bdate, '%d.%m.%Y'))),""), 
                                 IFNULL(CONCAT(',"meta":'   , 	u.meta),""),
                                 IFNULL(CONCAT(',"country":'  , 	JSON_QUOTE(u.country)),""),',',
@@ -50,7 +53,10 @@ SELECT (SELECT CAST(CONCAT( 	'{"id":'  , 	u.id,
                             '"state":', s.state, ',', 
                             '"date":',	s.updated_at,
                             '}')), ']') AS JSON) as saves FROM (SELECT id, name, state, UNIX_TIMESTAMP(updated_at) as updated_at from saves WHERE user_id = ?)s) w,
-                (SELECT CAST(CONCAT('[',GROUP_CONCAT(DISTINCT CONCAT('{','"id":', t.tournament_id,'}')), ']') AS JSON) as tournaments FROM (SELECT tournament_id from users_tournaments WHERE user_id = ?)t) v`
+                (SELECT CAST(CONCAT('[',GROUP_CONCAT(DISTINCT CONCAT('{','"id":', t.tournament_id,'}')), ']') AS JSON) as tournaments FROM (SELECT tournament_id from users_tournaments WHERE user_id = ?)t) v,
+				(SELECT COUNT(*) + 1 as rank1 FROM leader_board1 i, leader_board1 j WHERE i.id = ? AND j.score > i.score) as rank1,
+                (SELECT COUNT(*) + 1 as rank2 FROM leader_board2 i, leader_board2 j WHERE i.id = ? AND j.score > i.score) as rank2,
+                (SELECT COUNT(*) + 1 as rank3 FROM leader_board3 i, leader_board3 j WHERE i.id = ? AND j.score > i.score) as rank3`
 
 	//GetUserDataQuery - mysql query to get user's data json
 	GetUserDataQuery = `
