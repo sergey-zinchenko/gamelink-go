@@ -19,10 +19,10 @@ spec:
       - image: mysql:5.7
         args:
         - "--ignore-db-dir=lost+found"
+        - "--group_concat_max_len=4194304"
+        - "--max_allowed_packet=4194304"
+        command: --sql_mode=""
         name: mysql
-        args:
-         - --group_concat_max_len=4194304
-         - --max_allowed_packet=4194304
         env:
         - name: MYSQL_ROOT_PASSWORD
           valueFrom:

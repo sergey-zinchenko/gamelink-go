@@ -30,7 +30,7 @@ const (
 	GetRoomLeaderboard = `SELECT CAST(CONCAT(
     '{"id":', i.id, ',',
     '"nickname":', JSON_QUOTE(IFNULL(i.nickname,i.name)), ',',
-    '"score":', IFNULL(score,0), ',',
+    '"score":', IFNULL(JSON_QUOTE(score),0), ',',
     '"rank":', rank, ',',
     IFNULL(CONCAT('"country":', JSON_QUOTE(i.country), ','),''),
     IFNULL(CONCAT('"meta":', i.meta, ','),''),
@@ -39,7 +39,7 @@ const (
 					 (SELECT (CAST(IFNULL(CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('{',
 																		  '"id":', 			l.id, ',',
                                                                           '"nickname":', 	JSON_QUOTE(IFNULL(l.nickname,l.name)), ',',
-                                                                          '"score":', 		IFNULL(l.score, 0),
+                                                                          '"score":', 		IFNULL(JSON_QUOTE(l.score), 0),
 																		   IFNULL(CONCAT(',"country":', JSON_QUOTE(l.country)),''),
 																		   IFNULL(CONCAT(',"meta":', l.meta),''),
                                                                           '}')), ']'), "[]") AS JSON)) as leaderboard 
@@ -59,14 +59,8 @@ const (
 	GetResults = ` SELECT IFNULL(CAST(CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('{',
 									'"id":', p.tournament_id,
 								 	',', '"rank":',  p.rank,
-									',', '"score":', p.score,
+									',', '"score":', JSON_QUOTE(p.score),
 									'}')), ']') AS JSON),"[]") as results
 FROM (SELECT t.tournament_id, t.score, (SELECT count(*)+1 as rank FROM rooms_users WHERE room_id=t.room_id AND score > t.score) as rank 
 FROM (SELECT tournament_id, room_id, score FROM rooms_users t WHERE user_id = (SELECT id FROM users u WHERE u.id = ? AND u.deleted != 1) LIMIT 100) as t) as p `
-
-	//LockTableRoomsUsers - query to lock table when join transaction started
-	LockTableRoomsUsers = `LOCK TABLE rooms_users READ`
-
-	//UnlockTableRoomsUsers - query to unlock table when join transaction started or failed
-	UnlockTableRoomsUsers = `UNLOCK TABLES`
 )
