@@ -6,7 +6,7 @@ const (
 SELECT CAST(CONCAT(
            '{"id":', i.id, ',',
     		'"nickname":', JSON_QUOTE(i.nickname), ',',
-    		'"score":', IFNULL(i.score, 0), ',',
+    		'"score":', IFNULL(JSON_QUOTE(i.score), 0), ',',
     		'"rank":', rank, ',',
     		IFNULL(CONCAT('"country":', JSON_QUOTE(i.country), ','),''),
     		IFNULL(CONCAT('"meta":', i.meta, ','),''),
@@ -15,7 +15,7 @@ SELECT CAST(CONCAT(
 							(SELECT (CAST(IFNULL(CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('{',
 							'"id":', 			l.id, ',',
 							'"nickname":', 	JSON_QUOTE(l.nickname), ',',
-							'"score":', l.score,
+							'"score":', JSON_QUOTE(l.score),
 							IFNULL(CONCAT(',"country":', JSON_QUOTE(l.country)),''),
 							IFNULL(CONCAT(',"meta":', l.meta),''),
 							'}')), ']'), "[]") AS JSON)) as leaderboard
@@ -28,7 +28,7 @@ SELECT CAST(CONCAT(
 SELECT CAST(CONCAT(
     '{"id":', i.id, ',',
     '"nickname":', JSON_QUOTE(i.nickname), ',',
-    '"score":', IFNULL(i.score, 0), ',',
+    '"score":', IFNULL(JSON_QUOTE(i.score), 0), ',',
     '"rank":', rank, ',',
     IFNULL(CONCAT('"country":', JSON_QUOTE(i.country), ','),''),
     IFNULL(CONCAT('"meta":', i.meta, ','),''),
@@ -46,7 +46,7 @@ FROM
   (SELECT (CAST(IFNULL(CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('{',
                                                                 '"id":', j.id, ',',
                                                                 '"nickname":', JSON_QUOTE(j.nickname), ',',
-                                                                '"score":', j.score,
+                                                                '"score":', JSON_QUOTE(j.score),
                                                                 IFNULL(CONCAT(',"country":', JSON_QUOTE(j.country)),''),
                                                                 IFNULL(CONCAT(',"meta":', j.meta),''),
                                                                 '}')), ']'), "[]") AS JSON)) AS leaderboard

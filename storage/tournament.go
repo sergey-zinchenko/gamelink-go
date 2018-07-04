@@ -136,7 +136,7 @@ func (t Tournament) Join(userID int64) error {
 }
 
 //UpdateTournamentScore - method to update user score
-func (t Tournament) UpdateTournamentScore(userID int64, score float64) error {
+func (t Tournament) UpdateTournamentScore(userID int64, score string) error {
 	result, err := t.dbs.mySQL.Exec(queries.UpdateUserTournamentScore, score, t.ID(), userID, time.Now().Unix())
 	if err != nil {
 		return err
