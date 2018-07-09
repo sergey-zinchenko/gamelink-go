@@ -71,6 +71,11 @@ func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken) error {
 				return err
 			}
 		}
+		queryString := fmt.Sprintf(queries.UpdateInfo, user.Country(), user.BirthDate(), user.Gender())
+		_, err = tx.Exec(queryString, u.ID(), u.ID())
+		if err != nil {
+			return err
+		}
 		err = u.txSyncFriends(user.Friends(), tx)
 		if err != nil {
 			return err
