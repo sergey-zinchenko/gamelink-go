@@ -71,10 +71,22 @@ func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken) error {
 				return err
 			}
 		}
-		queryString := fmt.Sprintf(queries.UpdateInfo, user.Country(), user.BirthDate(), user.Gender())
-		_, err = tx.Exec(queryString, u.ID(), u.ID())
-		if err != nil {
-			return err
+		if registered && user.Country() != "" && user.BirthDate() != "" && user.Gender() != "" {
+			queryString := `UPDATE users u SET u.data = (SELECT JSON_INSERT((SELECT data FROM(SELECT k.data from users k WHERE k.id = ?) k )`
+			if user.Country() != "" {
+				queryString = queryString + fmt.Sprintf(`, '$.country', "%s"`, user.Country())
+			}
+			if user.BirthDate() != "" {
+				queryString = queryString + fmt.Sprintf(`, '$.bdate', "%s"`, user.BirthDate())
+			}
+			if user.Gender() != "" {
+				queryString = queryString + fmt.Sprintf(`, '$.sex', "%s"`, user.Gender())
+			}
+			queryString = queryString + `)) WHERE u.id = ?`
+			_, err = tx.Exec(queryString, u.ID(), u.ID())
+			if err != nil {
+				return err
+			}
 		}
 		err = u.txSyncFriends(user.Friends(), tx)
 		if err != nil {

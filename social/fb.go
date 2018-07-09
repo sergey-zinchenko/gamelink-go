@@ -180,8 +180,6 @@ func (token FbToken) get(userInfo *FbInfo) error {
 		} else if *f.Sex == "female" {
 			userInfo.Sex = "F"
 		}
-	} else {
-		userInfo.Sex = "X"
 	}
 	if f.Email != nil {
 		userInfo.UserEmail = *f.Email

@@ -3,13 +3,7 @@ package queries
 const (
 
 	//CheckUserQuery - mysql query to check user existence
-	CheckUserQuery = `
-SELECT id
-FROM users u
-WHERE u. %s = ?`
-
-	//UpdateInfo - mysql query to update user country if it was nill
-	UpdateInfo = `UPDATE users u SET u.data = (SELECT JSON_INSERT((SELECT data FROM(SELECT k.data from users k WHERE k.id = ?) k ), '$.country', "%s", '$.bdate', "%s", '$.sex', "%s")) WHERE u.id = ?`
+	CheckUserQuery = `SELECT id FROM users u WHERE u. %s = ?`
 
 	//CheckFlag - mysql query to check if user deleted when login
 	CheckFlag = `SELECT deleted FROM users u WHERE u.%s = ?`
