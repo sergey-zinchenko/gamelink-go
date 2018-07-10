@@ -27,7 +27,7 @@ type (
 		Name() string
 		//Bdate - return user birthday
 		BirthDate() string
-		//Sex - return user gender
+		//Gender - return user gender
 		Gender() string
 		//Email - return user email
 		Email() string
@@ -40,7 +40,7 @@ type (
 	commonInfo struct {
 		FullName    string `json:"name"`
 		Bdate       string `json:"bdate,omitempty"`
-		Sex         string `json:"sex"`
+		Sex         string `json:"sex,omitempty"`
 		UserEmail   string `json:"email,omitempty"`
 		UserCountry string `json:"country,omitempty"`
 		friends     []ThirdPartyID

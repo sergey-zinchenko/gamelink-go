@@ -109,12 +109,21 @@ func (token FbToken) get(userInfo *FbInfo) error {
 		}
 
 		fbLocInfo struct {
-			LocName string  `json:"city"`
+			LocName *string `json:"city"`
 			Country *string `json:"country"`
+		}
+
+		fbHomeInfo struct {
+			HomeName    *string `json:"city"`
+			HomeCountry *string `json:"country"`
 		}
 
 		fbLocation struct {
 			LocInfo *fbLocInfo `json:"location"`
+		}
+
+		fbHometown struct {
+			HomeInfo *fbHomeInfo `json:"location"`
 		}
 
 		fbGetResponse struct {
@@ -125,6 +134,7 @@ func (token FbToken) get(userInfo *FbInfo) error {
 			Bdate    *string        `json:"birthday"`
 			Email    *string        `json:"email"`
 			Location *fbLocation    `json:"location"`
+			Hometown *fbHometown    `json:"hometown"`
 			Error    *fbError       `json:"error"`
 		}
 	)
@@ -144,7 +154,7 @@ func (token FbToken) get(userInfo *FbInfo) error {
 		return err
 	}
 	q := req.URL.Query()
-	q.Add("fields", "id, name, friends,gender,birthday,email,location{location}")
+	q.Add("fields", "id, name, friends,gender,birthday,email,location{location},hometown{location}")
 	q.Add("locale", "en_GB")
 	q.Add("access_token", string(token))
 	req.URL.RawQuery = q.Encode()
@@ -180,14 +190,14 @@ func (token FbToken) get(userInfo *FbInfo) error {
 		} else if *f.Sex == "female" {
 			userInfo.Sex = "F"
 		}
-	} else {
-		userInfo.Sex = "X"
 	}
 	if f.Email != nil {
 		userInfo.UserEmail = *f.Email
 	}
 	if f.Location != nil && f.Location.LocInfo.Country != nil {
 		userInfo.UserCountry = *f.Location.LocInfo.Country
+	} else if f.Hometown != nil && f.Hometown.HomeInfo != nil && f.Hometown.HomeInfo.HomeCountry != nil {
+		userInfo.UserCountry = *f.Hometown.HomeInfo.HomeCountry
 	}
 
 	if f.Friends != nil && f.Friends.Data != nil {
