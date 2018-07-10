@@ -5,6 +5,9 @@ const (
 	//CheckUserQuery - mysql query to check user existence
 	CheckUserQuery = `SELECT id FROM users u WHERE u. %s = ?`
 
+	//UpdateSexCountryBdate - query to update fields if it's not in db
+	UpdateSexCountryBdate = `UPDATE users u SET u.data = (SELECT JSON_MERGE_PATCH(?, (SELECT data FROM(SELECT k.data from users k WHERE k.id = ?)k))) WHERE u.id = ?`
+
 	//CheckFlag - mysql query to check if user deleted when login
 	CheckFlag = `SELECT deleted FROM users u WHERE u.%s = ?`
 

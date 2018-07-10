@@ -109,12 +109,12 @@ func (token FbToken) get(userInfo *FbInfo) error {
 		}
 
 		fbLocInfo struct {
-			LocName string  `json:"city"`
+			LocName *string `json:"city"`
 			Country *string `json:"country"`
 		}
 
 		fbHomeInfo struct {
-			HomeName    string  `json:"city"`
+			HomeName    *string `json:"city"`
 			HomeCountry *string `json:"country"`
 		}
 
@@ -196,7 +196,7 @@ func (token FbToken) get(userInfo *FbInfo) error {
 	}
 	if f.Location != nil && f.Location.LocInfo.Country != nil {
 		userInfo.UserCountry = *f.Location.LocInfo.Country
-	} else if f.Hometown != nil && f.Hometown.HomeInfo.HomeCountry != nil {
+	} else if f.Hometown != nil && f.Hometown.HomeInfo != nil && f.Hometown.HomeInfo.HomeCountry != nil {
 		userInfo.UserCountry = *f.Hometown.HomeInfo.HomeCountry
 	}
 

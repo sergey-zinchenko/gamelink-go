@@ -72,18 +72,21 @@ func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken) error {
 			}
 		}
 		if registered && user.Country() != "" && user.BirthDate() != "" && user.Gender() != "" {
-			queryString := `UPDATE users u SET u.data = (SELECT JSON_INSERT((SELECT data FROM(SELECT k.data from users k WHERE k.id = ?) k )`
+			data := make(C.J)
 			if user.Country() != "" {
-				queryString = queryString + fmt.Sprintf(`, '$.country', "%s"`, user.Country())
+				data["country"] = user.Country()
 			}
 			if user.BirthDate() != "" {
-				queryString = queryString + fmt.Sprintf(`, '$.bdate', "%s"`, user.BirthDate())
+				data["bdate"] = user.BirthDate()
 			}
 			if user.Gender() != "" {
-				queryString = queryString + fmt.Sprintf(`, '$.sex', "%s"`, user.Gender())
+				data["sex"] = user.Gender()
 			}
-			queryString = queryString + `)) WHERE u.id = ?`
-			_, err = tx.Exec(queryString, u.ID(), u.ID())
+			upd, err := json.Marshal(data)
+			if err != nil {
+				return err
+			}
+			_, err = tx.Exec(queries.UpdateSexCountryBdate, upd, u.ID(), u.ID())
 			if err != nil {
 				return err
 			}
