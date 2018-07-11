@@ -1,13 +1,18 @@
 package app
 
 import (
+	"fmt"
 	"gamelink-go/graceful"
 	"gamelink-go/storage"
+	"github.com/gorhill/cronexpr"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
 	"net/http"
+	"os/exec"
 	"regexp"
 	"strconv"
+	"strings"
+	"time"
 )
 
 //startTournament - func to start tournament from cron
@@ -21,12 +26,14 @@ func (a *App) startTournament(ctx iris.Context) {
 	var getUsersInRoom, getTournamentDuration, getRegistrationDuration []string
 
 	getUsersInRoom = ctx.Request().URL.Query()["users_in_room"]
+	fmt.Println(getUsersInRoom)
 	if getUsersInRoom == nil || getUsersInRoom[0] == "" {
 		err = graceful.BadRequestError{Message: "invalid param users in room"}
 		return
 	}
 
 	getTournamentDuration = ctx.Request().URL.Query()["tournament_duration"]
+	fmt.Println(getTournamentDuration)
 	if getTournamentDuration == nil || getTournamentDuration[0] == "" {
 		err = graceful.BadRequestError{Message: "invalid tournament duration"}
 		return
@@ -165,4 +172,30 @@ func (a *App) getUsersResults(ctx iris.Context) {
 	}
 	ctx.ContentType(context.ContentJSONHeaderValue)
 	ctx.WriteString(availableTournaments)
+}
+
+func (a App) timeToNextTournament(ctx iris.Context) {
+	cmd := exec.Command("crontab", "-l")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return
+	}
+	out := strings.Split(string(output), "\n")
+	var tournamentTask string
+	for _, v := range out {
+		if strings.Contains(v, "tournament.sh") {
+			tournamentTask = v
+			break
+		}
+	}
+	if tournamentTask == "" {
+		return
+	}
+	r, err := regexp.Compile("^(((([*])|(((([0-5])?[0-9])((-(([0-5])?[0-9])))?)))((/(([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?[0-9])))?))(,(((([*])|(((([0-5])?[0-9])((-(([0-5])?[0-9])))?)))((/(([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?[0-9])))?)))* (((([*])|(((((([0-1])?[0-9]))|(([2][0-3])))((-(((([0-1])?[0-9]))|(([2][0-3])))))?)))((/(([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?[0-9])))?))(,(((([*])|(((((([0-1])?[0-9]))|(([2][0-3])))((-(((([0-1])?[0-9]))|(([2][0-3])))))?)))((/(([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?[0-9])))?)))* (((((((([*])|(((((([1-2])?[0-9]))|(([3][0-1]))|(([1-9])))((-(((([1-2])?[0-9]))|(([3][0-1]))|(([1-9])))))?)))((/(([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?[0-9])))?))|(L)|(((((([1-2])?[0-9]))|(([3][0-1]))|(([1-9])))W))))(,(((((([*])|(((((([1-2])?[0-9]))|(([3][0-1]))|(([1-9])))((-(((([1-2])?[0-9]))|(([3][0-1]))|(([1-9])))))?)))((/(([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?[0-9])))?))|(L)|(((((([1-2])?[0-9]))|(([3][0-1]))|(([1-9])))W)))))*)|([?])) (((([*])|((((([1-9]))|(([1][0-2])))((-((([1-9]))|(([1][0-2])))))?))|((((JAN)|(FEB)|(MAR)|(APR)|(MAY)|(JUN)|(JUL)|(AUG)|(SEP)|(OKT)|(NOV)|(DEC))((-((JAN)|(FEB)|(MAR)|(APR)|(MAY)|(JUN)|(JUL)|(AUG)|(SEP)|(OKT)|(NOV)|(DEC))))?)))((/(([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?[0-9])))?))(,(((([*])|((((([1-9]))|(([1][0-2])))((-((([1-9]))|(([1][0-2])))))?))|((((JAN)|(FEB)|(MAR)|(APR)|(MAY)|(JUN)|(JUL)|(AUG)|(SEP)|(OKT)|(NOV)|(DEC))((-((JAN)|(FEB)|(MAR)|(APR)|(MAY)|(JUN)|(JUL)|(AUG)|(SEP)|(OKT)|(NOV)|(DEC))))?)))((/(([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?[0-9])))?)))* (((((((([*])|((([0-6])((-([0-6])))?))|((((SUN)|(MON)|(TUE)|(WED)|(THU)|(FRI)|(SAT))((-((SUN)|(MON)|(TUE)|(WED)|(THU)|(FRI)|(SAT))))?)))((/(([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?[0-9])))?))|((([0-6])L))|(W)|(([#][1-5]))))(,(((((([*])|((([0-6])((-([0-6])))?))|((((SUN)|(MON)|(TUE)|(WED)|(THU)|(FRI)|(SAT))((-((SUN)|(MON)|(TUE)|(WED)|(THU)|(FRI)|(SAT))))?)))((/(([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?[0-9])))?))|((([0-6])L))|(W)|(([#][1-5])))))*)|([?]))((( (((([*])|((([1-2][0-9][0-9][0-9])((-([1-2][0-9][0-9][0-9])))?)))((/(([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?[0-9])))?))(,(((([*])|((([1-2][0-9][0-9][0-9])((-([1-2][0-9][0-9][0-9])))?)))((/(([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?([0-9])?[0-9])))?)))*))?)")
+	if err != nil {
+		return
+	}
+	matched := r.FindStringSubmatch(tournamentTask)
+	nextTime := cronexpr.MustParse(matched[0]).Next(time.Now()).Unix() - time.Now().Unix()
+	ctx.WriteString(strconv.FormatInt(nextTime, 10))
 }
