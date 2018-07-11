@@ -9,6 +9,7 @@ import (
 	"gamelink-go/graceful"
 	"gamelink-go/social"
 	"gamelink-go/storage/queries"
+	"regexp"
 )
 
 type (
@@ -236,6 +237,22 @@ func (u User) Update(data C.J) (C.J, error) {
 	delete(data, "bdate")
 	delete(data, "email")
 	delete(data, "sex")
+	for i := 1; i < 4; i++ {
+		lbnum := fmt.Sprintf("lb%d", i)
+		if score, ok := data[lbnum].(string); ok {
+			matched, err := regexp.MatchString("^\\d{100}$", score)
+			if err != nil {
+				return nil, err
+			}
+			if !matched {
+				err = graceful.BadRequestError{Message: "wrong score"}
+				return nil, err
+			}
+		} else if _, ok := data[lbnum]; ok {
+			err := graceful.BadRequestError{Message: "wrong score"}
+			return nil, err
+		}
+	}
 	tx, err := u.dbs.mySQL.Begin()
 	if err != nil {
 		return nil, err
