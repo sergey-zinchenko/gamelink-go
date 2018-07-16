@@ -16,3 +16,7 @@ spec:
         backend:
           serviceName: gamelink
           servicePort: http
+ tls:
+  - hosts:
+    - gamelink.smedialink.com
+    secretName: gamelink-tls
