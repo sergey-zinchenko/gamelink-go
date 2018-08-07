@@ -5,9 +5,6 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
-  backend:
-    serviceName: default-http-backend
-    servicePort: 80
   rules:
   - host: gamelink.dev.smedialink.com
     http:
@@ -15,8 +12,8 @@ spec:
       - path: /
         backend:
           serviceName: gamelink
-          servicePort: http
- tls:
+          servicePort: 80
+  tls:
   - hosts:
     - gamelink.smedialink.com
     secretName: gamelink-tls
