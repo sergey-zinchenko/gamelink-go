@@ -176,9 +176,9 @@ func (token FbToken) get(userInfo *FbInfo) error {
 	}
 	if f.Sex != nil {
 		if *f.Sex == "male" {
-			userInfo.Sex = "M"
+			userInfo.FSex = "M"
 		} else if *f.Sex == "female" {
-			userInfo.Sex = "F"
+			userInfo.FSex = "F"
 		}
 	}
 	if f.Email != nil {

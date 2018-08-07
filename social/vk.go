@@ -249,9 +249,9 @@ func (token VkToken) get(userInfo *VkInfo) error {
 	}
 	if f.Response[0].Sex != nil {
 		if *f.Response[0].Sex == 1 {
-			userInfo.Sex = "F"
+			userInfo.FSex = "F"
 		} else if *f.Response[0].Sex == 2 {
-			userInfo.Sex = "M"
+			userInfo.FSex = "M"
 		}
 	}
 
