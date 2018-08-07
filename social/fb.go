@@ -113,17 +113,8 @@ func (token FbToken) get(userInfo *FbInfo) error {
 			Country *string `json:"country"`
 		}
 
-		fbHomeInfo struct {
-			HomeName    *string `json:"city"`
-			HomeCountry *string `json:"country"`
-		}
-
 		fbLocation struct {
 			LocInfo *fbLocInfo `json:"location"`
-		}
-
-		fbHometown struct {
-			HomeInfo *fbHomeInfo `json:"location"`
 		}
 
 		fbGetResponse struct {
@@ -134,7 +125,6 @@ func (token FbToken) get(userInfo *FbInfo) error {
 			Bdate    *string        `json:"birthday"`
 			Email    *string        `json:"email"`
 			Location *fbLocation    `json:"location"`
-			Hometown *fbHometown    `json:"hometown"`
 			Error    *fbError       `json:"error"`
 		}
 	)
