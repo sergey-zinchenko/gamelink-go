@@ -71,7 +71,7 @@ func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken) error {
 				return err
 			}
 		}
-		if registered && user.Country() != "" && user.BirthDate() != "" && user.Gender() != "" {
+		if registered && user.Country() != "" && user.BirthDate() != "" && user.Sex() != "" {
 			data := make(C.J)
 			if user.Country() != "" {
 				data["country"] = user.Country()
@@ -79,8 +79,8 @@ func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken) error {
 			if user.BirthDate() != "" {
 				data["bdate"] = user.BirthDate()
 			}
-			if user.Gender() != "" {
-				data["sex"] = user.Gender()
+			if user.Sex() != "" {
+				data["sex"] = user.Sex()
 			}
 			upd, err := json.Marshal(data)
 			if err != nil {
