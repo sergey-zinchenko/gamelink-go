@@ -71,7 +71,7 @@ func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken) error {
 				return err
 			}
 		}
-		if registered && user.Country() != "" || user.BirthDate() != "" || user.Sex() != "" {
+		if registered && (user.Country() != "" || user.BirthDate() != "" || user.Sex() != "") {
 			data := make(C.J)
 			if user.Country() != "" {
 				data["country"] = user.Country()

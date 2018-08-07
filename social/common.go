@@ -27,7 +27,7 @@ type (
 		Name() string
 		//Bdate - return user birthday
 		BirthDate() string
-		//Sex - return user FSex
+		//Sex - return user UserSex
 		Sex() string
 		//Email - return user email
 		Email() string
@@ -40,7 +40,7 @@ type (
 	commonInfo struct {
 		FullName    string `json:"name"`
 		Bdate       string `json:"bdate,omitempty"`
-		FSex        string `json:"sex,omitempty"`
+		UserSex     string `json:"sex,omitempty"`
 		UserEmail   string `json:"email,omitempty"`
 		UserCountry string `json:"country,omitempty"`
 		friends     []ThirdPartyID
@@ -67,9 +67,9 @@ func (d commonInfo) BirthDate() string {
 	return d.Bdate
 }
 
-//Sex - user FSex
+//Sex - user UserSex
 func (d commonInfo) Sex() string {
-	return d.FSex
+	return d.UserSex
 }
 
 //Email - user email
