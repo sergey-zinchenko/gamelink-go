@@ -1,13 +1,12 @@
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
+  labels:
+    app: gamelink
   name: gamelink
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
 spec:
-  backend:
-    serviceName: default-http-backend
-    servicePort: 80
   rules:
   - host: gamelink.dev.smedialink.com
     http:
@@ -15,4 +14,8 @@ spec:
       - path: /
         backend:
           serviceName: gamelink
-          servicePort: http
+          servicePort: 80
+  tls:
+  - hosts:
+    - gamelink.dev.smedialink.com
+    secretName: gamelink-tls

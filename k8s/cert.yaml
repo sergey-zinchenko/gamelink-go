@@ -1,0 +1,18 @@
+apiVersion: certmanager.k8s.io/v1alpha1
+kind: Certificate
+metadata:
+  labels:
+    app: gamelink
+  name: gamelink
+spec:
+  secretName: gamelink-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  commonName: gamelink.dev.smedialink.com
+  acme:
+    config:
+    - http01:
+        ingressClass: nginx
+      domains:
+      - gamelink.dev.smedialink.com
