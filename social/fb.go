@@ -109,7 +109,7 @@ func (token FbToken) get(userInfo *FbInfo) error {
 		}
 
 		fbLocInfo struct {
-			LocName string  `json:"city"`
+			LocName *string `json:"city"`
 			Country *string `json:"country"`
 		}
 
@@ -176,12 +176,10 @@ func (token FbToken) get(userInfo *FbInfo) error {
 	}
 	if f.Sex != nil {
 		if *f.Sex == "male" {
-			userInfo.Sex = "M"
+			userInfo.UserSex = "M"
 		} else if *f.Sex == "female" {
-			userInfo.Sex = "F"
+			userInfo.UserSex = "F"
 		}
-	} else {
-		userInfo.Sex = "X"
 	}
 	if f.Email != nil {
 		userInfo.UserEmail = *f.Email
@@ -189,7 +187,6 @@ func (token FbToken) get(userInfo *FbInfo) error {
 	if f.Location != nil && f.Location.LocInfo.Country != nil {
 		userInfo.UserCountry = *f.Location.LocInfo.Country
 	}
-
 	if f.Friends != nil && f.Friends.Data != nil {
 		friendsIds := make([]ThirdPartyID, len(f.Friends.Data))
 		for k := range friendsIds {

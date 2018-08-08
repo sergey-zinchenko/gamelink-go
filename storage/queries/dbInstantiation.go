@@ -10,8 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
   fb_id      VARCHAR(45)            GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.fb_id'))) VIRTUAL,
   name       VARCHAR(45)            GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.name'))) VIRTUAL,
   nickname   VARCHAR(45)            GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.nickname'))),
-  sex        ENUM ('F', 'M', 'X')   GENERATED ALWAYS AS (json_unquote(
-      ifnull(json_extract(data, '$.sex'), 'X'))) VIRTUAL,
+  sex        VARCHAR(1)   			GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.sex'))) VIRTUAL,
   lb1        INT(11)                GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.lb1'))) VIRTUAL,
   lb2        INT(11)                GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.lb2'))) VIRTUAL,
   lb3        INT(11)                GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.lb3'))),
