@@ -3,14 +3,13 @@ kind: Ingress
 metadata:
   name: gamelink
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
 spec:
   rules:
   - host: gamelink.dev.smedialink.com
     http:
       paths:
-      - path: /*
+      - path: /
         backend:
           serviceName: gamelink
           servicePort: 80
