@@ -35,6 +35,10 @@ var (
 	TournamentsAdminUsername string
 	//TournamentsAdminPassword - password for base auth tournament admin (creation)
 	TournamentsAdminPassword string
+	//GRPCPort - network port for grpc
+	GRPCPort string
+	//GRPCNetwork - network for grpc
+	GRPCNetwork string
 )
 
 const (
@@ -55,6 +59,8 @@ const (
 	redisDbKey       = "REDISDB"
 	taUnameKey       = "TAUSERNAME"
 	taPwdKey         = "TAPASSWORD"
+	grpcPort         = "GRPCPORT"
+	grpcNetwork      = "GRPCNETWORK"
 )
 
 //GetEnvironment - this function returns mode string of the os environment or "development" mode if empty or not defined
@@ -140,5 +146,13 @@ func LoadEnvironment() {
 		if TournamentsAdminPassword == "" {
 			log.Fatal("tournament admin password must be set")
 		}
+	}
+	GRPCPort = os.Getenv(grpcPort)
+	if GRPCPort == "" {
+		log.Fatal("grpc port must be set")
+	}
+	GRPCNetwork = os.Getenv(grpcNetwork)
+	if GRPCNetwork == "" {
+		log.Fatal("grpc network must be set")
 	}
 }
