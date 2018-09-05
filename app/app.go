@@ -1,6 +1,7 @@
 package app
 
 import (
+	"gamelink-go/admin"
 	C "gamelink-go/common"
 	"gamelink-go/config"
 	"gamelink-go/prot"
@@ -9,7 +10,6 @@ import (
 	"github.com/kataras/iris/middleware/basicauth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	"log"
 	"net"
 	"time"
 )
@@ -24,8 +24,6 @@ type (
 		dbs  *storage.DBS
 		iris *iris.Application
 	}
-
-	adminServiceServer struct{}
 )
 
 //ConnectDataBases - tries to connect to all databases required to function of the app. Method can be recalled.
@@ -46,7 +44,7 @@ func (a *App) ConnetcGRPC() error {
 		return err
 	}
 	s := grpc.NewServer()
-	prot.RegisterAdminServiceServer(s, &adminServiceServer{})
+	prot.RegisterAdminServiceServer(s, &admin.GrpcServer{})
 	// Register reflection service on gRPC server.
 	reflection.Register(s)
 	if err := s.Serve(lis); err != nil {
