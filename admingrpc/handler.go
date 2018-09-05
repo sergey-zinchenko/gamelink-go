@@ -1,4 +1,4 @@
-package admin
+package admingrpc
 
 import (
 	"gamelink-go/prot"

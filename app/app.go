@@ -1,7 +1,7 @@
 package app
 
 import (
-	"gamelink-go/admin"
+	"gamelink-go/admingrpc"
 	C "gamelink-go/common"
 	"gamelink-go/config"
 	"gamelink-go/prot"
@@ -44,7 +44,7 @@ func (a *App) ConnetcGRPC() error {
 		return err
 	}
 	s := grpc.NewServer()
-	prot.RegisterAdminServiceServer(s, &admin.GrpcServer{})
+	prot.RegisterAdminServiceServer(s, &admingrpc.AdminServiceServer{})
 	// Register reflection service on gRPC server.
 	reflection.Register(s)
 	if err := s.Serve(lis); err != nil {

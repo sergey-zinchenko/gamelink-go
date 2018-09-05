@@ -1,4 +1,4 @@
-package admin
+package admingrpc
 
 import (
 	"gamelink-go/prot"
@@ -7,12 +7,12 @@ import (
 )
 
 type (
-	//GrpcServer - grpc server struct
-	GrpcServer struct{}
+	//AdminServiceServer - grpc server struct
+	AdminServiceServer struct{}
 )
 
 //Count - handle /count command from bot
-func (s *GrpcServer) Count(ctx context.Context, in *prot.MultiCriteriaRequest) (*prot.CountResponse, error) {
+func (s *AdminServiceServer) Count(ctx context.Context, in *prot.MultiCriteriaRequest) (*prot.CountResponse, error) {
 	var count int
 	subquery := "SELECT COUNT(id) FROM users WHERE "
 	h := Handler{subquery, ctx, in.GetParams()}
@@ -33,20 +33,20 @@ func (s *GrpcServer) Count(ctx context.Context, in *prot.MultiCriteriaRequest) (
 }
 
 //Find - handle /find command from bot
-func (s *GrpcServer) Find(ctx context.Context, in *prot.MultiCriteriaRequest) (*prot.MultiUserResponse, error) {
+func (s *AdminServiceServer) Find(ctx context.Context, in *prot.MultiCriteriaRequest) (*prot.MultiUserResponse, error) {
 	var users []*prot.UserResponseStruct
 	return &prot.MultiUserResponse{Users: users}, nil
 }
 
 //Update - handle /update command from bot
-func (s *GrpcServer) Update(ctx context.Context, in *prot.MultiCriteriaRequest) (*prot.MultiUserResponse, error) {
+func (s *AdminServiceServer) Update(ctx context.Context, in *prot.MultiCriteriaRequest) (*prot.MultiUserResponse, error) {
 	var users []*prot.UserResponseStruct
 	//Реализация метода
 	return &prot.MultiUserResponse{Users: users}, nil
 }
 
 //Delete - hande /delete command from bot
-func (s *GrpcServer) Delete(ctx context.Context, in *prot.MultiCriteriaRequest) (*prot.OneUserResponse, error) {
+func (s *AdminServiceServer) Delete(ctx context.Context, in *prot.MultiCriteriaRequest) (*prot.OneUserResponse, error) {
 	var user *prot.UserResponseStruct
 	//Реализация метода
 	return &prot.OneUserResponse{User: user}, nil
