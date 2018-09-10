@@ -31,9 +31,9 @@ var (
 	RedisDb int
 	//TournamentsSupported - tournaments support enabled
 	TournamentsSupported bool
-	//TournamentsAdminUsername - username for base auth tournament admingrpc (creation)
+	//TournamentsAdminUsername - username for base auth tournament admin(creation)
 	TournamentsAdminUsername string
-	//TournamentsAdminPassword - password for base auth tournament admingrpc (creation)
+	//TournamentsAdminPassword - password for base auth tournament admin (creation)
 	TournamentsAdminPassword string
 	//GRPCPort - network port for grpc
 	GRPCPort string
@@ -140,11 +140,11 @@ func LoadEnvironment() {
 	TournamentsAdminUsername, TournamentsSupported = os.LookupEnv(taUnameKey)
 	if TournamentsSupported {
 		if TournamentsAdminUsername == "" {
-			log.Fatal("tournament admingrpc username must be set")
+			log.Fatal("tournament admin username must be set")
 		}
 		TournamentsAdminPassword = os.Getenv(taPwdKey)
 		if TournamentsAdminPassword == "" {
-			log.Fatal("tournament admingrpc password must be set")
+			log.Fatal("tournament admin password must be set")
 		}
 	}
 	GRPCPort = os.Getenv(grpcPort)

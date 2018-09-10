@@ -1,6 +1,7 @@
 package admingrpc
 
 import (
+	"fmt"
 	"gamelink-go/prot"
 	"golang.org/x/net/context"
 	"strconv"
@@ -28,6 +29,8 @@ func (s *AdminServiceServer) Count(ctx context.Context, in *prot.MultiCriteriaRe
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println(subquery + query)
+	data = "123123123123123123123123123"
 	count, err = strconv.Atoi(data)
 	return &prot.CountResponse{Count: int64(count)}, nil
 }
