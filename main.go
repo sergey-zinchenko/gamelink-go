@@ -19,6 +19,8 @@ func main() {
 	a := app.NewApp()
 	if err := a.ConnectDataBases(); err != nil {
 		log.Fatal(err.Error())
+	} else if err = a.ConnetcGRPC(); err != nil {
+		log.Fatal(err.Error())
 	} else if err = a.Run(); err != nil {
 		log.Fatal(err.Error())
 	}
