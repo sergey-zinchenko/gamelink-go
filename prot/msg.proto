@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package prot;
+
+message OneCriteriaStruct {
+    enum Criteria {
+       undef        = 0;
+       id           = 1;
+       vk_id        = 2;
+       fb_id        = 3;
+       sex          = 4;
+       age          = 5;
+       created_at   = 6;
+       deleted      = 7;
+    }
+    enum Option {
+        x = 0;
+        l = 1;
+        e = 2;
+        g = 3;
+
+    }
+    Criteria cr    = 1;
+    Option   op    = 2;
+    string   value = 3;
+}
+
+message OneCriteriaRequest {
+    OneCriteriaStruct param = 1;
+}
+
+message MultiCriteriaRequest {
+    repeated OneCriteriaStruct params = 1;
+}
+
+message UserResponseStruct {
+    int64  id         = 1;
+    string vk_id      = 2;
+    string fb_id      = 3;
+    string name       = 4;
+    string sex        = 5;
+    string age        = 6;
+    string created_at = 7; //Вот тут бы может прикрутить тип timestamp?
+    int32  deleted    = 8;
+}
+
+message OneUserResponse {
+    UserResponseStruct user = 1;
+}
+
+message MultiUserResponse {
+    repeated UserResponseStruct users = 1;
+}
+
+message CountResponse {
+    int64 count = 1;
+}
+
+service AdminService {
+    rpc Count(MultiCriteriaRequest) returns(CountResponse) {}
+    rpc Find(MultiCriteriaRequest) returns(MultiUserResponse) {}
+    rpc Update(MultiCriteriaRequest) returns(MultiUserResponse) {}
+    rpc Delete(MultiCriteriaRequest) returns(OneUserResponse) {}
+}
