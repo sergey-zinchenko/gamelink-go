@@ -10,6 +10,7 @@ import (
 	"github.com/kataras/iris/middleware/basicauth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
+	"log"
 	"net"
 	"time"
 )
@@ -38,19 +39,18 @@ func (a *App) ConnectDataBases() error {
 }
 
 //ConnetcGRPC - tries to make grpc connection
-func (a *App) ConnetcGRPC() error {
+func (a *App) ConnetcGRPC() {
 	lis, err := net.Listen(config.GRPCNetwork, config.GRPCPort)
 	if err != nil {
-		return err
+		log.Fatal(err.Error())
 	}
 	s := grpc.NewServer()
 	prot.RegisterAdminServiceServer(s, &admingrpc.AdminServiceServer{})
 	// Register reflection service on gRPC server.
 	reflection.Register(s)
 	if err := s.Serve(lis); err != nil {
-		return err
+		log.Fatal(err.Error())
 	}
-	return nil
 }
 
 //NewApp - You can construct and initialize App (application) object with that function
