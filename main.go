@@ -17,9 +17,13 @@ func init() {
 
 func main() {
 	a := app.NewApp()
-	if err := a.ConnectDataBases(); err != nil {
+	err := a.ConnectDataBases()
+	if err != nil {
 		log.Fatal(err.Error())
-	} else if err = a.Run(); err != nil {
+	}
+	go a.ConnetcGRPC()
+	err = a.Run()
+	if err != nil {
 		log.Fatal(err.Error())
 	}
 }
