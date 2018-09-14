@@ -21,11 +21,7 @@ func (a Admin) Count(query string) (string, error) {
 	var res string
 	subquery := "SELECT COUNT(id) FROM users WHERE %s"
 	q := fmt.Sprintf(subquery, query)
-	stmt, err := a.dbs.mySQL.Prepare(q)
-	if err != nil {
-		return "", err
-	}
-	err = stmt.QueryRow().Scan(&res)
+	err := a.dbs.mySQL.QueryRow(q).Scan(&res) // Not safe for SQL injection
 	if err != nil {
 		return "", err
 	}
@@ -41,11 +37,7 @@ func (a Admin) Find(query string) (string, error) {
 func (a Admin) Delete(query string) (string, error) {
 	subquery := "UPDATE users u SET u.deleted=1 WHERE %s"
 	q := fmt.Sprintf(subquery, query)
-	stmt, err := a.dbs.mySQL.Prepare(q)
-	if err != nil {
-		return "", err
-	}
-	res, err := stmt.Exec()
+	res, err := a.dbs.mySQL.Exec(q) // Not safe for SQL injection
 	fmt.Println(res)
 	if err != nil {
 		return "", err
