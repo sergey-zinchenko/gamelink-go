@@ -2,8 +2,8 @@ package admingrpc
 
 import (
 	"errors"
-	"fmt"
 	msg "gamelink-go/protoMsg"
+	"gamelink-go/storage"
 	"golang.org/x/net/context"
 	"strconv"
 	"time"
@@ -18,9 +18,10 @@ type (
 	}
 	//Handler - handle interface struct
 	Handler struct {
-		subquery string
-		ctx      context.Context
-		params   []*msg.OneCriteriaStruct
+		dbs     *storage.DBS
+		ctx     context.Context
+		params  []*msg.OneCriteriaStruct
+		command string
 	}
 )
 
@@ -65,11 +66,24 @@ func (h Handler) ParseParams() (string, error) {
 
 //GetData - get data from db
 func (h Handler) GetData(query string) (string, error) {
-	return "", nil
+	var res string
+	var err error
+	a := h.dbs.Admin()
+	switch h.command {
+	case "count":
+		res, err = a.Count(query)
+	case "delete":
+		res, err = a.Delete(query)
+	}
+	if err != nil {
+		return "", err
+	}
+	return res, nil
 }
 
+//dateParser - parse date params
 func dateParser(v *msg.OneCriteriaStruct) (string, error) {
-	q := "str_to_date(bdate, '%d.%m.%Y')"
+	q := "unix_timestamp(users.bdate)"
 	switch v.Op {
 	case msg.OneCriteriaStruct_l:
 		q += " > "
@@ -82,15 +96,10 @@ func dateParser(v *msg.OneCriteriaStruct) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	year := time.Now().Year() - y
-	month := int(time.Now().Month())
+	t := time.Now()
+	t = t.AddDate(-y, 0, 0)
 	var val string
-	if month < 10 {
-		val = fmt.Sprintf("%d.0%d.%d", time.Now().Day(), month, year)
-	} else {
-		val = fmt.Sprintf("%d.%d.%d", time.Now().Day(), month, year)
-	}
-
-	q += "str_to_date(" + "\"" + val + "\"" + ", '%d.%m.%Y')"
+	val = strconv.Itoa(int(t.Unix()))
+	q += val
 	return q, nil
 }

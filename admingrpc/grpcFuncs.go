@@ -3,20 +3,27 @@ package admingrpc
 import (
 	"fmt"
 	msg "gamelink-go/protoMsg"
+	"gamelink-go/storage"
 	"golang.org/x/net/context"
 	"strconv"
 )
 
 type (
 	//AdminServiceServer - grpc server struct
-	AdminServiceServer struct{}
+	AdminServiceServer struct {
+		dbs *storage.DBS
+	}
 )
+
+//Dbs - set dbs to adminServiceServer
+func (s *AdminServiceServer) Dbs(dbs *storage.DBS) {
+	s.dbs = dbs
+}
 
 //Count - handle /count command from bot
 func (s *AdminServiceServer) Count(ctx context.Context, in *msg.MultiCriteriaRequest) (*msg.CountResponse, error) {
 	var count int
-	subquery := "SELECT COUNT(id) FROM users WHERE "
-	h := Handler{subquery, ctx, in.GetParams()}
+	h := Handler{s.dbs, ctx, in.GetParams(), "count"}
 	err := h.CheckCtx()
 	if err != nil {
 		return nil, err
@@ -29,9 +36,10 @@ func (s *AdminServiceServer) Count(ctx context.Context, in *msg.MultiCriteriaReq
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(subquery + query)
-	data = "123123123123123123123123123"
 	count, err = strconv.Atoi(data)
+	fmt.Println(count)
+	fmt.Println(int64(0))
+	//TODO: разобраться с ответом 0 т.к. в структуре ответа стоит omitempty и 0 не возвращается. Но это не точно!!!
 	return &msg.CountResponse{Count: int64(count)}, nil
 }
 
@@ -51,7 +59,21 @@ func (s *AdminServiceServer) Update(ctx context.Context, in *msg.MultiCriteriaRe
 //Delete - hande /delete command from bot
 func (s *AdminServiceServer) Delete(ctx context.Context, in *msg.MultiCriteriaRequest) (*msg.OneUserResponse, error) {
 	var user *msg.UserResponseStruct
-	//Реализация метода
+	h := Handler{s.dbs, ctx, in.GetParams(), "delete"}
+	err := h.CheckCtx()
+	if err != nil {
+		return nil, err
+	}
+	query, err := h.ParseParams()
+	if err != nil {
+		return nil, err
+	}
+	data, err := h.GetData(query)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println(data)
+	//Тут нужно собрать из ответа из бд структуру ответа (OneUserResponse)
 	return &msg.OneUserResponse{User: user}, nil
 }
 

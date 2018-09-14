@@ -45,8 +45,10 @@ func (a *App) ConnetcGRPC() {
 		log.Fatal(err.Error())
 	}
 	s := grpc.NewServer()
-	service.RegisterAdminServiceServer(s, &admingrpc.AdminServiceServer{})
+	serv := admingrpc.AdminServiceServer{}
+	service.RegisterAdminServiceServer(s, &serv)
 	// Register reflection service on gRPC server.
+	serv.Dbs(a.dbs)
 	reflection.Register(s)
 	if err := s.Serve(lis); err != nil {
 		log.Fatal(err.Error())
