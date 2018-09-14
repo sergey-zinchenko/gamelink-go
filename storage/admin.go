@@ -19,9 +19,13 @@ func (dbs DBS) Admin() *Admin {
 //Count - make count query to db
 func (a Admin) Count(query string) (string, error) {
 	var res string
-	subquery := "SELECT COUNT(id) FROM users WHERE ?"
-	fmt.Println(subquery + query)
-	err := a.dbs.mySQL.QueryRow(subquery, query).Scan(&res)
+	subquery := "SELECT COUNT(id) FROM users WHERE %s"
+	q := fmt.Sprintf(subquery, query)
+	stmt, err := a.dbs.mySQL.Prepare(q)
+	if err != nil {
+		return "", err
+	}
+	err = stmt.QueryRow().Scan(&res)
 	if err != nil {
 		return "", err
 	}
@@ -35,9 +39,13 @@ func (a Admin) Find(query string) (string, error) {
 
 //Delete - safe delete user in db (set 1 to deleted field)
 func (a Admin) Delete(query string) (string, error) {
-	subquery := "UPDATE users u SET u.deleted=1 WHERE ?"
-	fmt.Println(query)
-	res, err := a.dbs.mySQL.Exec(subquery, query)
+	subquery := "UPDATE users u SET u.deleted=1 WHERE %s"
+	q := fmt.Sprintf(subquery, query)
+	stmt, err := a.dbs.mySQL.Prepare(q)
+	if err != nil {
+		return "", err
+	}
+	res, err := stmt.Exec()
 	fmt.Println(res)
 	if err != nil {
 		return "", err
