@@ -2,7 +2,7 @@ package admingrpc
 
 import (
 	"fmt"
-	"gamelink-go/prot"
+	msg "gamelink-go/protoMsg"
 	"golang.org/x/net/context"
 	"strconv"
 )
@@ -13,7 +13,7 @@ type (
 )
 
 //Count - handle /count command from bot
-func (s *AdminServiceServer) Count(ctx context.Context, in *prot.MultiCriteriaRequest) (*prot.CountResponse, error) {
+func (s *AdminServiceServer) Count(ctx context.Context, in *msg.MultiCriteriaRequest) (*msg.CountResponse, error) {
 	var count int
 	subquery := "SELECT COUNT(id) FROM users WHERE "
 	h := Handler{subquery, ctx, in.GetParams()}
@@ -32,36 +32,36 @@ func (s *AdminServiceServer) Count(ctx context.Context, in *prot.MultiCriteriaRe
 	fmt.Println(subquery + query)
 	data = "123123123123123123123123123"
 	count, err = strconv.Atoi(data)
-	return &prot.CountResponse{Count: int64(count)}, nil
+	return &msg.CountResponse{Count: int64(count)}, nil
 }
 
 //Find - handle /find command from bot
-func (s *AdminServiceServer) Find(ctx context.Context, in *prot.MultiCriteriaRequest) (*prot.MultiUserResponse, error) {
-	var users []*prot.UserResponseStruct
-	return &prot.MultiUserResponse{Users: users}, nil
+func (s *AdminServiceServer) Find(ctx context.Context, in *msg.MultiCriteriaRequest) (*msg.MultiUserResponse, error) {
+	var users []*msg.UserResponseStruct
+	return &msg.MultiUserResponse{Users: users}, nil
 }
 
 //Update - handle /update command from bot
-func (s *AdminServiceServer) Update(ctx context.Context, in *prot.MultiCriteriaRequest) (*prot.MultiUserResponse, error) {
-	var users []*prot.UserResponseStruct
+func (s *AdminServiceServer) Update(ctx context.Context, in *msg.MultiCriteriaRequest) (*msg.MultiUserResponse, error) {
+	var users []*msg.UserResponseStruct
 	//Реализация метода
-	return &prot.MultiUserResponse{Users: users}, nil
+	return &msg.MultiUserResponse{Users: users}, nil
 }
 
 //Delete - hande /delete command from bot
-func (s *AdminServiceServer) Delete(ctx context.Context, in *prot.MultiCriteriaRequest) (*prot.OneUserResponse, error) {
-	var user *prot.UserResponseStruct
+func (s *AdminServiceServer) Delete(ctx context.Context, in *msg.MultiCriteriaRequest) (*msg.OneUserResponse, error) {
+	var user *msg.UserResponseStruct
 	//Реализация метода
-	return &prot.OneUserResponse{User: user}, nil
+	return &msg.OneUserResponse{User: user}, nil
 }
 
-//func parser(in *prot.MultiCriteriaRequest) (string, error) {
+//func parser(in *protoMsg.MultiCriteriaRequest) (string, error) {
 //	var subQuery string
 //	for k, v := range in.GetParams() {
 //		if k > 0 {
 //			subQuery += " AND "
 //		}
-//		if v.Cr == prot.OneCriteriaStruct_age {
+//		if v.Cr == protoMsg.OneCriteriaStruct_age {
 //			q, err := dateParser(v)
 //			if err != nil {
 //				return "", err
@@ -72,11 +72,11 @@ func (s *AdminServiceServer) Delete(ctx context.Context, in *prot.MultiCriteriaR
 //			subQuery += v.Cr.String()
 //		}
 //		switch v.Op {
-//		case prot.OneCriteriaStruct_l:
+//		case protoMsg.OneCriteriaStruct_l:
 //			subQuery += " < "
-//		case prot.OneCriteriaStruct_e:
+//		case protoMsg.OneCriteriaStruct_e:
 //			subQuery += " = "
-//		case prot.OneCriteriaStruct_g:
+//		case protoMsg.OneCriteriaStruct_g:
 //			subQuery += " > "
 //		}
 //		subQuery += "\"" + v.Value + "\""
@@ -84,14 +84,14 @@ func (s *AdminServiceServer) Delete(ctx context.Context, in *prot.MultiCriteriaR
 //	return subQuery, nil
 //}
 //
-//func dateParser(v *prot.OneCriteriaStruct) (string, error) {
+//func dateParser(v *protoMsg.OneCriteriaStruct) (string, error) {
 //	q := "str_to_date(bdate, '%d.%m.%Y')"
 //	switch v.Op {
-//	case prot.OneCriteriaStruct_l:
+//	case protoMsg.OneCriteriaStruct_l:
 //		q += " > "
-//	case prot.OneCriteriaStruct_e:
+//	case protoMsg.OneCriteriaStruct_e:
 //		q += " = "
-//	case prot.OneCriteriaStruct_g:
+//	case protoMsg.OneCriteriaStruct_g:
 //		q += " < "
 //	}
 //	y, err := strconv.Atoi(v.Value)

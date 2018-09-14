@@ -3,7 +3,7 @@ package admingrpc
 import (
 	"errors"
 	"fmt"
-	"gamelink-go/prot"
+	msg "gamelink-go/protoMsg"
 	"golang.org/x/net/context"
 	"strconv"
 	"time"
@@ -20,7 +20,7 @@ type (
 	Handler struct {
 		subquery string
 		ctx      context.Context
-		params   []*prot.OneCriteriaStruct
+		params   []*msg.OneCriteriaStruct
 	}
 )
 
@@ -39,7 +39,7 @@ func (h Handler) ParseParams() (string, error) {
 		if k > 0 {
 			subQuery += " AND "
 		}
-		if v.Cr == prot.OneCriteriaStruct_age {
+		if v.Cr == msg.OneCriteriaStruct_age {
 			q, err := dateParser(v)
 			if err != nil {
 				return "", err
@@ -50,11 +50,11 @@ func (h Handler) ParseParams() (string, error) {
 			subQuery += v.Cr.String()
 		}
 		switch v.Op {
-		case prot.OneCriteriaStruct_l:
+		case msg.OneCriteriaStruct_l:
 			subQuery += " < "
-		case prot.OneCriteriaStruct_e:
+		case msg.OneCriteriaStruct_e:
 			subQuery += " = "
-		case prot.OneCriteriaStruct_g:
+		case msg.OneCriteriaStruct_g:
 			subQuery += " > "
 		}
 		subQuery += "\"" + v.Value + "\""
@@ -68,14 +68,14 @@ func (h Handler) GetData(query string) (string, error) {
 	return "", nil
 }
 
-func dateParser(v *prot.OneCriteriaStruct) (string, error) {
+func dateParser(v *msg.OneCriteriaStruct) (string, error) {
 	q := "str_to_date(bdate, '%d.%m.%Y')"
 	switch v.Op {
-	case prot.OneCriteriaStruct_l:
+	case msg.OneCriteriaStruct_l:
 		q += " > "
-	case prot.OneCriteriaStruct_e:
+	case msg.OneCriteriaStruct_e:
 		q += " = "
-	case prot.OneCriteriaStruct_g:
+	case msg.OneCriteriaStruct_g:
 		q += " < "
 	}
 	y, err := strconv.Atoi(v.Value)

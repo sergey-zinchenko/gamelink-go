@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package protoService;
+
+option go_package = "gamelink-go/protoService";
+
+import "protoMsg/cmd_call.proto";
+
+service AdminService {
+    rpc Count(protoMsg.MultiCriteriaRequest) returns(protoMsg.CountResponse) {}
+    rpc Find(protoMsg.MultiCriteriaRequest) returns(protoMsg.MultiUserResponse) {}
+    rpc Update(protoMsg.MultiCriteriaRequest) returns(protoMsg.MultiUserResponse) {}
+    rpc Delete(protoMsg.MultiCriteriaRequest) returns(protoMsg.OneUserResponse) {}
+}
