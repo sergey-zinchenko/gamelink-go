@@ -2,7 +2,7 @@ package admingrpc
 
 import (
 	"fmt"
-	msg "gamelink-go/protoMsg"
+	msg "gamelink-go/proto_msg"
 	"gamelink-go/storage"
 	"golang.org/x/net/context"
 	"strconv"
@@ -77,13 +77,13 @@ func (s *AdminServiceServer) Delete(ctx context.Context, in *msg.MultiCriteriaRe
 	return &msg.OneUserResponse{User: user}, nil
 }
 
-//func parser(in *protoMsg.MultiCriteriaRequest) (string, error) {
+//func parser(in *proto_msg.MultiCriteriaRequest) (string, error) {
 //	var subQuery string
 //	for k, v := range in.GetParams() {
 //		if k > 0 {
 //			subQuery += " AND "
 //		}
-//		if v.Cr == protoMsg.OneCriteriaStruct_age {
+//		if v.Cr == proto_msg.OneCriteriaStruct_age {
 //			q, err := dateParser(v)
 //			if err != nil {
 //				return "", err
@@ -94,11 +94,11 @@ func (s *AdminServiceServer) Delete(ctx context.Context, in *msg.MultiCriteriaRe
 //			subQuery += v.Cr.String()
 //		}
 //		switch v.Op {
-//		case protoMsg.OneCriteriaStruct_l:
+//		case proto_msg.OneCriteriaStruct_l:
 //			subQuery += " < "
-//		case protoMsg.OneCriteriaStruct_e:
+//		case proto_msg.OneCriteriaStruct_e:
 //			subQuery += " = "
-//		case protoMsg.OneCriteriaStruct_g:
+//		case proto_msg.OneCriteriaStruct_g:
 //			subQuery += " > "
 //		}
 //		subQuery += "\"" + v.Value + "\""
@@ -106,14 +106,14 @@ func (s *AdminServiceServer) Delete(ctx context.Context, in *msg.MultiCriteriaRe
 //	return subQuery, nil
 //}
 //
-//func dateParser(v *protoMsg.OneCriteriaStruct) (string, error) {
+//func dateParser(v *proto_msg.OneCriteriaStruct) (string, error) {
 //	q := "str_to_date(bdate, '%d.%m.%Y')"
 //	switch v.Op {
-//	case protoMsg.OneCriteriaStruct_l:
+//	case proto_msg.OneCriteriaStruct_l:
 //		q += " > "
-//	case protoMsg.OneCriteriaStruct_e:
+//	case proto_msg.OneCriteriaStruct_e:
 //		q += " = "
-//	case protoMsg.OneCriteriaStruct_g:
+//	case proto_msg.OneCriteriaStruct_g:
 //		q += " < "
 //	}
 //	y, err := strconv.Atoi(v.Value)

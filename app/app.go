@@ -4,7 +4,7 @@ import (
 	"gamelink-go/admingrpc"
 	C "gamelink-go/common"
 	"gamelink-go/config"
-	service "gamelink-go/protoService"
+	service "gamelink-go/proto_service"
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/middleware/basicauth"

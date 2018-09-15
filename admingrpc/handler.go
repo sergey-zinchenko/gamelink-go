@@ -2,7 +2,7 @@ package admingrpc
 
 import (
 	"errors"
-	msg "gamelink-go/protoMsg"
+	msg "gamelink-go/proto_msg"
 	"gamelink-go/storage"
 	"golang.org/x/net/context"
 	"strconv"
