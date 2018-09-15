@@ -4,7 +4,7 @@ import (
 	"gamelink-go/admingrpc"
 	C "gamelink-go/common"
 	"gamelink-go/config"
-	"gamelink-go/prot"
+	service "gamelink-go/protoService"
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/middleware/basicauth"
@@ -45,8 +45,10 @@ func (a *App) ConnetcGRPC() {
 		log.Fatal(err.Error())
 	}
 	s := grpc.NewServer()
-	prot.RegisterAdminServiceServer(s, &admingrpc.AdminServiceServer{})
+	serv := admingrpc.AdminServiceServer{}
+	service.RegisterAdminServiceServer(s, &serv)
 	// Register reflection service on gRPC server.
+	serv.Dbs(a.dbs)
 	reflection.Register(s)
 	if err := s.Serve(lis); err != nil {
 		log.Fatal(err.Error())

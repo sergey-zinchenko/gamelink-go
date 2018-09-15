@@ -2,8 +2,8 @@ package admingrpc
 
 import (
 	"errors"
-	"fmt"
-	"gamelink-go/prot"
+	msg "gamelink-go/protoMsg"
+	"gamelink-go/storage"
 	"golang.org/x/net/context"
 	"strconv"
 	"time"
@@ -18,9 +18,10 @@ type (
 	}
 	//Handler - handle interface struct
 	Handler struct {
-		subquery string
-		ctx      context.Context
-		params   []*prot.OneCriteriaStruct
+		dbs     *storage.DBS
+		ctx     context.Context
+		params  []*msg.OneCriteriaStruct
+		command string
 	}
 )
 
@@ -39,7 +40,7 @@ func (h Handler) ParseParams() (string, error) {
 		if k > 0 {
 			subQuery += " AND "
 		}
-		if v.Cr == prot.OneCriteriaStruct_age {
+		if v.Cr == msg.OneCriteriaStruct_age {
 			q, err := dateParser(v)
 			if err != nil {
 				return "", err
@@ -50,11 +51,11 @@ func (h Handler) ParseParams() (string, error) {
 			subQuery += v.Cr.String()
 		}
 		switch v.Op {
-		case prot.OneCriteriaStruct_l:
+		case msg.OneCriteriaStruct_l:
 			subQuery += " < "
-		case prot.OneCriteriaStruct_e:
+		case msg.OneCriteriaStruct_e:
 			subQuery += " = "
-		case prot.OneCriteriaStruct_g:
+		case msg.OneCriteriaStruct_g:
 			subQuery += " > "
 		}
 		subQuery += "\"" + v.Value + "\""
@@ -65,32 +66,40 @@ func (h Handler) ParseParams() (string, error) {
 
 //GetData - get data from db
 func (h Handler) GetData(query string) (string, error) {
-	return "", nil
+	var res string
+	var err error
+	a := h.dbs.Admin()
+	switch h.command {
+	case "count":
+		res, err = a.Count(query)
+	case "delete":
+		res, err = a.Delete(query)
+	}
+	if err != nil {
+		return "", err
+	}
+	return res, nil
 }
 
-func dateParser(v *prot.OneCriteriaStruct) (string, error) {
-	q := "str_to_date(bdate, '%d.%m.%Y')"
+//dateParser - parse date params
+func dateParser(v *msg.OneCriteriaStruct) (string, error) {
+	q := "unix_timestamp(users.bdate)"
 	switch v.Op {
-	case prot.OneCriteriaStruct_l:
+	case msg.OneCriteriaStruct_l:
 		q += " > "
-	case prot.OneCriteriaStruct_e:
+	case msg.OneCriteriaStruct_e:
 		q += " = "
-	case prot.OneCriteriaStruct_g:
+	case msg.OneCriteriaStruct_g:
 		q += " < "
 	}
 	y, err := strconv.Atoi(v.Value)
 	if err != nil {
 		return "", err
 	}
-	year := time.Now().Year() - y
-	month := int(time.Now().Month())
+	t := time.Now()
+	t = t.AddDate(-y, 0, 0)
 	var val string
-	if month < 10 {
-		val = fmt.Sprintf("%d.0%d.%d", time.Now().Day(), month, year)
-	} else {
-		val = fmt.Sprintf("%d.%d.%d", time.Now().Day(), month, year)
-	}
-
-	q += "str_to_date(" + "\"" + val + "\"" + ", '%d.%m.%Y')"
+	val = strconv.Itoa(int(t.Unix()))
+	q += val
 	return q, nil
 }

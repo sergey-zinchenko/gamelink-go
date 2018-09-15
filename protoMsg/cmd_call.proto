@@ -1,6 +1,8 @@
 syntax = "proto3";
 
-package prot;
+option go_package = "gamelink-go/protoMsg";
+
+package protoMsg;
 
 message OneCriteriaStruct {
     enum Criteria {
@@ -34,13 +36,18 @@ message MultiCriteriaRequest {
 }
 
 message UserResponseStruct {
+    enum Sex {
+        undef = 0;
+        male  = 1;
+        female= 2;
+    }
     int64  id         = 1;
     string vk_id      = 2;
     string fb_id      = 3;
     string name       = 4;
-    string sex        = 5;
-    string age        = 6;
-    string created_at = 7; //Вот тут бы может прикрутить тип timestamp?
+    Sex    sex        = 5;
+    int64  age        = 6;
+    int64  created_at = 7;
     int32  deleted    = 8;
 }
 
@@ -54,11 +61,4 @@ message MultiUserResponse {
 
 message CountResponse {
     int64 count = 1;
-}
-
-service AdminService {
-    rpc Count(MultiCriteriaRequest) returns(CountResponse) {}
-    rpc Find(MultiCriteriaRequest) returns(MultiUserResponse) {}
-    rpc Update(MultiCriteriaRequest) returns(MultiUserResponse) {}
-    rpc Delete(MultiCriteriaRequest) returns(OneUserResponse) {}
 }
