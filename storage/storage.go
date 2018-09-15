@@ -23,6 +23,11 @@ type (
 	}
 )
 
+//Query - return new queryBuilder with connection to mysql
+func (dbs DBS) Query(qb QueryBuilder, worker RowWorker) ([]interface{}, error) {
+	return qb.QueryWithDB(dbs.mySQL, worker)
+}
+
 //Connect - Connections to all databases will be established here.
 func (dbs *DBS) Connect() (err error) {
 	if dbs.mySQL, err = sql.Open("mysql", config.MysqlDsn); err != nil {

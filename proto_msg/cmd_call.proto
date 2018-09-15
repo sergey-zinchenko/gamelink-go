@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "gamelink-go/protoMsg";
+option go_package = "gamelink-go/proto_msg";
 
 package protoMsg;
 

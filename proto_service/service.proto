@@ -2,9 +2,9 @@ syntax = "proto3";
 
 package protoService;
 
-option go_package = "gamelink-go/protoService";
+option go_package = "gamelink-go/proto_service";
 
-import "protoMsg/cmd_call.proto";
+import "proto_msg/cmd_call.proto";
 
 service AdminService {
     rpc Count(protoMsg.MultiCriteriaRequest) returns(protoMsg.CountResponse) {}

@@ -1,11 +1,11 @@
 package admingrpc
 
 import (
+	"errors"
 	"fmt"
-	msg "gamelink-go/protoMsg"
+	msg "gamelink-go/proto_msg"
 	"gamelink-go/storage"
 	"golang.org/x/net/context"
-	"strconv"
 )
 
 type (
@@ -22,25 +22,25 @@ func (s *AdminServiceServer) Dbs(dbs *storage.DBS) {
 
 //Count - handle /count command from bot
 func (s *AdminServiceServer) Count(ctx context.Context, in *msg.MultiCriteriaRequest) (*msg.CountResponse, error) {
-	var count int
-	h := Handler{s.dbs, ctx, in.GetParams(), "count"}
-	err := h.CheckCtx()
+	b := storage.QueryBuilder{}
+	fmt.Println(b.CountQuery().WithMultipleClause(in.Params))
+	res, err := s.dbs.Query(b, func(scanFunc storage.ScanFunc) (interface{}, error) {
+		var countresp int64
+		err := scanFunc(&countresp)
+		if err != nil {
+			return nil, err
+		}
+		fmt.Println(countresp)
+		return countresp, nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	query, err := h.ParseParams()
-	if err != nil {
-		return nil, err
+	r, ok := res[0].(int64)
+	if !ok {
+		return nil, errors.New("huinia")
 	}
-	data, err := h.GetData(query)
-	if err != nil {
-		return nil, err
-	}
-	count, err = strconv.Atoi(data)
-	fmt.Println(count)
-	fmt.Println(int64(0))
-	//TODO: разобраться с ответом 0 т.к. в структуре ответа стоит omitempty и 0 не возвращается. Но это не точно!!!
-	return &msg.CountResponse{Count: int64(count)}, nil
+	return &msg.CountResponse{Count: r}, nil
 }
 
 //Find - handle /find command from bot
@@ -59,76 +59,5 @@ func (s *AdminServiceServer) Update(ctx context.Context, in *msg.MultiCriteriaRe
 //Delete - hande /delete command from bot
 func (s *AdminServiceServer) Delete(ctx context.Context, in *msg.MultiCriteriaRequest) (*msg.OneUserResponse, error) {
 	var user *msg.UserResponseStruct
-	h := Handler{s.dbs, ctx, in.GetParams(), "delete"}
-	err := h.CheckCtx()
-	if err != nil {
-		return nil, err
-	}
-	query, err := h.ParseParams()
-	if err != nil {
-		return nil, err
-	}
-	data, err := h.GetData(query)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Println(data)
-	//Тут нужно собрать из ответа из бд структуру ответа (OneUserResponse)
 	return &msg.OneUserResponse{User: user}, nil
 }
-
-//func parser(in *protoMsg.MultiCriteriaRequest) (string, error) {
-//	var subQuery string
-//	for k, v := range in.GetParams() {
-//		if k > 0 {
-//			subQuery += " AND "
-//		}
-//		if v.Cr == protoMsg.OneCriteriaStruct_age {
-//			q, err := dateParser(v)
-//			if err != nil {
-//				return "", err
-//			}
-//			subQuery += q
-//			continue
-//		} else {
-//			subQuery += v.Cr.String()
-//		}
-//		switch v.Op {
-//		case protoMsg.OneCriteriaStruct_l:
-//			subQuery += " < "
-//		case protoMsg.OneCriteriaStruct_e:
-//			subQuery += " = "
-//		case protoMsg.OneCriteriaStruct_g:
-//			subQuery += " > "
-//		}
-//		subQuery += "\"" + v.Value + "\""
-//	}
-//	return subQuery, nil
-//}
-//
-//func dateParser(v *protoMsg.OneCriteriaStruct) (string, error) {
-//	q := "str_to_date(bdate, '%d.%m.%Y')"
-//	switch v.Op {
-//	case protoMsg.OneCriteriaStruct_l:
-//		q += " > "
-//	case protoMsg.OneCriteriaStruct_e:
-//		q += " = "
-//	case protoMsg.OneCriteriaStruct_g:
-//		q += " < "
-//	}
-//	y, err := strconv.Atoi(v.Value)
-//	if err != nil {
-//		return "", err
-//	}
-//	year := time.Now().Year() - y
-//	month := int(time.Now().Month())
-//	var val string
-//	if month < 10 {
-//		val = fmt.Sprintf("%d.0%d.%d", time.Now().Day(), month, year)
-//	} else {
-//		val = fmt.Sprintf("%d.%d.%d", time.Now().Day(), month, year)
-//	}
-//
-//	q += "str_to_date(" + "\"" + val + "\"" + ", '%d.%m.%Y')"
-//	return q, nil
-//}
