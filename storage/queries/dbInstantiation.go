@@ -180,7 +180,7 @@ ENGINE = InnoDB;`
 	//InsertVersionZero - insert 0 version of db
 	InsertVersionZero = `INSERT IGNORE INTO gamelink.db_version (version) VALUES (0);`
 	//ModifyBdateColumn - change varchar column to DATE
-	ModifyBdateColumn = `ALTER TABLE gamelink.users MODIFY COLUMN bdate DATE GENERATED ALWAYS AS (str_to_date(json_unquote(json_extract(data,'$.bdate')),'%d.%m.%Y')) VIRTUAL ;`
+	ModifyBdateColumn = `ALTER TABLE gamelink.users MODIFY COLUMN bdate DATE GENERATED ALWAYS AS (str_to_date(json_unquote(json_extract(data,'$.bdate')),'%m.%d.%Y')) VIRTUAL ;`
 	//InsertVersionOne - insert new db version
 	InsertVersionOne = `INSERT IGNORE INTO gamelink.db_version (version) values (1);`
 	//GetDbVersion - return max bd version

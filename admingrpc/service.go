@@ -49,10 +49,10 @@ func mapToStruct(u map[string]interface{}) *proto_msg.UserResponseStruct {
 		}
 	}
 	if u["bdate"] != nil {
-		user.Age = (time.Now().Unix() - int64(u["bdate"].(float64))) / 31556926 // Но это неверно т.к. не учтены високосные года....надо допилить
+		user.Age = int64(u["bdate"].(float64))
 	}
 	if u["created_at"] != nil {
-		user.CreatedAt = time.Unix(u["created_at"].(int64), 0).Format(time.RFC3339)
+		user.CreatedAt = time.Unix(int64(u["created_at"].(float64)), 0).Format(time.ANSIC)
 	}
 	if u["deleted"] != nil {
 		user.Deleted = u["deleted"].(int32)

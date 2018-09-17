@@ -58,8 +58,9 @@ func (q *QueryBuilder) SelectQuery() *QueryBuilder {
                                 IFNULL(CONCAT(',"name":'  	 , 	JSON_QUOTE(name)),""),
 								IFNULL(CONCAT(',"sex":'  	 , 	JSON_QUOTE(sex)),""),
 								IFNULL(CONCAT(',"email":'    , 	JSON_QUOTE(email)),""),
-                                IFNULL(CONCAT(',"bdate":'  , 	UNIX_TIMESTAMP(bdate)),""), 
+                                IFNULL(CONCAT(',"bdate":'  , 	timestampdiff(YEAR, bdate, curdate())),""), 
                                 IFNULL(CONCAT(',"country":'  , 	JSON_QUOTE(country)),""),
+                                IFNULL(CONCAT(',"created_at":'  ,UNIX_TIMESTAMP(created_at)),""),
                                 '}') AS JSON)) from users`
 	return q
 }
