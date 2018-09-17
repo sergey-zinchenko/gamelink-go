@@ -8,6 +8,7 @@ import (
 	"gamelink-go/graceful"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -245,7 +246,10 @@ func (token VkToken) get(userInfo *VkInfo) error {
 		userInfo.UserCountry = *f.Response[0].Country.LocName
 	}
 	if f.Response[0].Bdate != nil {
-		userInfo.Bdate = *f.Response[0].Bdate
+		bdate := *f.Response[0].Bdate
+		bdateArr := strings.Split(bdate, ".")
+		formatedBdate := bdateArr[1] + "." + bdateArr[0] + "." + bdateArr[2]
+		userInfo.Bdate = formatedBdate
 	}
 	if f.Response[0].Sex != nil {
 		if *f.Response[0].Sex == 1 {
