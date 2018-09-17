@@ -26,11 +26,11 @@ func (q *QueryBuilder) WithClause(criteria *proto_msg.OneCriteriaStruct) *QueryB
 	q.whereClause += criteria.Cr.String() + " "
 	switch criteria.Op {
 	case proto_msg.OneCriteriaStruct_l:
-		q.whereClause += "< ?"
+		q.whereClause += "<= ?"
 	case proto_msg.OneCriteriaStruct_e:
 		q.whereClause += "= ?"
 	case proto_msg.OneCriteriaStruct_g:
-		q.whereClause += "> ?"
+		q.whereClause += ">= ?"
 	}
 	q.params = append(q.params, criteria.Value)
 	return q
@@ -52,7 +52,15 @@ func (q *QueryBuilder) CountQuery() *QueryBuilder {
 
 //SelectQuery - first part of select query
 func (q *QueryBuilder) SelectQuery() *QueryBuilder {
-	q.query = "SELECT * FROM users"
+	q.query = `SELECT (SELECT CAST(CONCAT( 	'{"id":'  , 	id, 
+								IFNULL(CONCAT(',"vk_id":'    , 	JSON_QUOTE(vk_id)),""), 
+                                IFNULL(CONCAT(',"fb_id":'    , 	JSON_QUOTE(fb_id)),""),
+                                IFNULL(CONCAT(',"name":'  	 , 	JSON_QUOTE(name)),""),
+								IFNULL(CONCAT(',"sex":'  	 , 	JSON_QUOTE(sex)),""),
+								IFNULL(CONCAT(',"email":'    , 	JSON_QUOTE(email)),""),
+                                IFNULL(CONCAT(',"bdate":'  , 	UNIX_TIMESTAMP(bdate)),""), 
+                                IFNULL(CONCAT(',"country":'  , 	JSON_QUOTE(country)),""),
+                                '}') AS JSON)) from users`
 	return q
 }
 
