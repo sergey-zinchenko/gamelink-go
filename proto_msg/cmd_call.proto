@@ -51,7 +51,7 @@ message UserResponseStruct {
     string  created_at = 8;
     int32  deleted    = 9;
     string email      =10;
-
+    string pushMessage = 11;
 }
 
 message OneUserResponse {
@@ -64,4 +64,8 @@ message MultiUserResponse {
 
 message CountResponse {
     int64 count = 1;
+}
+
+message StringResponse {
+    string response = 1;
 }

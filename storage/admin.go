@@ -39,6 +39,10 @@ func (q *QueryBuilder) WithClause(criteria *proto_msg.OneCriteriaStruct) *QueryB
 //WithMultipleClause - loop from array of criterias
 func (q *QueryBuilder) WithMultipleClause(criterias []*proto_msg.OneCriteriaStruct) *QueryBuilder {
 	for _, v := range criterias {
+		if v.Cr.String() == "message" {
+			//Тут выцепить текст сообщения для пуш уведомления или просто пропустить? Вопрос требует решения!!!!!
+			continue
+		}
 		q.WithClause(v)
 	}
 	return q

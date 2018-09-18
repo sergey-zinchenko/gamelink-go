@@ -11,4 +11,5 @@ service AdminService {
     rpc Find(protoMsg.MultiCriteriaRequest) returns(protoMsg.MultiUserResponse) {}
     rpc Update(protoMsg.MultiCriteriaRequest) returns(protoMsg.MultiUserResponse) {}
     rpc Delete(protoMsg.MultiCriteriaRequest) returns(protoMsg.OneUserResponse) {}
+    rpc SendPush(protoMsg.MultiCriteriaRequest) returns(protoMsg.StringResponse) {}
 }
