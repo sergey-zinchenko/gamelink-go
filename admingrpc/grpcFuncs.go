@@ -2,6 +2,7 @@ package admingrpc
 
 import (
 	"errors"
+	"fmt"
 	msg "gamelink-go/proto_msg"
 	"gamelink-go/storage"
 	"golang.org/x/net/context"
@@ -72,6 +73,25 @@ func (s *AdminServiceServer) Update(ctx context.Context, in *msg.MultiCriteriaRe
 
 //Delete - handle /delete command from bot
 func (s *AdminServiceServer) Delete(ctx context.Context, in *msg.MultiCriteriaRequest) (*msg.OneUserResponse, error) {
-	var user *msg.UserResponseStruct
-	return &msg.OneUserResponse{User: user}, nil
+	b := storage.QueryBuilder{}
+	b.DeleteQuery().WithMultipleClause(in.Params)
+	res, err := s.dbs.Query(b, func(scanFunc storage.ScanFunc) (interface{}, error) {
+		var deleted interface{}
+		err := scanFunc(&deleted)
+		if err != nil {
+			return nil, err
+		}
+		return deleted, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	users, err := s.Find(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	if users.Users[0] == nil {
+		return nil, errors.New("user not found")
+	}
+	return &msg.OneUserResponse{User: users.Users[0]}, nil
 }

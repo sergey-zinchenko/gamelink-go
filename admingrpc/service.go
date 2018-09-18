@@ -55,7 +55,7 @@ func mapToStruct(u map[string]interface{}) *proto_msg.UserResponseStruct {
 		user.CreatedAt = time.Unix(int64(u["created_at"].(float64)), 0).Format(time.ANSIC)
 	}
 	if u["deleted"] != nil {
-		user.Deleted = u["deleted"].(int32)
+		user.Deleted = int32(u["deleted"].(float64))
 	}
 	if u["email"] != nil {
 		user.Email = u["email"].(string)

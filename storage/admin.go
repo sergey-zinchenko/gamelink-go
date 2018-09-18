@@ -52,7 +52,8 @@ func (q *QueryBuilder) CountQuery() *QueryBuilder {
 
 //SelectQuery - first part of select query
 func (q *QueryBuilder) SelectQuery() *QueryBuilder {
-	q.query = `SELECT (SELECT CAST(CONCAT( 	'{"id":'  , 	id, 
+	q.query = `SELECT (SELECT CAST(CONCAT( 	'{"id":'  , 	id,
+								IFNULL(CONCAT(', "deleted":'  , 	deleted),""),
 								IFNULL(CONCAT(',"vk_id":'    , 	JSON_QUOTE(vk_id)),""), 
                                 IFNULL(CONCAT(',"fb_id":'    , 	JSON_QUOTE(fb_id)),""),
                                 IFNULL(CONCAT(',"name":'  	 , 	JSON_QUOTE(name)),""),
@@ -62,6 +63,12 @@ func (q *QueryBuilder) SelectQuery() *QueryBuilder {
                                 IFNULL(CONCAT(',"country":'  , 	JSON_QUOTE(country)),""),
                                 IFNULL(CONCAT(',"created_at":'  ,UNIX_TIMESTAMP(created_at)),""),
                                 '}') AS JSON)) from users`
+	return q
+}
+
+//DeleteQuery - first part of delete query
+func (q *QueryBuilder) DeleteQuery() *QueryBuilder {
+	q.query = `UPDATE users SET deleted=1`
 	return q
 }
 
