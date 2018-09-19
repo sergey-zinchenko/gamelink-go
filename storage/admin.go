@@ -9,8 +9,8 @@ import (
 type (
 	//QueryBuilder - struct fo work with params and build db query
 	QueryBuilder struct {
-		query, whereClause string
-		params             []interface{}
+		query, whereClause, message string
+		params                      []interface{}
 	}
 	//ScanFunc - func for scan rows
 	ScanFunc = func(...interface{}) error
@@ -40,7 +40,7 @@ func (q *QueryBuilder) WithClause(criteria *proto_msg.OneCriteriaStruct) *QueryB
 func (q *QueryBuilder) WithMultipleClause(criterias []*proto_msg.OneCriteriaStruct) *QueryBuilder {
 	for _, v := range criterias {
 		if v.Cr.String() == "message" {
-			//Тут выцепить текст сообщения для пуш уведомления или просто пропустить? Вопрос требует решения!!!!!
+			q.message = v.Value //Пишем в структуру сообщение на случай, если это запрос на отправку пуш сообщения
 			continue
 		}
 		q.WithClause(v)
@@ -76,6 +76,12 @@ func (q *QueryBuilder) DeleteQuery() *QueryBuilder {
 	return q
 }
 
+//PushQuery - first part of query for find users who will recieve push message
+func (q *QueryBuilder) PushQuery() *QueryBuilder {
+	q.query = `**********************`
+	return q
+}
+
 //String - concatenate first query part, WHERE and params query part
 func (q *QueryBuilder) String() string {
 	if q.query == "" {
@@ -85,7 +91,6 @@ func (q *QueryBuilder) String() string {
 		return q.query
 	}
 	return fmt.Sprintf("%s WHERE %s", q.query, q.whereClause)
-
 }
 
 //QueryWithDB - execute query, scan result
@@ -104,4 +109,9 @@ func (q *QueryBuilder) QueryWithDB(sql *sql.DB, worker RowWorker) ([]interface{}
 		res = append(res, oneres)
 	}
 	return res, nil
+}
+
+//Message - return query builder message
+func (q *QueryBuilder) Message() string {
+	return q.message
 }
