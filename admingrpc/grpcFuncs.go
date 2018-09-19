@@ -1,6 +1,7 @@
 package admingrpc
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	msg "gamelink-go/proto_msg"
@@ -45,19 +46,59 @@ func (s *AdminServiceServer) Count(ctx context.Context, in *msg.MultiCriteriaReq
 //Find - handle /find command from bot
 func (s *AdminServiceServer) Find(ctx context.Context, in *msg.MultiCriteriaRequest) (*msg.MultiUserResponse, error) {
 	b := storage.QueryBuilder{}
+	var users []*msg.UserResponseStruct
 	b.SelectQuery().WithMultipleClause(in.Params)
-	res, err := s.dbs.Query(b, func(scanFunc storage.ScanFunc) (interface{}, error) {
-		var findres string
-		err := scanFunc(&findres)
+	_, err := s.dbs.Query(b, func(scanFunc storage.ScanFunc) (interface{}, error) {
+		var (
+			id, age                                          sql.NullInt64
+			vkID, fbID, name, email, sex, country, createdAt sql.NullString
+			deleted                                          sql.NullInt64
+		)
+		err := scanFunc(&id, &vkID, &fbID, &name, &email, &sex, &age, &country, &createdAt, &deleted)
 		if err != nil {
 			return nil, err
 		}
-		return findres, nil
+		var user msg.UserResponseStruct
+		if id.Valid {
+			user.Id = id.Int64
+		}
+		if vkID.Valid {
+			user.VkId = vkID.String
+		}
+		if fbID.Valid {
+			user.FbId = fbID.String
+		}
+		if name.Valid {
+			user.Name = name.String
+		}
+		if country.Valid {
+			user.Country = country.String
+		}
+		if sex.Valid {
+			if sex.String == "M" {
+				user.Sex = msg.UserResponseStruct_M
+			} else {
+				user.Sex = msg.UserResponseStruct_F
+			}
+		}
+		if age.Valid {
+			user.Age = age.Int64
+		}
+		if createdAt.Valid {
+			user.CreatedAt = createdAt.String
+		}
+		if deleted.Valid {
+			user.Deleted = int32(deleted.Int64)
+		}
+		if email.Valid {
+			user.Email = email.String
+		}
+		users = append(users, &user)
+		return user, nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	users, err := convertToGrpcStruct(res)
 	if err != nil {
 		return nil, err
 	}

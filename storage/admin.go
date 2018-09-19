@@ -56,17 +56,7 @@ func (q *QueryBuilder) CountQuery() *QueryBuilder {
 
 //SelectQuery - first part of select query
 func (q *QueryBuilder) SelectQuery() *QueryBuilder {
-	q.query = `SELECT (SELECT CAST(CONCAT( 	'{"id":'  , 	id,
-								IFNULL(CONCAT(', "deleted":'  , 	deleted),""),
-								IFNULL(CONCAT(',"vk_id":'    , 	JSON_QUOTE(vk_id)),""), 
-                                IFNULL(CONCAT(',"fb_id":'    , 	JSON_QUOTE(fb_id)),""),
-                                IFNULL(CONCAT(',"name":'  	 , 	JSON_QUOTE(name)),""),
-								IFNULL(CONCAT(',"sex":'  	 , 	JSON_QUOTE(sex)),""),
-								IFNULL(CONCAT(',"email":'    , 	JSON_QUOTE(email)),""),
-                                IFNULL(CONCAT(',"bdate":'  , 	timestampdiff(YEAR, bdate, curdate())),""), 
-                                IFNULL(CONCAT(',"country":'  , 	JSON_QUOTE(country)),""),
-                                IFNULL(CONCAT(',"created_at":'  ,UNIX_TIMESTAMP(created_at)),""),
-                                '}') AS JSON)) from users`
+	q.query = `SELECT id, vk_id, fb_id, name, email, sex, timestampdiff(YEAR, bdate, curdate()), country, created_at, deleted from users`
 	return q
 }
 
