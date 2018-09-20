@@ -8,6 +8,7 @@ import (
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/middleware/basicauth"
+	"github.com/nats-io/go-nats"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	"log"
@@ -49,10 +50,26 @@ func (a *App) ConnetcGRPC() {
 	service.RegisterAdminServiceServer(s, &serv)
 	// Register reflection service on gRPC server.
 	serv.Dbs(a.dbs)
+	go connectNATS(serv)
 	reflection.Register(s)
 	if err := s.Serve(lis); err != nil {
 		log.Fatal(err.Error())
 	}
+}
+
+//connectNATS - tries to make connection to NATS
+func connectNATS(serv admingrpc.AdminServiceServer) {
+	nc, err := nats.Connect(config.NATSPort)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	serv.Nats(nc)
+	defer nc.Close()
+
+	if err := nc.Publish("updates", []byte("Test message")); err != nil {
+		log.Fatal(err)
+	}
+	nc.Flush()
 }
 
 //NewApp - You can construct and initialize App (application) object with that function

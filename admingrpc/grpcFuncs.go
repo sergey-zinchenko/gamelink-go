@@ -6,6 +6,7 @@ import (
 	"fmt"
 	msg "gamelink-go/proto_msg"
 	"gamelink-go/storage"
+	"github.com/nats-io/go-nats"
 	"golang.org/x/net/context"
 )
 
@@ -13,12 +14,18 @@ type (
 	//AdminServiceServer - grpc server struct
 	AdminServiceServer struct {
 		dbs *storage.DBS
+		nc  *nats.Conn
 	}
 )
 
 //Dbs - set dbs to adminServiceServer
 func (s *AdminServiceServer) Dbs(dbs *storage.DBS) {
 	s.dbs = dbs
+}
+
+//Nats - set nats connection to adminServiceServer
+func (s *AdminServiceServer) Nats(nc *nats.Conn) {
+	s.nc = nc
 }
 
 //Count - handle /count command from bot
