@@ -22,6 +22,7 @@ func main() {
 		log.Fatal(err.Error())
 	}
 	go a.ConnetcGRPC()
+	go a.ConnectNATS()
 	err = a.Run()
 	if err != nil {
 		log.Fatal(err.Error())

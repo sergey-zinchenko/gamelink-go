@@ -23,8 +23,9 @@ const (
 type (
 	//App structure - connects databases with the middleware and handlers of router
 	App struct {
-		dbs  *storage.DBS
-		iris *iris.Application
+		dbs   *storage.DBS
+		iris  *iris.Application
+		admin *admingrpc.AdminServiceServer
 	}
 )
 
@@ -50,26 +51,26 @@ func (a *App) ConnetcGRPC() {
 	service.RegisterAdminServiceServer(s, &serv)
 	// Register reflection service on gRPC server.
 	serv.Dbs(a.dbs)
-	go connectNATS(serv)
 	reflection.Register(s)
+	a.adminServiceServer(&serv)
 	if err := s.Serve(lis); err != nil {
 		log.Fatal(err.Error())
 	}
 }
 
-//connectNATS - tries to make connection to NATS
-func connectNATS(serv admingrpc.AdminServiceServer) {
+func (a *App) adminServiceServer(s *admingrpc.AdminServiceServer) {
+	a.admin = s
+}
+
+//ConnectNATS - tries to make connection to NATS
+func (a *App) ConnectNATS() {
 	nc, err := nats.Connect(config.NATSPort)
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Fatal("connect" + err.Error())
 	}
-	serv.Nats(nc)
-	defer nc.Close()
-
-	if err := nc.Publish("updates", []byte("Test message")); err != nil {
-		log.Fatal(err)
-	}
-	nc.Flush()
+	a.admin.Nats(nc)
+	//defer nc.Close()
+	//nc.Flush()
 }
 
 //NewApp - You can construct and initialize App (application) object with that function
