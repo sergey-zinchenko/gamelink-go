@@ -56,7 +56,7 @@ func (q *QueryBuilder) CountQuery() *QueryBuilder {
 
 //SelectQuery - first part of select query
 func (q *QueryBuilder) SelectQuery() *QueryBuilder {
-	q.query = `SELECT id, vk_id, fb_id, name, email, sex, timestampdiff(YEAR, bdate, curdate()), country, created_at, deleted from users`
+	q.query = `SELECT id, vk_id, fb_id, name, email, sex, timestampdiff(YEAR, bdate, curdate()), country, date(created_at), deleted from users`
 	return q
 }
 
