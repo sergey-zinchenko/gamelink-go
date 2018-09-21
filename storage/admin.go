@@ -9,8 +9,8 @@ import (
 type (
 	//QueryBuilder - struct fo work with params and build db query
 	QueryBuilder struct {
-		query, whereClause string
-		params             []interface{}
+		query, whereClause, message string
+		params                      []interface{}
 	}
 	//ScanFunc - func for scan rows
 	ScanFunc = func(...interface{}) error
@@ -26,11 +26,11 @@ func (q *QueryBuilder) WithClause(criteria *proto_msg.OneCriteriaStruct) *QueryB
 	q.whereClause += criteria.Cr.String() + " "
 	switch criteria.Op {
 	case proto_msg.OneCriteriaStruct_l:
-		q.whereClause += "< ?"
+		q.whereClause += "<= ?"
 	case proto_msg.OneCriteriaStruct_e:
 		q.whereClause += "= ?"
 	case proto_msg.OneCriteriaStruct_g:
-		q.whereClause += "> ?"
+		q.whereClause += ">= ?"
 	}
 	q.params = append(q.params, criteria.Value)
 	return q
@@ -39,6 +39,10 @@ func (q *QueryBuilder) WithClause(criteria *proto_msg.OneCriteriaStruct) *QueryB
 //WithMultipleClause - loop from array of criterias
 func (q *QueryBuilder) WithMultipleClause(criterias []*proto_msg.OneCriteriaStruct) *QueryBuilder {
 	for _, v := range criterias {
+		if v.Cr.String() == "message" {
+			q.message = v.Value //Пишем в структуру сообщение на случай, если это запрос на отправку пуш сообщения
+			continue
+		}
 		q.WithClause(v)
 	}
 	return q
@@ -52,7 +56,19 @@ func (q *QueryBuilder) CountQuery() *QueryBuilder {
 
 //SelectQuery - first part of select query
 func (q *QueryBuilder) SelectQuery() *QueryBuilder {
-	q.query = "SELECT * FROM users"
+	q.query = `SELECT id, vk_id, fb_id, name, email, sex, timestampdiff(YEAR, bdate, curdate()), country, date(created_at), deleted from users`
+	return q
+}
+
+//DeleteQuery - first part of delete query
+func (q *QueryBuilder) DeleteQuery() *QueryBuilder {
+	q.query = `UPDATE users SET deleted=1`
+	return q
+}
+
+//PushQuery - first part of query for find users who will recieve push message
+func (q *QueryBuilder) PushQuery() *QueryBuilder {
+	q.query = `**********************`
 	return q
 }
 
@@ -65,7 +81,6 @@ func (q *QueryBuilder) String() string {
 		return q.query
 	}
 	return fmt.Sprintf("%s WHERE %s", q.query, q.whereClause)
-
 }
 
 //QueryWithDB - execute query, scan result
@@ -84,4 +99,9 @@ func (q *QueryBuilder) QueryWithDB(sql *sql.DB, worker RowWorker) ([]interface{}
 		res = append(res, oneres)
 	}
 	return res, nil
+}
+
+//Message - return query builder message
+func (q *QueryBuilder) Message() string {
+	return q.message
 }

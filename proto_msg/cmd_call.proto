@@ -14,6 +14,7 @@ message OneCriteriaStruct {
        age          = 5;
        created_at   = 6;
        deleted      = 7;
+       message      = 8;
     }
     enum Option {
         x = 0;
@@ -38,17 +39,19 @@ message MultiCriteriaRequest {
 message UserResponseStruct {
     enum Sex {
         undef = 0;
-        male  = 1;
-        female= 2;
+        M     = 1;
+        F     = 2;
     }
     int64  id         = 1;
     string vk_id      = 2;
     string fb_id      = 3;
     string name       = 4;
-    Sex    sex        = 5;
-    int64  age        = 6;
-    int64  created_at = 7;
-    int32  deleted    = 8;
+    string country    = 5;
+    Sex    sex        = 6;
+    int64  age        = 7;
+    string  created_at = 8;
+    int32  deleted    = 9;
+    string email      =10;
 }
 
 message OneUserResponse {
@@ -61,4 +64,8 @@ message MultiUserResponse {
 
 message CountResponse {
     int64 count = 1;
+}
+
+message StringResponse {
+    string response = 1;
 }
