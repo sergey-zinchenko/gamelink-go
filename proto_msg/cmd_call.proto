@@ -15,6 +15,9 @@ message OneCriteriaStruct {
        created_at   = 6;
        deleted      = 7;
        message      = 8;
+       advert_watch = 9;
+       payment      = 10;
+
     }
     enum Option {
         x = 0;
@@ -36,15 +39,13 @@ message UpdateCriteriaStruct {
         fb_id        = 3;
         sex          = 4;
         age          = 5;
-        created_at   = 6;
+        country      = 6;
         deleted      = 7;
-        advtWatch    = 8;
-        madePurchase = 9;
     }
     enum UpdOption {
         x     = 0;
         set   = 1;
-        del   = 2;
+        delete   = 2;
     }
     UpdCriteria ucr = 1;
     UpdOption   uop = 2;

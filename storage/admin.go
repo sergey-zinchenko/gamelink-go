@@ -2,9 +2,8 @@ package storage
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
-	"gamelink-go/common"
+
 	"gamelink-go/proto_msg"
 )
 
@@ -74,6 +73,12 @@ func (q *QueryBuilder) PushQuery() *QueryBuilder {
 	return q
 }
 
+//GetData - get user data from db
+func (q *QueryBuilder) GetData() *QueryBuilder {
+	q.query = `SELECT data FROM users `
+	return q
+}
+
 //UpdateQuery - first part of query for update command
 func (q *QueryBuilder) UpdateQuery() *QueryBuilder {
 	//q.query = `UPDATE users set data = `
@@ -114,15 +119,18 @@ func (q *QueryBuilder) Message() string {
 	return q.message
 }
 
-//CJ - func to make json from supdateParams
-func (q *QueryBuilder) CJ(criterias []*proto_msg.UpdateCriteriaStruct) (*QueryBuilder, error) {
-	var upd common.J
-	for _, v := range criterias {
-		upd[v.Ucr.String()] = v.Value
-	}
-	res, err := json.Marshal(upd)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Println(res)
-}
+////CJ - func to make json from updateParams
+//func (q *QueryBuilder) CJ(criterias []*proto_msg.UpdateCriteriaStruct) (C.J, error) {
+//    set := make(C.J)
+//    delete := make(C.J)
+//	for _, v := range criterias {
+//		if v.Uop == proto_msg.UpdateCriteriaStruct_set && v.Value != "" {
+//			set[v.Ucr.String()] = v.Value
+//		} else if v.Uop == proto_msg.UpdateCriteriaStruct_delete {
+//			delete[v.Ucr.String()]
+//		}
+//	}
+//	fmt.Println("*********************************")
+//	fmt.Println(set)
+//	return set, nil
+//}

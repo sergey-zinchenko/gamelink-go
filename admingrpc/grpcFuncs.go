@@ -2,8 +2,10 @@ package admingrpc
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
+	C "gamelink-go/common"
 	msg "gamelink-go/proto_msg"
 	"gamelink-go/storage"
 	"golang.org/x/net/context"
@@ -112,8 +114,39 @@ func (s *AdminServiceServer) Update(ctx context.Context, in *msg.UpdateCriteriaR
 	fmt.Println("------------------------------------------")
 	fmt.Println(in.UpdParams)
 	b := storage.QueryBuilder{}
+	//b.CJ(in.UpdParams)
+	b.GetData().WithMultipleClause(in.FindParams)
+	var userData []C.J
+	_, err := s.dbs.Query(b, func(scanFunc storage.ScanFunc) (interface{}, error) {
+		var bytes []byte
+		err := scanFunc(&bytes)
+		if err != nil {
+			return nil, err
+		}
+		var user C.J
+		err = json.Unmarshal(bytes, &user)
+		userData = append(userData, user)
+		return nil, nil
+	})
+	if err != nil {
+		if err != nil {
+			return nil, err
+		}
 
-	//Реализация метода
+	}
+	if err != nil {
+		return nil, err
+	}
+	for _, user := range userData {
+		for _, v := range in.UpdParams {
+			if v.Uop == msg.UpdateCriteriaStruct_set {
+				user[v.Ucr.String()] = v.Value
+			} else if v.Uop == msg.UpdateCriteriaStruct_delete {
+				delete(user, v.Ucr.String())
+			}
+		}
+	}
+
 	return &msg.MultiUserResponse{Users: users}, nil
 }
 
