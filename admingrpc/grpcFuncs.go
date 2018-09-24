@@ -106,8 +106,13 @@ func (s *AdminServiceServer) Find(ctx context.Context, in *msg.MultiCriteriaRequ
 }
 
 //Update - handle /update command from bot
-func (s *AdminServiceServer) Update(ctx context.Context, in *msg.MultiCriteriaRequest) (*msg.MultiUserResponse, error) {
+func (s *AdminServiceServer) Update(ctx context.Context, in *msg.UpdateCriteriaRequest) (*msg.MultiUserResponse, error) {
 	var users []*msg.UserResponseStruct
+	fmt.Println(in.FindParams)
+	fmt.Println("------------------------------------------")
+	fmt.Println(in.UpdParams)
+	b := storage.QueryBuilder{}
+
 	//Реализация метода
 	return &msg.MultiUserResponse{Users: users}, nil
 }

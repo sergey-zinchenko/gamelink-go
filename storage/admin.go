@@ -2,7 +2,9 @@ package storage
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"gamelink-go/common"
 	"gamelink-go/proto_msg"
 )
 
@@ -72,6 +74,12 @@ func (q *QueryBuilder) PushQuery() *QueryBuilder {
 	return q
 }
 
+//UpdateQuery - first part of query for update command
+func (q *QueryBuilder) UpdateQuery() *QueryBuilder {
+	//q.query = `UPDATE users set data = `
+	return q
+}
+
 //String - concatenate first query part, WHERE and params query part
 func (q *QueryBuilder) String() string {
 	if q.query == "" {
@@ -104,4 +112,17 @@ func (q *QueryBuilder) QueryWithDB(sql *sql.DB, worker RowWorker) ([]interface{}
 //Message - return query builder message
 func (q *QueryBuilder) Message() string {
 	return q.message
+}
+
+//CJ - func to make json from supdateParams
+func (q *QueryBuilder) CJ(criterias []*proto_msg.UpdateCriteriaStruct) (*QueryBuilder, error) {
+	var upd common.J
+	for _, v := range criterias {
+		upd[v.Ucr.String()] = v.Value
+	}
+	res, err := json.Marshal(upd)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println(res)
 }

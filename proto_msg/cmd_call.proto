@@ -28,12 +28,40 @@ message OneCriteriaStruct {
     string   value = 3;
 }
 
+message UpdateCriteriaStruct {
+    enum UpdCriteria {
+        undef        = 0;
+        id           = 1;
+        vk_id        = 2;
+        fb_id        = 3;
+        sex          = 4;
+        age          = 5;
+        created_at   = 6;
+        deleted      = 7;
+        advtWatch    = 8;
+        madePurchase = 9;
+    }
+    enum UpdOption {
+        x     = 0;
+        set   = 1;
+        del   = 2;
+    }
+    UpdCriteria ucr = 1;
+    UpdOption   uop = 2;
+    string    value = 3;
+}
+
 message OneCriteriaRequest {
     OneCriteriaStruct param = 1;
 }
 
 message MultiCriteriaRequest {
     repeated OneCriteriaStruct params = 1;
+}
+
+message UpdateCriteriaRequest {
+    repeated OneCriteriaStruct findParams = 1;
+    repeated UpdateCriteriaStruct updParams = 2;
 }
 
 message UserResponseStruct {
