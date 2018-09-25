@@ -75,13 +75,7 @@ func (q *QueryBuilder) PushQuery() *QueryBuilder {
 
 //GetData - get user data from db
 func (q *QueryBuilder) GetData() *QueryBuilder {
-	q.query = `SELECT data FROM users `
-	return q
-}
-
-//UpdateQuery - first part of query for update command
-func (q *QueryBuilder) UpdateQuery() *QueryBuilder {
-	//q.query = `UPDATE users set data = `
+	q.query = `SELECT id, data FROM users `
 	return q
 }
 
