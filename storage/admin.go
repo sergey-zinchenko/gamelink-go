@@ -11,6 +11,7 @@ type (
 	//QueryBuilder - struct fo work with params and build db query
 	QueryBuilder struct {
 		query, whereClause, message string
+		offset                      int64
 		params                      []interface{}
 	}
 	//ScanFunc - func for scan rows
@@ -49,6 +50,12 @@ func (q *QueryBuilder) WithMultipleClause(criterias []*proto_msg.OneCriteriaStru
 	return q
 }
 
+//Offset - set offset to qeryBuilder
+func (q *QueryBuilder) Offset(offset int64) *QueryBuilder {
+	q.offset = offset
+	return q
+}
+
 //CountQuery - fist part of count query
 func (q *QueryBuilder) CountQuery() *QueryBuilder {
 	q.query = "SELECT COUNT(id) FROM users"
@@ -80,19 +87,20 @@ func (q *QueryBuilder) GetData() *QueryBuilder {
 }
 
 //String - concatenate first query part, WHERE and params query part
-func (q *QueryBuilder) String() string {
+func (q *QueryBuilder) String(offset int64) string {
 	if q.query == "" {
 		return ""
 	}
 	if q.whereClause == "" {
-		return q.query
+		return q.query + fmt.Sprintf(" LIMIT 1 OFFSET %d", offset)
+		//return q.query
 	}
 	return fmt.Sprintf("%s WHERE %s", q.query, q.whereClause)
 }
 
 //QueryWithDB - execute query, scan result
 func (q *QueryBuilder) QueryWithDB(sql *sql.DB, worker RowWorker) ([]interface{}, error) {
-	rows, err := sql.Query(q.String(), q.params...)
+	rows, err := sql.Query(q.String(q.offset), q.params...)
 	defer rows.Close()
 	if err != nil {
 		return nil, err
@@ -112,19 +120,3 @@ func (q *QueryBuilder) QueryWithDB(sql *sql.DB, worker RowWorker) ([]interface{}
 func (q *QueryBuilder) Message() string {
 	return q.message
 }
-
-////CJ - func to make json from updateParams
-//func (q *QueryBuilder) CJ(criterias []*proto_msg.UpdateCriteriaStruct) (C.J, error) {
-//    set := make(C.J)
-//    delete := make(C.J)
-//	for _, v := range criterias {
-//		if v.Uop == proto_msg.UpdateCriteriaStruct_set && v.Value != "" {
-//			set[v.Ucr.String()] = v.Value
-//		} else if v.Uop == proto_msg.UpdateCriteriaStruct_delete {
-//			delete[v.Ucr.String()]
-//		}
-//	}
-//	fmt.Println("*********************************")
-//	fmt.Println(set)
-//	return set, nil
-//}

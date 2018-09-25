@@ -110,35 +110,48 @@ func (s *AdminServiceServer) Find(ctx context.Context, in *msg.MultiCriteriaRequ
 //Update - handle /update command from bot
 func (s *AdminServiceServer) Update(ctx context.Context, in *msg.UpdateCriteriaRequest) (*msg.MultiUserResponse, error) {
 	var users []*msg.UserResponseStruct
-	b := storage.QueryBuilder{}
-	b.GetData().WithMultipleClause(in.FindParams)
+	count, err := s.Count(ctx, &msg.MultiCriteriaRequest{Params: in.FindParams})
+	if err != nil {
+		return nil, err
+	}
+	if count.Count == 0 {
+		return nil, errors.New("there is no users satisfy input params")
+	}
+
 	type user struct {
 		id   int64
 		data C.J
 	}
-	_, err := s.dbs.Query(b, func(scanFunc storage.ScanFunc) (interface{}, error) {
-		var bytes []byte
-		var ident int64
-		err := scanFunc(&ident, &bytes)
-		if err != nil {
-			return nil, err
-		}
-		var us C.J
-		err = json.Unmarshal(bytes, &us)
-		u := user{id: ident, data: us}
-		for _, v := range in.UpdParams {
-			if v.Uop == msg.UpdateCriteriaStruct_set {
-				u.data[v.Ucr.String()] = v.Value
-			} else if v.Uop == msg.UpdateCriteriaStruct_delete {
-				delete(u.data, v.Ucr.String())
+	var i int64
+	for i = 0; i < count.Count; i = i + 1 {
+		g := storage.QueryBuilder{}
+		g.Offset(i)
+		g.GetData().WithMultipleClause(in.FindParams)
+		_, err = s.dbs.Query(g, func(scanFunc storage.ScanFunc) (interface{}, error) {
+			var bytes []byte
+			var ident int64
+			err := scanFunc(&ident, &bytes)
+			if err != nil {
+				return nil, err
 			}
-		}
-		err = s.dbs.ExecUpdateQuery(u.data, u.id)
-		if err != nil {
-			return nil, err
-		}
-		return nil, nil
-	})
+			var us C.J
+			err = json.Unmarshal(bytes, &us)
+			u := user{id: ident, data: us}
+			for _, v := range in.UpdParams {
+				if v.Uop == msg.UpdateCriteriaStruct_set {
+					u.data[v.Ucr.String()] = v.Value
+				} else if v.Uop == msg.UpdateCriteriaStruct_delete {
+					delete(u.data, v.Ucr.String())
+				}
+			}
+			err = s.dbs.ExecUpdateQuery(u.data, u.id)
+			if err != nil {
+				return nil, err
+			}
+			return nil, nil
+		})
+	}
+
 	if err != nil {
 		return nil, err
 	}
