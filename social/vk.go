@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 type (
@@ -248,8 +249,19 @@ func (token VkToken) get(userInfo *VkInfo) error {
 	if f.Response[0].Bdate != nil {
 		bdate := *f.Response[0].Bdate
 		bdateArr := strings.Split(bdate, ".")
+		if len(bdateArr[1]) < 2 {
+			bdateArr[1] = "0" + bdateArr[1]
+		}
+		if len(bdateArr[0]) < 2 {
+			bdateArr[0] = "0" + bdateArr[0]
+		}
 		formatedBdate := bdateArr[1] + "." + bdateArr[0] + "." + bdateArr[2]
-		userInfo.Bdate = formatedBdate
+		lay := "01.02.2006"
+		t, err := time.Parse(lay, formatedBdate)
+		if err != nil {
+			fmt.Println(err)
+		}
+		userInfo.Bdate = t.Unix()
 	}
 	if f.Response[0].Sex != nil {
 		if *f.Response[0].Sex == 1 {
