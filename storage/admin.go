@@ -2,9 +2,11 @@ package storage
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
-
+	C "gamelink-go/common"
 	"gamelink-go/proto_msg"
+	"gamelink-go/storage/queries"
 )
 
 type (
@@ -13,6 +15,12 @@ type (
 		query, whereClause, message string
 		offset                      int64
 		params                      []interface{}
+	}
+	//UpdateBuilder - struct for work with params when update user data
+	UpdateBuilder struct {
+		ID        int64
+		Data      []byte
+		UpdParams []*proto_msg.UpdateCriteriaStruct
 	}
 	//ScanFunc - func for scan rows
 	ScanFunc = func(...interface{}) error
@@ -86,13 +94,13 @@ func (q *QueryBuilder) GetData() *QueryBuilder {
 	return q
 }
 
-//String - concatenate first query part, WHERE and params query part
-func (q *QueryBuilder) String(offset int64) string {
+//Concat - concatenate first query part, WHERE and params query part
+func (q *QueryBuilder) Concat(offset int64) string {
 	if q.query == "" {
 		return ""
 	}
 	if q.whereClause == "" {
-		return q.query + fmt.Sprintf(" LIMIT 1 OFFSET %d", offset)
+		return q.query + fmt.Sprintf(" LIMIT 100 OFFSET %d", offset)
 		//return q.query
 	}
 	return fmt.Sprintf("%s WHERE %s", q.query, q.whereClause)
@@ -100,7 +108,7 @@ func (q *QueryBuilder) String(offset int64) string {
 
 //QueryWithDB - execute query, scan result
 func (q *QueryBuilder) QueryWithDB(sql *sql.DB, worker RowWorker) ([]interface{}, error) {
-	rows, err := sql.Query(q.String(q.offset), q.params...)
+	rows, err := sql.Query(q.Concat(q.offset), q.params...)
 	defer rows.Close()
 	if err != nil {
 		return nil, err
@@ -119,4 +127,34 @@ func (q *QueryBuilder) QueryWithDB(sql *sql.DB, worker RowWorker) ([]interface{}
 //Message - return query builder message
 func (q *QueryBuilder) Message() string {
 	return q.message
+}
+
+//Prepare - get user json, update fields, adn prepare to update it in db
+func (u *UpdateBuilder) Prepare() (*UpdateBuilder, error) {
+	var dataJSON C.J
+	err := json.Unmarshal(u.Data, &dataJSON)
+	if err != nil {
+		return nil, err
+	}
+	for _, v := range u.UpdParams {
+		if v.Uop == proto_msg.UpdateCriteriaStruct_set {
+			dataJSON[v.Ucr.String()] = v.Value
+		} else if v.Uop == proto_msg.UpdateCriteriaStruct_delete {
+			delete(dataJSON, v.Ucr.String())
+		}
+	}
+	u.Data, err = json.Marshal(dataJSON)
+	if err != nil {
+		return nil, err
+	}
+	return u, nil
+}
+
+// Update - execute db query
+func (u *UpdateBuilder) Update(sql *sql.DB) error {
+	_, err := sql.Exec(queries.AdminUpdateUserDataQuery, u.Data, u.ID)
+	if err != nil {
+		return err
+	}
+	return nil
 }

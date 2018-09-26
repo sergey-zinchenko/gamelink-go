@@ -2,10 +2,8 @@ package storage
 
 import (
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"gamelink-go/common"
 	"gamelink-go/config"
 	"gamelink-go/storage/queries"
 	"github.com/go-redis/redis"
@@ -30,17 +28,9 @@ func (dbs DBS) Query(qb QueryBuilder, worker RowWorker) ([]interface{}, error) {
 	return qb.QueryWithDB(dbs.mySQL, worker)
 }
 
-//ExecUpdateQuery - execute db query for update user data
-func (dbs DBS) ExecUpdateQuery(data common.J, id int64) error {
-	upd, err := json.Marshal(data)
-	if err != nil {
-		return err
-	}
-	_, err = dbs.mySQL.Exec(queries.AdminUpdateUserDataQuery, upd, id)
-	if err != nil {
-		return err
-	}
-	return nil
+//Update - provide UpdateBuilder connection to mysql
+func (dbs DBS) Update(ub *UpdateBuilder) error {
+	return ub.Update(dbs.mySQL)
 }
 
 //Connect - Connections to all databases will be established here.

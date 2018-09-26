@@ -2,10 +2,8 @@ package admingrpc
 
 import (
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
-	C "gamelink-go/common"
 	msg "gamelink-go/proto_msg"
 	"gamelink-go/storage"
 	"golang.org/x/net/context"
@@ -108,19 +106,13 @@ func (s *AdminServiceServer) Find(ctx context.Context, in *msg.MultiCriteriaRequ
 }
 
 //Update - handle /update command from bot
-func (s *AdminServiceServer) Update(ctx context.Context, in *msg.UpdateCriteriaRequest) (*msg.MultiUserResponse, error) {
-	var users []*msg.UserResponseStruct
+func (s *AdminServiceServer) Update(ctx context.Context, in *msg.UpdateCriteriaRequest) (*msg.StringResponse, error) {
 	count, err := s.Count(ctx, &msg.MultiCriteriaRequest{Params: in.FindParams})
 	if err != nil {
 		return nil, err
 	}
 	if count.Count == 0 {
 		return nil, errors.New("there is no users satisfy input params")
-	}
-
-	type user struct {
-		id   int64
-		data C.J
 	}
 	var i int64
 	for i = 0; i < count.Count; i = i + 1 {
@@ -134,28 +126,22 @@ func (s *AdminServiceServer) Update(ctx context.Context, in *msg.UpdateCriteriaR
 			if err != nil {
 				return nil, err
 			}
-			var us C.J
-			err = json.Unmarshal(bytes, &us)
-			u := user{id: ident, data: us}
-			for _, v := range in.UpdParams {
-				if v.Uop == msg.UpdateCriteriaStruct_set {
-					u.data[v.Ucr.String()] = v.Value
-				} else if v.Uop == msg.UpdateCriteriaStruct_delete {
-					delete(u.data, v.Ucr.String())
-				}
+			u := storage.UpdateBuilder{ID: ident, Data: bytes, UpdParams: in.UpdParams}
+			updated, err := u.Prepare()
+			if err != nil {
+				return nil, err
 			}
-			err = s.dbs.ExecUpdateQuery(u.data, u.id)
+			err = s.dbs.Update(updated)
 			if err != nil {
 				return nil, err
 			}
 			return nil, nil
 		})
 	}
-
 	if err != nil {
 		return nil, err
 	}
-	return &msg.MultiUserResponse{Users: users}, nil
+	return &msg.StringResponse{Response: "success"}, nil // Стоит ли тут возвращать массив юзеров? И если да, доделать этот момент
 }
 
 //Delete - handle /delete command from bot
