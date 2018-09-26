@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-	"strings"
 	"time"
 )
 
@@ -173,8 +172,8 @@ func (token FbToken) get(userInfo *FbInfo) error {
 	}
 
 	if f.Bdate != nil {
-		lay := "01.02.2006"
-		t, err := time.Parse(lay, strings.Replace(*f.Bdate, "/", ".", 3))
+		lay := "01/02/2006"
+		t, err := time.Parse(lay, *f.Bdate)
 		if err != nil {
 			fmt.Println(err)
 		}
