@@ -8,7 +8,6 @@ import (
 	"gamelink-go/graceful"
 	"net/http"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -248,18 +247,10 @@ func (token VkToken) get(userInfo *VkInfo) error {
 	}
 	if f.Response[0].Bdate != nil {
 		bdate := *f.Response[0].Bdate
-		bdateArr := strings.Split(bdate, ".")
-		if len(bdateArr[1]) < 2 {
-			bdateArr[1] = "0" + bdateArr[1]
-		}
-		if len(bdateArr[0]) < 2 {
-			bdateArr[0] = "0" + bdateArr[0]
-		}
-		formatedBdate := bdateArr[1] + "." + bdateArr[0] + "." + bdateArr[2]
-		lay := "01.02.2006"
-		t, err := time.Parse(lay, formatedBdate)
+		lay := "2.1.2006"
+		t, err := time.Parse(lay, bdate)
 		if err != nil {
-			fmt.Println(err)
+			return errors.New("can't parse bdate")
 		}
 		userInfo.Bdate = t.Unix()
 	}
