@@ -12,9 +12,10 @@ import (
 type (
 	//QueryBuilder - struct fo work with params and build db query
 	QueryBuilder struct {
-		query, whereClause, message string
-		offset                      int64
-		params                      []interface{}
+		query, whereClause, message   string
+		loggedInLess, loggedInGreater string
+		offset                        int64
+		params                        []interface{}
 	}
 	//UpdateBuilder - struct for work with params when update user data
 	UpdateBuilder struct {
@@ -53,12 +54,20 @@ func (q *QueryBuilder) WithMultipleClause(criterias []*proto_msg.OneCriteriaStru
 			q.message = v.Value //Пишем в структуру сообщение на случай, если это запрос на отправку пуш сообщения
 			continue
 		}
+		if v.Cr.String() == "logged_id" {
+			if v.Op == proto_msg.OneCriteriaStruct_e || v.Op == proto_msg.OneCriteriaStruct_g {
+				q.loggedInGreater = v.Value
+			} else if v.Op == proto_msg.OneCriteriaStruct_l {
+				q.loggedInLess = v.Value
+			}
+			continue
+		}
 		q.WithClause(v)
 	}
 	return q
 }
 
-//Offset - set offset to qeryBuilder
+//Offset - set offset to queryBuilder
 func (q *QueryBuilder) Offset(offset int64) *QueryBuilder {
 	q.offset = offset
 	return q
@@ -94,16 +103,26 @@ func (q *QueryBuilder) GetData() *QueryBuilder {
 	return q
 }
 
+func (q *QueryBuilder) isGetDataQuery() bool {
+	if q.query == `SELECT id, data FROM users ` {
+		return true
+	}
+	return false
+}
+
 //Concat - concatenate first query part, WHERE and params query part
 func (q *QueryBuilder) Concat(offset int64) string {
 	if q.query == "" {
 		return ""
 	}
 	if q.whereClause == "" {
-		return q.query + fmt.Sprintf(" LIMIT 100 OFFSET %d", offset)
-		//return q.query
+		return q.query
 	}
-	return fmt.Sprintf("%s WHERE %s", q.query, q.whereClause)
+	query := fmt.Sprintf("%s WHERE %s", q.query, q.whereClause)
+	if q.isGetDataQuery() {
+		query += fmt.Sprintf(" LIMIT 100 OFFSET %d", offset)
+	}
+	return query
 }
 
 //QueryWithDB - execute query, scan result
