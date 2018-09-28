@@ -9,7 +9,7 @@ import "proto_msg/cmd_call.proto";
 service AdminService {
     rpc Count(protoMsg.MultiCriteriaRequest) returns(protoMsg.CountResponse) {}
     rpc Find(protoMsg.MultiCriteriaRequest) returns(protoMsg.MultiUserResponse) {}
-    rpc Update(protoMsg.MultiCriteriaRequest) returns(protoMsg.MultiUserResponse) {}
+    rpc Update(protoMsg.UpdateCriteriaRequest) returns(protoMsg.StringResponse) {}
     rpc Delete(protoMsg.MultiCriteriaRequest) returns(protoMsg.OneUserResponse) {}
     rpc SendPush(protoMsg.MultiCriteriaRequest) returns(protoMsg.StringResponse) {}
 }

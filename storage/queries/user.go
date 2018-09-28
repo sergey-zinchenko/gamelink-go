@@ -32,7 +32,7 @@ SELECT (SELECT CAST(CONCAT( 	'{"id":'  , 	u.id,
 								IFNULL(CONCAT(',"rank1":'  , 	rank1),""),
                                 IFNULL(CONCAT(',"rank2":'  , 	rank2),""),
                                 IFNULL(CONCAT(',"rank3":'  , 	rank3),""),
-                                IFNULL(CONCAT(',"bdate":'  , 	UNIX_TIMESTAMP(u.bdate)),""), 
+                                IFNULL(CONCAT(',"bdate":'  , 	u.bdate),""), 
                                 IFNULL(CONCAT(',"meta":'   , 	u.meta),""),
                                 IFNULL(CONCAT(',"country":'  , 	JSON_QUOTE(u.country)),""),',',
 					 			'"friends":',   	IFNULL(q.friends,"[]"), ',',
@@ -69,6 +69,9 @@ WHERE u.id = ? AND u.deleted != 1`
 UPDATE users u
 SET u.data = ?
 WHERE u.id = ? AND u.deleted != 1`
+
+	//AdminUpdateUserDataQuery - mysql query for update user data from admin interface
+	AdminUpdateUserDataQuery = `UPDATE users set data = ? WHERE id = ?`
 
 	//DeleteUserQuery - mysql query to mark deleted user
 	DeleteUserQuery = `
