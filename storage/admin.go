@@ -12,10 +12,9 @@ import (
 type (
 	//QueryBuilder - struct fo work with params and build db query
 	QueryBuilder struct {
-		query, whereClause, message   string
-		loggedInLess, loggedInGreater string
-		offset                        int64
-		params                        []interface{}
+		query, whereClause, message string
+		offset                      int64
+		params                      []interface{}
 	}
 	//UpdateBuilder - struct for work with params when update user data
 	UpdateBuilder struct {
@@ -34,7 +33,11 @@ func (q *QueryBuilder) WithClause(criteria *proto_msg.OneCriteriaStruct) *QueryB
 	if q.whereClause != "" {
 		q.whereClause += " AND "
 	}
-	q.whereClause += criteria.Cr.String() + " "
+	if criteria.Cr == proto_msg.OneCriteriaStruct_updated_at {
+		q.whereClause += "unix_timestamp(" + criteria.Cr.String() + ") "
+	} else {
+		q.whereClause += criteria.Cr.String() + " "
+	}
 	switch criteria.Op {
 	case proto_msg.OneCriteriaStruct_l:
 		q.whereClause += "<= ?"
@@ -52,14 +55,6 @@ func (q *QueryBuilder) WithMultipleClause(criterias []*proto_msg.OneCriteriaStru
 	for _, v := range criterias {
 		if v.Cr.String() == "message" {
 			q.message = v.Value //Пишем в структуру сообщение на случай, если это запрос на отправку пуш сообщения
-			continue
-		}
-		if v.Cr.String() == "logged_id" {
-			if v.Op == proto_msg.OneCriteriaStruct_e || v.Op == proto_msg.OneCriteriaStruct_g {
-				q.loggedInGreater = v.Value
-			} else if v.Op == proto_msg.OneCriteriaStruct_l {
-				q.loggedInLess = v.Value
-			}
 			continue
 		}
 		q.WithClause(v)

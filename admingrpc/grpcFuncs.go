@@ -3,7 +3,6 @@ package admingrpc
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	msg "gamelink-go/proto_msg"
 	"gamelink-go/storage"
 	"golang.org/x/net/context"
@@ -171,10 +170,8 @@ func (s *AdminServiceServer) Delete(ctx context.Context, in *msg.MultiCriteriaRe
 
 //SendPush - handle /send_push command
 func (s *AdminServiceServer) SendPush(ctx context.Context, in *msg.MultiCriteriaRequest) (*msg.StringResponse, error) {
-	fmt.Println(in.Params)
 	b := storage.QueryBuilder{}
 	b.PushQuery().WithMultipleClause(in.Params)
 	//обрабытваем то шо нашли по запросу из базы
-	fmt.Println(b.Message())
 	return &msg.StringResponse{Response: "message successfully send"}, nil
 }

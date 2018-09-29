@@ -175,7 +175,7 @@ func (token FbToken) get(userInfo *FbInfo) error {
 		lay := "01/02/2006"
 		t, err := time.Parse(lay, *f.Bdate)
 		if err != nil {
-			fmt.Println(err)
+			return errors.New("fb bdate parse error")
 		}
 		userInfo.Bdate = t.Unix()
 	}
