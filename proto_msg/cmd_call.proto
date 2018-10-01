@@ -17,7 +17,7 @@ message OneCriteriaStruct {
        message      = 8;
        advert_watch = 9;
        payment      = 10;
-       updated_at    = 11;
+       updated_at   = 11;
     }
     enum Option {
         x = 0;

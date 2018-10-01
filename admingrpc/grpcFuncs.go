@@ -113,30 +113,37 @@ func (s *AdminServiceServer) Update(ctx context.Context, in *msg.UpdateCriteriaR
 	if count.Count == 0 {
 		return nil, errors.New("there is no users satisfy input params")
 	}
-	var i int64
-	for i = 0; i < count.Count; i = i + 1 {
-		g := storage.QueryBuilder{}
-		g.Offset(i)
-		g.GetData().WithMultipleClause(in.FindParams)
-		_, err = s.dbs.Query(g, func(scanFunc storage.ScanFunc) (interface{}, error) {
-			var bytes []byte
-			var ident int64
-			err := scanFunc(&ident, &bytes)
-			if err != nil {
-				return nil, err
-			}
-			u := storage.UpdateBuilder{ID: ident, Data: bytes, UpdParams: in.UpdParams}
-			updated, err := u.Prepare()
-			if err != nil {
-				return nil, err
-			}
-			err = s.dbs.Update(updated)
-			if err != nil {
-				return nil, err
-			}
-			return nil, nil
-		})
-	}
+	u := storage.UpdateBuilder{}
+	u.Count = count.Count
+	u.UpdParams = in.UpdParams
+	u.FindParams = in.FindParams
+	err = s.dbs.Update(&u)
+	//var i int64
+	//for i = 0; i < count.Count; i = i + 1 {
+	//	u := storage.UpdateBuilder{}
+	//	u.QBuilder.Offset(i)
+	//	u.QBuilder.GetData().WithMultipleClause(in.FindParams)
+	//	_, err = s.dbs.Query(u.QBuilder, func(scanFunc storage.ScanFunc) (interface{}, error) {
+	//		var bytes []byte
+	//		var ident int64
+	//		err := scanFunc(&ident, &bytes)
+	//		if err != nil {
+	//			return nil, err
+	//		}
+	//		u.ID = ident
+	//		u.Data = bytes
+	//		u.UpdParams = in.UpdParams
+	//		updated, err := u.Prepare()
+	//		if err != nil {
+	//			return nil, err
+	//		}
+	//		err = s.dbs.Update(updated)
+	//		if err != nil {
+	//			return nil, err
+	//		}
+	//		return nil, nil
+	//	})
+	//}
 	if err != nil {
 		return nil, err
 	}

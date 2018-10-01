@@ -30,7 +30,7 @@ func (dbs DBS) Query(qb QueryBuilder, worker RowWorker) ([]interface{}, error) {
 
 //Update - provide UpdateBuilder connection to mysql
 func (dbs DBS) Update(ub *UpdateBuilder) error {
-	return ub.Update(dbs.mySQL)
+	return ub.UpdateWithDb(dbs.mySQL)
 }
 
 //Connect - Connections to all databases will be established here.

@@ -18,9 +18,11 @@ type (
 	}
 	//UpdateBuilder - struct for work with params when update user data
 	UpdateBuilder struct {
-		ID        int64
-		Data      []byte
-		UpdParams []*proto_msg.UpdateCriteriaStruct
+		ID, Count  int64
+		Data       []byte
+		UpdParams  []*proto_msg.UpdateCriteriaStruct
+		FindParams []*proto_msg.OneCriteriaStruct
+		QBuilder   QueryBuilder
 	}
 	//ScanFunc - func for scan rows
 	ScanFunc = func(...interface{}) error
@@ -115,7 +117,7 @@ func (q *QueryBuilder) Concat(offset int64) string {
 	}
 	query := fmt.Sprintf("%s WHERE %s", q.query, q.whereClause)
 	if q.isGetDataQuery() {
-		query += fmt.Sprintf(" LIMIT 100 OFFSET %d", offset)
+		query += fmt.Sprintf(" LIMIT 1 OFFSET %d", offset)
 	}
 	return query
 }
@@ -164,9 +166,56 @@ func (u *UpdateBuilder) Prepare() (*UpdateBuilder, error) {
 	return u, nil
 }
 
-// Update - execute db query
-func (u *UpdateBuilder) Update(sql *sql.DB) error {
-	_, err := sql.Exec(queries.AdminUpdateUserDataQuery, u.Data, u.ID)
+// UpdateWithDb - execute db query
+func (u *UpdateBuilder) UpdateWithDb(mysql *sql.DB) error {
+	//_, err := sql.Exec(queries.AdminUpdateUserDataQuery, u.Data, u.ID)
+	//if err != nil {
+	//	return err
+	//}
+	//return nil
+	var transaction = func(tx *sql.Tx) error {
+		var i int64
+		for i = 0; i < u.Count; i = i + 1 {
+			u.QBuilder.Offset(i)
+			u.QBuilder.GetData().WithMultipleClause(u.FindParams)
+			_, err := u.QBuilder.QueryWithDB(mysql, func(scanFunc ScanFunc) (interface{}, error) {
+				var bytes []byte
+				var ident int64
+				err := scanFunc(&ident, &bytes)
+				if err != nil {
+					return nil, err
+				}
+				u.ID = ident
+				u.Data = bytes
+				updated, err := u.Prepare()
+				if err != nil {
+					return nil, err
+				}
+				_, err = mysql.Exec(queries.AdminUpdateUserDataQuery, updated.Data, updated.ID)
+				if err != nil {
+					return nil, err
+				}
+				return nil, nil
+			})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	tx, err := mysql.Begin()
+	if err != nil {
+		return err
+	}
+	err = transaction(tx)
+	if err != nil {
+		if e := tx.Rollback(); e != nil {
+			return e
+		}
+		return err
+	}
+	err = tx.Commit()
 	if err != nil {
 		return err
 	}
