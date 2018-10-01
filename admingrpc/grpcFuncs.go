@@ -3,7 +3,6 @@ package admingrpc
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	msg "gamelink-go/proto_msg"
 	"gamelink-go/storage"
 	"golang.org/x/net/context"
@@ -106,10 +105,42 @@ func (s *AdminServiceServer) Find(ctx context.Context, in *msg.MultiCriteriaRequ
 }
 
 //Update - handle /update command from bot
-func (s *AdminServiceServer) Update(ctx context.Context, in *msg.MultiCriteriaRequest) (*msg.MultiUserResponse, error) {
-	var users []*msg.UserResponseStruct
-	//Реализация метода
-	return &msg.MultiUserResponse{Users: users}, nil
+func (s *AdminServiceServer) Update(ctx context.Context, in *msg.UpdateCriteriaRequest) (*msg.StringResponse, error) {
+	count, err := s.Count(ctx, &msg.MultiCriteriaRequest{Params: in.FindParams})
+	if err != nil {
+		return nil, err
+	}
+	if count.Count == 0 {
+		return nil, errors.New("there is no users satisfy input params")
+	}
+	var i int64
+	for i = 0; i < count.Count; i = i + 1 {
+		g := storage.QueryBuilder{}
+		g.Offset(i)
+		g.GetData().WithMultipleClause(in.FindParams)
+		_, err = s.dbs.Query(g, func(scanFunc storage.ScanFunc) (interface{}, error) {
+			var bytes []byte
+			var ident int64
+			err := scanFunc(&ident, &bytes)
+			if err != nil {
+				return nil, err
+			}
+			u := storage.UpdateBuilder{ID: ident, Data: bytes, UpdParams: in.UpdParams}
+			updated, err := u.Prepare()
+			if err != nil {
+				return nil, err
+			}
+			err = s.dbs.Update(updated)
+			if err != nil {
+				return nil, err
+			}
+			return nil, nil
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &msg.StringResponse{Response: "success"}, nil // Стоит ли тут возвращать массив юзеров? И если да, доделать этот момент
 }
 
 //Delete - handle /delete command from bot
@@ -139,10 +170,8 @@ func (s *AdminServiceServer) Delete(ctx context.Context, in *msg.MultiCriteriaRe
 
 //SendPush - handle /send_push command
 func (s *AdminServiceServer) SendPush(ctx context.Context, in *msg.MultiCriteriaRequest) (*msg.StringResponse, error) {
-	fmt.Println(in.Params)
 	b := storage.QueryBuilder{}
 	b.PushQuery().WithMultipleClause(in.Params)
 	//обрабытваем то шо нашли по запросу из базы
-	fmt.Println(b.Message())
 	return &msg.StringResponse{Response: "message successfully send"}, nil
 }

@@ -33,9 +33,6 @@ func (dbs DBS) AuthorizedUser(token string) (*User, error) {
 			return err
 		}
 		_, err = dbs.rc.Set(authRedisKeyPref+token, id, 8*time.Hour).Result()
-		if err != nil {
-			return err
-		}
 		return err
 	}, authRedisKeyPref+token)
 	if err != nil {

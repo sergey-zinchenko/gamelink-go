@@ -28,6 +28,11 @@ func (dbs DBS) Query(qb QueryBuilder, worker RowWorker) ([]interface{}, error) {
 	return qb.QueryWithDB(dbs.mySQL, worker)
 }
 
+//Update - provide UpdateBuilder connection to mysql
+func (dbs DBS) Update(ub *UpdateBuilder) error {
+	return ub.Update(dbs.mySQL)
+}
+
 //Connect - Connections to all databases will be established here.
 func (dbs *DBS) Connect() (err error) {
 	if dbs.mySQL, err = sql.Open("mysql", config.MysqlDsn); err != nil {
