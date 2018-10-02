@@ -60,6 +60,11 @@ message MultiCriteriaRequest {
     repeated OneCriteriaStruct params = 1;
 }
 
+message PushCriteriaRequest {
+    repeated OneCriteriaStruct params = 1;
+    string   message = 2;
+}
+
 message UpdateCriteriaRequest {
     repeated OneCriteriaStruct findParams = 1;
     repeated UpdateCriteriaStruct updParams = 2;
