@@ -136,9 +136,7 @@ func (q QueryBuilder) QueryWithDB(mysql *sql.DB, worker RowWorker) ([]interface{
 		if err != nil {
 			return nil, err
 		}
-		params := append(q.params, limit)
-		params = append(params, 0) //append offset == 0
-		err = q.updateTransaction(params, tx)
+		err = q.updateTransaction(tx)
 		if err != nil {
 			if e := tx.Rollback(); e != nil {
 				return nil, e
@@ -174,13 +172,15 @@ func prepareDataToUpdateInDb(id int64, rowData []byte, updateParams []*proto_msg
 	return &update{id: id, data: newData}, nil
 }
 
-func (q QueryBuilder) updateTransaction(params []interface{}, tx *sql.Tx) error {
+func (q QueryBuilder) updateTransaction(tx *sql.Tx) error {
 	var offset int64
+	q.params = append(q.params, limit)
+	q.params = append(q.params, 0) //append offset == 0
 	for {
 		var count int64
-		params[len(params)-1] = offset
+		q.params[len(q.params)-1] = offset
 		query := "SELECT id, data FROM gamelink.users WHERE " + q.whereClause + " LIMIT ? OFFSET ?"
-		rows, err := tx.Query(query, params...)
+		rows, err := tx.Query(query, q.params...)
 		//defer rows.Close()
 		if err != nil {
 			if err == sql.ErrNoRows {
