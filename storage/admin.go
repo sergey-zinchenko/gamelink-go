@@ -181,7 +181,6 @@ func (q QueryBuilder) updateTransaction(tx *sql.Tx) error {
 		q.params[len(q.params)-1] = offset
 		query := "SELECT id, data FROM gamelink.users WHERE " + q.whereClause + " LIMIT ? OFFSET ?"
 		rows, err := tx.Query(query, q.params...)
-		//defer rows.Close()
 		if err != nil {
 			if err == sql.ErrNoRows {
 				break
@@ -206,6 +205,7 @@ func (q QueryBuilder) updateTransaction(tx *sql.Tx) error {
 		}
 		for _, v := range updateSet {
 			_, err = tx.Exec("UPDATE users set data = ? WHERE id = ?", v.data, v.id)
+			defer rows.Close()
 			if err != nil {
 				return err
 			}
