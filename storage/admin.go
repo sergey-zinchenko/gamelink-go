@@ -18,11 +18,11 @@ const (
 	//QueryDelete - const for delete query
 	QueryDelete
 
-	limit = 1
+	limit = 100
 )
 
 type (
-	//QueryBuilder - struct fo work with params and build db query
+	//QueryBuilder - struct for work with params and build db query
 	QueryBuilder struct {
 		kind        QueryKind
 		whereClause string
@@ -35,6 +35,11 @@ type (
 	RowWorker = func(ScanFunc) (interface{}, error)
 	//QueryKind - num of kind db query
 	QueryKind = int64
+	//update - struct contains userID and data, prepared to update in db
+	update struct {
+		id   int64
+		data []byte
+	}
 )
 
 //WithClause - func for make query part from criteria
@@ -131,7 +136,9 @@ func (q QueryBuilder) QueryWithDB(mysql *sql.DB, worker RowWorker) ([]interface{
 		if err != nil {
 			return nil, err
 		}
-		err = updateTransaction(q.whereClause, q.updParams, q.params, tx)
+		params := append(q.params, limit)
+		params = append(params, 0) //append offset == 0
+		err = q.updateTransaction(params, tx)
 		if err != nil {
 			if e := tx.Rollback(); e != nil {
 				return nil, e
@@ -147,7 +154,7 @@ func (q QueryBuilder) QueryWithDB(mysql *sql.DB, worker RowWorker) ([]interface{
 }
 
 //Prepare - get user json, update fields, adn prepare to update it in db
-func prepareDataToUpdateInDb(rowData []byte, updateParams []*proto_msg.UpdateCriteriaStruct) ([]byte, error) {
+func prepareDataToUpdateInDb(id int64, rowData []byte, updateParams []*proto_msg.UpdateCriteriaStruct) (*update, error) {
 	var dataJSON C.J
 	err := json.Unmarshal(rowData, &dataJSON)
 	if err != nil {
@@ -160,22 +167,19 @@ func prepareDataToUpdateInDb(rowData []byte, updateParams []*proto_msg.UpdateCri
 			delete(dataJSON, v.Ucr.String())
 		}
 	}
-	fmt.Println(dataJSON)
 	newData, err := json.Marshal(dataJSON)
 	if err != nil {
 		return nil, err
 	}
-	return newData, nil
+	return &update{id: id, data: newData}, nil
 }
 
-func updateTransaction(whereClause string, updParams []*proto_msg.UpdateCriteriaStruct, params []interface{}, tx *sql.Tx) error {
+func (q QueryBuilder) updateTransaction(params []interface{}, tx *sql.Tx) error {
 	var offset int64
-	params = append(params, limit)
-	params = append(params, offset)
 	for {
 		var count int64
 		params[len(params)-1] = offset
-		query := "SELECT id, data FROM gamelink.users WHERE " + whereClause + " LIMIT ? OFFSET ?"
+		query := "SELECT id, data FROM gamelink.users WHERE " + q.whereClause + " LIMIT ? OFFSET ?"
 		rows, err := tx.Query(query, params...)
 		//defer rows.Close()
 		if err != nil {
@@ -184,22 +188,21 @@ func updateTransaction(whereClause string, updParams []*proto_msg.UpdateCriteria
 			}
 			return err
 		}
-		type update struct {
-			id   int64
-			data []byte
-		}
-		var updateSet []update
+
+		var updateSet []*update
 		for rows.Next() {
 			count++
 			var id int64
 			var oldData []byte
-			rows.Scan(&id, &oldData)
-			newData, err := prepareDataToUpdateInDb(oldData, updParams)
+			err = rows.Scan(&id, &oldData)
 			if err != nil {
 				return err
 			}
-			upd := update{id: id, data: newData}
-			updateSet = append(updateSet, upd)
+			updated, err := prepareDataToUpdateInDb(id, oldData, q.updParams)
+			if err != nil {
+				return err
+			}
+			updateSet = append(updateSet, updated)
 		}
 		for _, v := range updateSet {
 			_, err = tx.Exec("UPDATE users set data = ? WHERE id = ?", v.data, v.id)
