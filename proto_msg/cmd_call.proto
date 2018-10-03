@@ -17,7 +17,7 @@ message OneCriteriaStruct {
        message      = 8;
        advert_watch = 9;
        payment      = 10;
-       updated_at    = 11;
+       updated_at   = 11;
     }
     enum Option {
         x = 0;
@@ -58,6 +58,11 @@ message OneCriteriaRequest {
 
 message MultiCriteriaRequest {
     repeated OneCriteriaStruct params = 1;
+}
+
+message PushCriteriaRequest {
+    repeated OneCriteriaStruct params = 1;
+    string   message = 2;
 }
 
 message UpdateCriteriaRequest {

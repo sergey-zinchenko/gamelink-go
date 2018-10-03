@@ -3,6 +3,7 @@ package admingrpc
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	msg "gamelink-go/proto_msg"
 	"gamelink-go/storage"
 	"golang.org/x/net/context"
@@ -22,8 +23,7 @@ func (s *AdminServiceServer) Dbs(dbs *storage.DBS) {
 
 //Count - handle /count command from bot
 func (s *AdminServiceServer) Count(ctx context.Context, in *msg.MultiCriteriaRequest) (*msg.CountResponse, error) {
-	b := storage.QueryBuilder{}
-	b.CountQuery().WithMultipleClause(in.Params)
+	b := storage.QueryBuilder{}.CountQuery().WithMultipleClause(in.Params)
 	res, err := s.dbs.Query(b, func(scanFunc storage.ScanFunc) (interface{}, error) {
 		var countresp int64
 		err := scanFunc(&countresp)
@@ -44,9 +44,8 @@ func (s *AdminServiceServer) Count(ctx context.Context, in *msg.MultiCriteriaReq
 
 //Find - handle /find command from bot
 func (s *AdminServiceServer) Find(ctx context.Context, in *msg.MultiCriteriaRequest) (*msg.MultiUserResponse, error) {
-	b := storage.QueryBuilder{}
 	var users []*msg.UserResponseStruct
-	b.SelectQuery().WithMultipleClause(in.Params)
+	b := storage.QueryBuilder{}.SelectQuery().WithMultipleClause(in.Params)
 	_, err := s.dbs.Query(b, func(scanFunc storage.ScanFunc) (interface{}, error) {
 		var (
 			id, age                                          sql.NullInt64
@@ -106,37 +105,10 @@ func (s *AdminServiceServer) Find(ctx context.Context, in *msg.MultiCriteriaRequ
 
 //Update - handle /update command from bot
 func (s *AdminServiceServer) Update(ctx context.Context, in *msg.UpdateCriteriaRequest) (*msg.StringResponse, error) {
-	count, err := s.Count(ctx, &msg.MultiCriteriaRequest{Params: in.FindParams})
-	if err != nil {
-		return nil, err
-	}
-	if count.Count == 0 {
-		return nil, errors.New("there is no users satisfy input params")
-	}
-	var i int64
-	for i = 0; i < count.Count; i = i + 1 {
-		g := storage.QueryBuilder{}
-		g.Offset(i)
-		g.GetData().WithMultipleClause(in.FindParams)
-		_, err = s.dbs.Query(g, func(scanFunc storage.ScanFunc) (interface{}, error) {
-			var bytes []byte
-			var ident int64
-			err := scanFunc(&ident, &bytes)
-			if err != nil {
-				return nil, err
-			}
-			u := storage.UpdateBuilder{ID: ident, Data: bytes, UpdParams: in.UpdParams}
-			updated, err := u.Prepare()
-			if err != nil {
-				return nil, err
-			}
-			err = s.dbs.Update(updated)
-			if err != nil {
-				return nil, err
-			}
-			return nil, nil
-		})
-	}
+	b := storage.QueryBuilder{}.UpdateQuery().WithMultipleClause(in.FindParams).WithData(in.UpdParams)
+	_, err := s.dbs.Query(b, func(scanFunc storage.ScanFunc) (interface{}, error) {
+		return nil, nil
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -145,8 +117,7 @@ func (s *AdminServiceServer) Update(ctx context.Context, in *msg.UpdateCriteriaR
 
 //Delete - handle /delete command from bot
 func (s *AdminServiceServer) Delete(ctx context.Context, in *msg.MultiCriteriaRequest) (*msg.OneUserResponse, error) {
-	b := storage.QueryBuilder{}
-	b.DeleteQuery().WithMultipleClause(in.Params)
+	b := storage.QueryBuilder{}.DeleteQuery().WithMultipleClause(in.Params)
 	_, err := s.dbs.Query(b, func(scanFunc storage.ScanFunc) (interface{}, error) {
 		var deleted interface{}
 		err := scanFunc(&deleted)
@@ -169,9 +140,10 @@ func (s *AdminServiceServer) Delete(ctx context.Context, in *msg.MultiCriteriaRe
 }
 
 //SendPush - handle /send_push command
-func (s *AdminServiceServer) SendPush(ctx context.Context, in *msg.MultiCriteriaRequest) (*msg.StringResponse, error) {
-	b := storage.QueryBuilder{}
-	b.PushQuery().WithMultipleClause(in.Params)
+func (s *AdminServiceServer) SendPush(ctx context.Context, in *msg.PushCriteriaRequest) (*msg.StringResponse, error) {
+	//b := storage.QueryBuilder{}
+	//b.PushQuery().WithMultipleClause(in.Params)
 	//обрабытваем то шо нашли по запросу из базы
+	fmt.Println(in.Message)
 	return &msg.StringResponse{Response: "message successfully send"}, nil
 }
