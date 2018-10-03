@@ -3,22 +3,29 @@ package admingrpc
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	msg "gamelink-go/proto_msg"
 	"gamelink-go/storage"
+	"github.com/nats-io/go-nats"
 	"golang.org/x/net/context"
+	"log"
 )
 
 type (
 	//AdminServiceServer - grpc server struct
 	AdminServiceServer struct {
 		dbs *storage.DBS
+		nc  *nats.Conn
 	}
 )
 
 //Dbs - set dbs to adminServiceServer
 func (s *AdminServiceServer) Dbs(dbs *storage.DBS) {
 	s.dbs = dbs
+}
+
+//Nats - set nats connection to adminServiceServer
+func (s *AdminServiceServer) Nats(nc *nats.Conn) {
+	s.nc = nc
 }
 
 //Count - handle /count command from bot
@@ -145,5 +152,8 @@ func (s *AdminServiceServer) SendPush(ctx context.Context, in *msg.PushCriteriaR
 	//b.PushQuery().WithMultipleClause(in.Params)
 	//обрабытваем то шо нашли по запросу из базы
 	fmt.Println(in.Message)
+	if err := s.nc.Publish("updates", []byte(b.Message())); err != nil {
+		log.Fatal("message" + err.Error())
+	}
 	return &msg.StringResponse{Response: "message successfully send"}, nil
 }

@@ -39,6 +39,8 @@ var (
 	GRPCPort string
 	//GRPCNetwork - network for grpc
 	GRPCNetwork string
+	//NATSPort - network addres for NATS
+	NATSPort string
 )
 
 const (
@@ -61,6 +63,7 @@ const (
 	taPwdKey         = "TAPASSWORD"
 	grpcPort         = "GRPCPORT"
 	grpcNetwork      = "GRPCNETWORK"
+	natsPort         = "NATSPORT"
 )
 
 //GetEnvironment - this function returns mode string of the os environment or "development" mode if empty or not defined
@@ -154,5 +157,9 @@ func LoadEnvironment() {
 	GRPCNetwork = os.Getenv(grpcNetwork)
 	if GRPCNetwork == "" {
 		log.Fatal("grpc network must be set")
+	}
+	NATSPort = os.Getenv(natsPort)
+	if NATSPort == "" {
+		log.Fatal("nats port must be set")
 	}
 }
