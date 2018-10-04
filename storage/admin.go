@@ -132,7 +132,7 @@ func (q QueryBuilder) QueryWithDB(mysql *sql.DB, worker RowWorker) ([]interface{
 			}
 			res = append(res, oneres)
 		}
-		defer rows.Close()
+		rows.Close()
 		if res == nil {
 			return nil, errors.New("there is no users satisfied input params")
 		}
@@ -209,9 +209,9 @@ func (q QueryBuilder) updateTransaction(tx *sql.Tx) error {
 			}
 			updateSet = append(updateSet, updated)
 		}
+		rows.Close()
 		for _, v := range updateSet {
 			_, err = tx.Exec("UPDATE users set data = ? WHERE id = ?", v.data, v.id)
-			defer rows.Close()
 			if err != nil {
 				return err
 			}
