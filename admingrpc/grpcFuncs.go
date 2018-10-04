@@ -120,7 +120,7 @@ func (s *AdminServiceServer) Update(ctx context.Context, in *msg.UpdateCriteriaR
 	if err != nil {
 		return nil, err
 	}
-	return &msg.StringResponse{Response: "success"}, nil // Стоит ли тут возвращать массив юзеров? И если да, доделать этот момент
+	return &msg.StringResponse{Response: "success"}, nil
 }
 
 //Delete - handle /delete command from bot

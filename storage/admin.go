@@ -6,6 +6,7 @@ import (
 	"fmt"
 	C "gamelink-go/common"
 	"gamelink-go/proto_msg"
+	"github.com/kataras/iris/core/errors"
 )
 
 const (
@@ -47,8 +48,10 @@ func (q *QueryBuilder) WithClause(criteria *proto_msg.OneCriteriaStruct) {
 	if q.whereClause != "" {
 		q.whereClause += " AND "
 	}
-	if criteria.Cr == proto_msg.OneCriteriaStruct_updated_at {
+	if criteria.Cr == proto_msg.OneCriteriaStruct_updated_at || criteria.Cr == proto_msg.OneCriteriaStruct_created_at {
 		q.whereClause += "unix_timestamp(" + criteria.Cr.String() + ") "
+	} else if criteria.Cr == proto_msg.OneCriteriaStruct_age {
+		q.whereClause += " timestampdiff(YEAR, from_unixtime(bdate), curdate()) "
 	} else {
 		q.whereClause += criteria.Cr.String() + " "
 	}
@@ -118,7 +121,6 @@ func (q QueryBuilder) QueryWithDB(mysql *sql.DB, worker RowWorker) ([]interface{
 			query = fmt.Sprintf("%s WHERE %s", query, q.whereClause)
 		}
 		rows, err := mysql.Query(query, q.params...)
-		defer rows.Close()
 		if err != nil {
 			return nil, err
 		}
@@ -129,6 +131,10 @@ func (q QueryBuilder) QueryWithDB(mysql *sql.DB, worker RowWorker) ([]interface{
 				return nil, err
 			}
 			res = append(res, oneres)
+		}
+		defer rows.Close()
+		if res == nil {
+			return nil, errors.New("there is no users satisfied input params")
 		}
 		return res, nil
 	case QueryUpdate:
