@@ -181,6 +181,11 @@ ENGINE = InnoDB;`
 	InsertVersionZero = `INSERT IGNORE INTO gamelink.db_version (version) VALUES (0);`
 	//ModifyBdateColumn - change varchar column to DATE
 	ModifyBdateColumn = `ALTER TABLE gamelink.users MODIFY COLUMN bdate INT GENERATED ALWAYS AS (json_extract(data,'$.bdate')) VIRTUAL ;`
+	//AddColumnMadePayment - add generated from data json column contains true if user made a payment
+	AddColumnMadePayment = `ALTER TABLE gamelink.users ADD COLUMN made_payment TINYINT(1) GENERATED ALWAYS AS (json_extract(data,'$.made_payment')) AFTER deleted;`
+	//AddColumnWatchedAds - add generated from data json column contains true if user watch adwert
+	AddColumnWatchedAds = `ALTER TABLE gamelink.users ADD COLUMN watched_ads TINYINT(1) GENERATED ALWAYS AS (json_extract(data,'$.watched_ads')) AFTER made_payment;`
+
 	//InsertVersionOne - insert new db version
 	InsertVersionOne = `INSERT IGNORE INTO gamelink.db_version (version) values (1);`
 	//GetDbVersion - return max bd version
