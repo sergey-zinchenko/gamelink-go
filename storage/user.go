@@ -17,6 +17,11 @@ type (
 		id  int64
 		dbs *DBS
 	}
+	//Device - struct for device data
+	Device struct {
+		deviceID   string
+		deviceType string
+	}
 )
 
 //ID - returns user's id from database
@@ -60,8 +65,8 @@ func (u *User) txRegister(user social.ThirdPartyUser, tx *sql.Tx) error {
 }
 
 //LoginUsingThirdPartyToken - function to fill users id by third party token
-func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken) error {
-	var transaction = func(user social.ThirdPartyUser, tx *sql.Tx) error {
+func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken, device *Device) error {
+	var transaction = func(user social.ThirdPartyUser, device *Device, tx *sql.Tx) error {
 		registered, err := u.txCheck(user, tx)
 		if err != nil {
 			return err
@@ -91,6 +96,13 @@ func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken) error {
 				return err
 			}
 		}
+		// Add deviceID to db
+		if device != nil {
+			_, err = tx.Exec(queries.AddDeviceID, u.ID(), device.deviceID, device.deviceType)
+			if err != nil {
+				return err
+			}
+		}
 		err = u.txSyncFriends(user.Friends(), tx)
 		if err != nil {
 			return err
@@ -105,7 +117,7 @@ func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken) error {
 	if err != nil {
 		return err
 	}
-	err = transaction(userData, tx)
+	err = transaction(userData, device, tx)
 	if err != nil {
 		u.id = 0
 		e := tx.Rollback()
@@ -137,27 +149,27 @@ func (u User) DataString() (string, error) {
 	return str, nil
 }
 
-//Data - returns user's field data from database
-//TODO вот это нам не нужно, если только где-то не понадобится вызов Data по коду см.выше реализацию
-func (u User) Data() (C.J, error) {
-	var bytes []byte
-	if u.dbs.mySQL == nil {
-		return nil, errors.New("databases not initialized")
-	}
-	err := u.dbs.mySQL.QueryRow(queries.GetExtraUserDataQuery, u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID()).Scan(&bytes)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, graceful.NotFoundError{Message: "user not found"}
-		}
-		return nil, err
-	}
-	var data C.J
-	err = json.Unmarshal(bytes, &data)
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
-}
+////Data - returns user's field data from database
+////TODO вот это нам не нужно, если только где-то не понадобится вызов Data по коду см.выше реализацию
+//func (u User) Data() (C.J, error) {
+//	var bytes []byte
+//	if u.dbs.mySQL == nil {
+//		return nil, errors.New("databases not initialized")
+//	}
+//	err := u.dbs.mySQL.QueryRow(queries.GetExtraUserDataQuery, u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID()).Scan(&bytes)
+//	if err != nil {
+//		if err == sql.ErrNoRows {
+//			return nil, graceful.NotFoundError{Message: "user not found"}
+//		}
+//		return nil, err
+//	}
+//	var data C.J
+//	err = json.Unmarshal(bytes, &data)
+//	if err != nil {
+//		return nil, err
+//	}
+//	return data, nil
+//}
 
 func (u User) txData(tx *sql.Tx) (C.J, error) {
 	var bytes []byte
@@ -225,11 +237,6 @@ func (u User) txSyncFriends(friendsIds []social.ThirdPartyID, tx *sql.Tx) error 
 			return err
 		}
 	}
-	return nil
-}
-
-func (u User) logout() error {
-	//TODO: нужно имплементировать
 	return nil
 }
 
@@ -362,4 +369,13 @@ func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 		return nil, err
 	}
 	return updData, nil
+}
+
+//AddDevice - add device id and type to device_ids table
+func (u User) AddDevice(device *Device) error {
+	_, err := u.dbs.mySQL.Exec(queries.AddDeviceID, u.ID(), device.deviceID, device.deviceType)
+	if err != nil {
+		return err
+	}
+	return nil
 }

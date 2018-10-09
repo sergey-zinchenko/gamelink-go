@@ -5,6 +5,7 @@ import (
 	C "gamelink-go/common"
 	"gamelink-go/graceful"
 	"gamelink-go/social"
+	"gamelink-go/storage/queries"
 	"github.com/go-redis/redis"
 	"strconv"
 	"time"
@@ -42,12 +43,16 @@ func (dbs DBS) AuthorizedUser(token string) (*User, error) {
 }
 
 //ThirdPartyUser - function to login or register user using his third party token
-func (dbs DBS) ThirdPartyUser(token social.ThirdPartyToken) (*User, error) {
+func (dbs DBS) ThirdPartyUser(token social.ThirdPartyToken, deviceID string, deviceType string) (*User, error) {
+	var device *Device
 	if dbs.mySQL == nil {
 		return nil, errors.New("databases not initialized")
 	}
 	u := User{dbs: &dbs}
-	if err := u.LoginUsingThirdPartyToken(token); err != nil {
+	if deviceID != "" {
+		device = &Device{deviceID: deviceID, deviceType: deviceType}
+	}
+	if err := u.LoginUsingThirdPartyToken(token, device); err != nil {
 		return nil, err
 	}
 	return &u, nil
@@ -69,4 +74,13 @@ func (u User) AuthToken() (string, error) {
 		}
 	}
 	return authToken, nil
+}
+
+//AddDeviceID - add deviceID to db
+func (u User) AddDeviceID(deviceID string, deviceType string) error {
+	_, err := u.dbs.mySQL.Exec(queries.AddDeviceID, u.ID(), deviceID, deviceType)
+	if err != nil {
+		return err
+	}
+	return nil
 }

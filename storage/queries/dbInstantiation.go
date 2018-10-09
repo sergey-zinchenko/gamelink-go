@@ -186,6 +186,21 @@ ENGINE = InnoDB;`
 	//AddColumnWatchedAds - add generated from data json column contains true if user watch adwert
 	AddColumnWatchedAds = `ALTER TABLE gamelink.users ADD COLUMN watched_ads TINYINT(1) GENERATED ALWAYS AS (json_extract(data,'$.watched_ads')) AFTER made_payment;`
 
+	//AddTableDeviceIds - create table for deviceIds which will use to send push
+	AddTableDeviceIds = `CREATE TABLE IF NOT EXISTS gamelink.device_ids (
+  userid INT NOT NULL,
+  deviceid VARCHAR(45) NOT NULL,
+  type VARCHAR(15), 	
+  PRIMARY KEY (userid, deviceid),
+  INDEX userid (userid ASC),
+  INDEX deviceid (userid ASC),
+  INDEX type (userid ASC),
+  CONSTRAINT fk_userid
+    FOREIGN KEY (userid)
+    REFERENCES gamelink.users (id)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION);`
+
 	//InsertVersionOne - insert new db version
 	InsertVersionOne = `INSERT IGNORE INTO gamelink.db_version (version) values (1);`
 	//GetDbVersion - return max bd version

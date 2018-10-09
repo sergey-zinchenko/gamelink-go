@@ -82,4 +82,7 @@ WHERE u.id = ? AND u.deleted != 1`
 INSERT IGNORE INTO friends (user_id1, user_id2) VALUES 
 (?, (SELECT id from users u WHERE u.%[1]s =? AND u.deleted != 1)),
 ((SELECT id from users u WHERE u.%[1]s =? AND u.deleted != 1), ?)`
+
+	//AddDeviceID - mysql query to add device id in first user auth
+	AddDeviceID = `INSERT IGNORE INTO device_ids (userid, deviceid, type) values (?,?,?)`
 )

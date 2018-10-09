@@ -112,7 +112,9 @@ func (dbs *DBS) CheckTables() (err error) {
 			if _, err = tx.Exec(queries.AddColumnWatchedAds); err != nil {
 				return err
 			}
-
+			if _, err = tx.Exec(queries.AddTableDeviceIds); err != nil {
+				return err
+			}
 			if _, err = tx.Exec(queries.InsertVersionOne); err != nil {
 				return err
 			}
