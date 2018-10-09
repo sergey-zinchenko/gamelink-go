@@ -23,6 +23,9 @@ var (
 		} else if fb != nil && len(fb) == 1 && vk == nil {
 			return social.FbToken(fb[0])
 		}
+		if query["dummy"] != nil {
+			return social.DummyToken("1") // костылим единицей?
+		}
 		return nil
 	}
 )

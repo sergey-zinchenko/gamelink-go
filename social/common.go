@@ -35,6 +35,8 @@ type (
 		Country() string
 		//Friends - return user friends
 		Friends() []ThirdPartyID
+		//IsDummy - return true if user auth without fb or vk
+		IsDummy() bool
 	}
 
 	commonInfo struct {

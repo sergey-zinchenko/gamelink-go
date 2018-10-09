@@ -50,6 +50,11 @@ func (d FbInfo) ID() ThirdPartyID {
 	return d.FbID
 }
 
+//IsDummy - return true if this user auth without social
+func (d FbInfo) IsDummy() bool {
+	return false
+}
+
 func (token FbToken) debugToken() (string, error) {
 	type (
 		fbDebugTokenData struct {

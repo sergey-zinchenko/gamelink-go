@@ -67,11 +67,15 @@ func (u *User) txRegister(user social.ThirdPartyUser, tx *sql.Tx) error {
 //LoginUsingThirdPartyToken - function to fill users id by third party token
 func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken, device *Device) error {
 	var transaction = func(user social.ThirdPartyUser, device *Device, tx *sql.Tx) error {
-		registered, err := u.txCheck(user, tx)
-		if err != nil {
-			return err
+		var registered bool
+		var err error
+		if !user.IsDummy() {
+			registered, err = u.txCheck(user, tx)
+			if err != nil {
+				return err
+			}
 		}
-		if !registered {
+		if !registered || user.IsDummy() {
 			if err = u.txRegister(user, tx); err != nil {
 				return err
 			}
@@ -103,9 +107,11 @@ func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken, device *D
 				return err
 			}
 		}
-		err = u.txSyncFriends(user.Friends(), tx)
-		if err != nil {
-			return err
+		if !user.IsDummy() {
+			err = u.txSyncFriends(user.Friends(), tx)
+			if err != nil {
+				return err
+			}
 		}
 		return nil
 	}
