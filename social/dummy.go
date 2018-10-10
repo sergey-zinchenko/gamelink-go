@@ -15,14 +15,9 @@ type (
 	//DummyToken - Class to get information about Facebook user tokens
 	DummyToken string
 
-	dummyError struct {
-		Message string `json:"message"`
-		Code    int    `json:"code"`
-	}
-
-	//DummyIdentifier - class to store fb identifier and column name
+	//DummyIdentifier - class to store dummy identifier and column name
 	DummyIdentifier string
-	//DummyInfo - class to user info from FB
+	//DummyInfo - class to user info
 	DummyInfo struct {
 		DummyID DummyIdentifier `json:"dummy_id"`
 		commonInfo
