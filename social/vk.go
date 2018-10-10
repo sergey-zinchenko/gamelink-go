@@ -59,6 +59,11 @@ func (d VkInfo) ID() ThirdPartyID {
 	return d.VkID
 }
 
+//IsDummy - return true if this user auth without social
+func (d VkInfo) IsDummy() bool {
+	return false
+}
+
 //Key - method returns stored service key and request it from server if needed
 func (sk *VkServiceKey) Key() (string, error) {
 	sk.m.Lock()
