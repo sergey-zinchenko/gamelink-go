@@ -9,7 +9,14 @@ import (
 	"gamelink-go/graceful"
 	"gamelink-go/social"
 	"gamelink-go/storage/queries"
+	"github.com/dustinkirkland/golang-petname"
+	"math/rand"
+	"time"
 )
+
+func init() {
+	rand.Seed(time.Now().UTC().UnixNano())
+}
 
 type (
 	//User - structure to work with user in our system. Developed to be passed through context of request.
@@ -118,6 +125,51 @@ func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken, device *D
 		return err
 	}
 	err = transaction(userData, device, tx)
+	if err != nil {
+		u.id = 0
+		e := tx.Rollback()
+		if e != nil {
+			return e
+		}
+		return err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+//LoginDummy - function to fill users id without fb or vk token
+func (u *User) LoginDummy(device *Device) error {
+	var transaction = func(b []byte, device *Device, tx *sql.Tx) error {
+		res, err := tx.Exec(queries.RegisterUserQuery, b)
+		if err != nil {
+			return err
+		}
+		u.id, err = res.LastInsertId()
+		if err != nil {
+			return err
+		}
+		if device != nil {
+			_, err = tx.Exec(queries.AddDeviceID, u.ID(), device.deviceID, device.deviceType)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	data := make(C.J)
+	data["name"] = petname.Generate(2, " ")
+	b, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	tx, err := u.dbs.mySQL.Begin()
+	if err != nil {
+		return err
+	}
+	err = transaction(b, device, tx)
 	if err != nil {
 		u.id = 0
 		e := tx.Rollback()

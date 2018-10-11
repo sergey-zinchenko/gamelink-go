@@ -83,6 +83,7 @@ func NewApp() (a *App) {
 	auth := a.iris.Party("/auth")
 	{
 		auth.Get("/", a.registerLogin)
+		auth.Get("/dummy", a.dummyRegisterLogin)
 	}
 	users := a.iris.Party("/users", a.authMiddleware)
 	{

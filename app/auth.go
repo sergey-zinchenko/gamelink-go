@@ -95,6 +95,31 @@ func (a *App) registerLogin(ctx iris.Context) {
 	ctx.JSON(C.J{"token": authToken})
 }
 
+func (a *App) dummyRegisterLogin(ctx iris.Context) {
+	var (
+		dummyToken string
+		user       *storage.User
+		deviceID   string
+		deviceType string
+		err        error
+	)
+	defer func() {
+		if err != nil {
+			handleError(err, ctx)
+		}
+	}()
+	deviceID, deviceType = a.checkDeviceHeader(ctx)
+	user, err = a.dbs.ThirdPartyUser(nil, deviceID, deviceType)
+	if err != nil {
+		return
+	}
+	dummyToken, err = user.DummyToken()
+	if err != nil {
+		return
+	}
+	ctx.JSON(C.J{"token": dummyToken})
+}
+
 func (a *App) checkDeviceHeader(ctx iris.Context) (string, string) {
 	var deviceID, deviceType string
 	if ctx.GetHeader("iosdevice") != "" {
