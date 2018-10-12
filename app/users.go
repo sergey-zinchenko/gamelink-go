@@ -7,6 +7,7 @@ import (
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
 	"net/http"
+	"strings"
 )
 
 func (a *App) getUser(ctx iris.Context) {
@@ -83,6 +84,14 @@ func (a *App) addAuth(ctx iris.Context) {
 	data, err = user.AddSocial(token)
 	if err != nil {
 		return
+	}
+	header := strings.TrimSpace(ctx.GetHeader("Authorization"))
+	arr := strings.Split(header, " ")
+	if arr[1] != "" {
+		err = user.SwitchRedisToken(arr[1])
+		if err != nil {
+			return
+		}
 	}
 	ctx.JSON(data)
 }

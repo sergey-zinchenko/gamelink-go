@@ -10,6 +10,7 @@ import (
 	"gamelink-go/social"
 	"gamelink-go/storage/queries"
 	"github.com/dustinkirkland/golang-petname"
+	"github.com/go-redis/redis"
 	"math/rand"
 	"time"
 )
@@ -161,6 +162,7 @@ func (u *User) LoginDummy(device *Device) error {
 	}
 	data := make(C.J)
 	data["name"] = petname.Generate(2, " ")
+	data["dummy"] = 1
 	b, err := json.Marshal(data)
 	if err != nil {
 		return err
@@ -388,6 +390,14 @@ func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 			return nil, graceful.BadRequestError{Message: "account already exist"}
 		}
 		data[userData.ID().Name()] = userData.ID().Value()
+		if int(data["dummy"].(float64)) == 1 {
+			data["name"] = userData.Name()
+			data["sex"] = userData.Sex()
+			data["email"] = userData.Email()
+			data["country"] = userData.Country()
+			data["bdate"] = userData.BirthDate()
+			data["dummy"] = 0
+		}
 		err = u.txUpdate(data, tx)
 		if err != nil {
 			return nil, err
@@ -426,6 +436,29 @@ func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 //AddDevice - add device id and type to device_ids table
 func (u User) AddDevice(device *Device) error {
 	_, err := u.dbs.mySQL.Exec(queries.AddDeviceID, u.ID(), device.deviceID, device.deviceType)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+//SwitchRedisToken - change redis token from dummy to auth
+func (u User) SwitchRedisToken(redisToken string) error {
+	err := u.dbs.rc.Watch(func(tx *redis.Tx) error {
+		_, err := tx.Get(dummyRedisKeyPref + redisToken).Result()
+		if err != nil {
+			if err == redis.Nil {
+				return nil
+			}
+			return err
+		}
+		_, err = tx.Set(authRedisKeyPref+redisToken, u.ID(), 8*time.Hour).Result()
+		if err != nil {
+			return err
+		}
+		tx.Del(dummyRedisKeyPref + redisToken)
+		return nil
+	}, redisToken)
 	if err != nil {
 		return err
 	}

@@ -26,11 +26,11 @@ func (dbs DBS) AuthorizedUser(token string) (*User, error) {
 		var isDummy bool
 		var idStr string
 		var err error
-		idStr, err = dbs.rc.Get(authRedisKeyPref + token).Result()
+		idStr, err = tx.Get(authRedisKeyPref + token).Result()
 		if err != nil && err != redis.Nil {
 			return err
 		} else if err == redis.Nil {
-			idStr, err = dbs.rc.Get(dummyRedisKeyPref + token).Result()
+			idStr, err = tx.Get(dummyRedisKeyPref + token).Result()
 			if err != nil {
 				if err == redis.Nil {
 					return graceful.UnauthorizedError{Message: "key doesn't exist in redis"}
@@ -44,9 +44,9 @@ func (dbs DBS) AuthorizedUser(token string) (*User, error) {
 			return err
 		}
 		if !isDummy {
-			_, err = dbs.rc.Set(authRedisKeyPref+token, id, 8*time.Hour).Result()
+			_, err = tx.Set(authRedisKeyPref+token, id, 8*time.Hour).Result()
 		} else {
-			_, err = dbs.rc.Set(dummyRedisKeyPref+token, id, 24*30*time.Hour).Result()
+			_, err = tx.Set(dummyRedisKeyPref+token, id, 24*30*time.Hour).Result()
 		}
 		return err
 	}, authRedisKeyPref+token)
