@@ -3,12 +3,12 @@ package admingrpc
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	msg "gamelink-go/proto_msg"
+	push "gamelink-go/proto_nats_msg"
 	"gamelink-go/storage"
+	"github.com/gogo/protobuf/proto"
 	"github.com/nats-io/go-nats"
 	"golang.org/x/net/context"
-	"log"
 )
 
 type (
@@ -17,6 +17,11 @@ type (
 		dbs *storage.DBS
 		nc  *nats.Conn
 	}
+)
+
+const (
+	androidNatsChannel = "android_push"
+	iosNatsChannel     = "ios_push"
 )
 
 //Dbs - set dbs to adminServiceServer
@@ -105,9 +110,6 @@ func (s *AdminServiceServer) Find(ctx context.Context, in *msg.MultiCriteriaRequ
 	if err != nil {
 		return nil, err
 	}
-	if err != nil {
-		return nil, err
-	}
 	return &msg.MultiUserResponse{Users: users}, nil
 }
 
@@ -149,12 +151,57 @@ func (s *AdminServiceServer) Delete(ctx context.Context, in *msg.MultiCriteriaRe
 
 //SendPush - handle /send_push command
 func (s *AdminServiceServer) SendPush(ctx context.Context, in *msg.PushCriteriaRequest) (*msg.StringResponse, error) {
-	//b := storage.QueryBuilder{}
-	//b.PushQuery().WithMultipleClause(in.Params)
-	//обрабытваем то шо нашли по запросу из базы
-	fmt.Println(in.Message)
-	if err := s.nc.Publish("updates", []byte(in.Message)); err != nil {
-		log.Fatal("message" + err.Error())
+	var ios, android []*push.UserInfo
+	b := storage.QueryBuilder{}.SelectQueryWithDeviceJoin().WithMultipleClause(in.Params)
+	_, err := s.dbs.Query(b, func(scanFunc storage.ScanFunc) (interface{}, error) {
+		var name, deviceID, deviceOs sql.NullString
+		err := scanFunc(&name, &deviceID, &deviceOs)
+		if err != nil {
+			return nil, err
+		}
+		var info push.UserInfo
+		if name.Valid {
+			info.Name = name.String
+		}
+		if deviceID.Valid {
+			info.DeviceID = deviceID.String
+		}
+		if deviceOs.Valid {
+			switch deviceOs.String {
+			case "android":
+				android = append(android, &info)
+			case "ios":
+				ios = append(ios, &info)
+			}
+		}
+		return info, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if ios != nil {
+		err = s.sendPushByNats(iosNatsChannel, in.Message, ios)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if android != nil {
+		err = s.sendPushByNats(androidNatsChannel, in.Message, android)
+	}
+	if err != nil {
+		return nil, err
 	}
 	return &msg.StringResponse{Response: "message successfully send"}, nil
+}
+
+func (s *AdminServiceServer) sendPushByNats(subject string, msg string, receivers []*push.UserInfo) error {
+	sendStruct := push.PushMsgStruct{Message: msg, UserInfo: receivers}
+	data, err := proto.Marshal(&sendStruct)
+	if err != nil {
+		return err
+	}
+	if err := s.nc.Publish(subject, data); err != nil {
+		return err
+	}
+	return nil
 }
