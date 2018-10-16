@@ -9,7 +9,6 @@ import (
 	"gamelink-go/graceful"
 	"gamelink-go/social"
 	"gamelink-go/storage/queries"
-	"github.com/dustinkirkland/golang-petname"
 	"github.com/go-redis/redis"
 	"math/rand"
 	"time"
@@ -38,6 +37,9 @@ func (u User) ID() int64 {
 }
 
 func (u *User) txCheck(userData social.ThirdPartyUser, tx *sql.Tx) (bool, error) {
+	if userData.ID() == nil {
+		return false, nil
+	}
 	var deletedFlag int
 	queryString := fmt.Sprintf(queries.CheckUserQuery, userData.ID().Name())
 	err := tx.QueryRow(queryString, userData.ID().Value()).Scan(&u.id)
@@ -141,52 +143,6 @@ func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken, device *D
 	return nil
 }
 
-//LoginDummy - function to fill users id without fb or vk token
-func (u *User) LoginDummy(device *Device) error {
-	var transaction = func(b []byte, device *Device, tx *sql.Tx) error {
-		res, err := tx.Exec(queries.RegisterUserQuery, b)
-		if err != nil {
-			return err
-		}
-		u.id, err = res.LastInsertId()
-		if err != nil {
-			return err
-		}
-		if device != nil {
-			_, err = tx.Exec(queries.AddDeviceID, u.ID(), device.deviceID, device.deviceType)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-	data := make(C.J)
-	data["name"] = petname.Generate(2, " ")
-	data["dummy"] = 1
-	b, err := json.Marshal(data)
-	if err != nil {
-		return err
-	}
-	tx, err := u.dbs.mySQL.Begin()
-	if err != nil {
-		return err
-	}
-	err = transaction(b, device, tx)
-	if err != nil {
-		u.id = 0
-		e := tx.Rollback()
-		if e != nil {
-			return e
-		}
-		return err
-	}
-	err = tx.Commit()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 //DataString - returns user's field data from database as text
 func (u User) DataString() (string, error) {
 	var str string
@@ -203,40 +159,19 @@ func (u User) DataString() (string, error) {
 	return str, nil
 }
 
-////Data - returns user's field data from database
-////TODO вот это нам не нужно, если только где-то не понадобится вызов Data по коду см.выше реализацию
-//func (u User) Data() (C.J, error) {
-//	var bytes []byte
-//	if u.dbs.mySQL == nil {
-//		return nil, errors.New("databases not initialized")
-//	}
-//	err := u.dbs.mySQL.QueryRow(queries.GetExtraUserDataQuery, u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID()).Scan(&bytes)
-//	if err != nil {
-//		if err == sql.ErrNoRows {
-//			return nil, graceful.NotFoundError{Message: "user not found"}
-//		}
-//		return nil, err
-//	}
-//	var data C.J
-//	err = json.Unmarshal(bytes, &data)
-//	if err != nil {
-//		return nil, err
-//	}
-//	return data, nil
-//}
-
-func (u User) txData(tx *sql.Tx) (C.J, error) {
+func (u User) txData(tx *sql.Tx) (int, C.J, error) {
 	var bytes []byte
-	err := tx.QueryRow(queries.GetUserDataQuery, u.ID()).Scan(&bytes)
+	var dummy int
+	err := tx.QueryRow(queries.GetUserDataQuery, u.ID()).Scan(&dummy, &bytes)
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 	var data C.J
 	err = json.Unmarshal(bytes, &data)
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
-	return data, nil
+	return dummy, data, nil
 }
 
 func (u User) txUpdate(data C.J, tx *sql.Tx) error {
@@ -297,7 +232,7 @@ func (u User) txSyncFriends(friendsIds []social.ThirdPartyID, tx *sql.Tx) error 
 //Update - allow user update data
 func (u User) Update(data C.J) (C.J, error) {
 	var transaction = func(upd C.J, tx *sql.Tx) (C.J, error) {
-		data, err := u.txData(tx)
+		_, data, err := u.txData(tx)
 		if err != nil {
 			return nil, err
 		}
@@ -339,7 +274,7 @@ func (u User) Update(data C.J) (C.J, error) {
 func (u User) Delete(fields []string) (C.J, error) {
 	var transaction = func(fields []string, tx *sql.Tx) (C.J, error) {
 		if len(fields) != 0 {
-			data, err := u.txData(tx)
+			_, data, err := u.txData(tx)
 			if err != nil {
 				return nil, err
 			}
@@ -382,7 +317,7 @@ func (u User) Delete(fields []string) (C.J, error) {
 // AddSocial - allow
 func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 	var transaction = func(userData social.ThirdPartyUser, tx *sql.Tx) (C.J, error) {
-		data, err := u.txData(tx)
+		dummy, data, err := u.txData(tx)
 		if err != nil {
 			return nil, err
 		}
@@ -390,7 +325,7 @@ func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 			return nil, graceful.BadRequestError{Message: "account already exist"}
 		}
 		data[userData.ID().Name()] = userData.ID().Value()
-		if int(data["dummy"].(float64)) == 1 {
+		if dummy == 1 {
 			data["name"] = userData.Name()
 			data["sex"] = userData.Sex()
 			data["email"] = userData.Email()

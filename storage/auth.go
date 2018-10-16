@@ -67,11 +67,7 @@ func (dbs DBS) ThirdPartyUser(token social.ThirdPartyToken, deviceID string, dev
 	if deviceID != "" {
 		device = &Device{deviceID: deviceID, deviceType: deviceType}
 	}
-	if token != nil {
-		err = u.LoginUsingThirdPartyToken(token, device)
-	} else {
-		err = u.LoginDummy(device)
-	}
+	err = u.LoginUsingThirdPartyToken(token, device)
 	if err != nil {
 		return nil, err
 	}

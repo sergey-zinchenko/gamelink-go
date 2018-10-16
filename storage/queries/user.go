@@ -60,9 +60,7 @@ SELECT (SELECT CAST(CONCAT( 	'{"id":'  , 	u.id,
 
 	//GetUserDataQuery - mysql query to get user's data json
 	GetUserDataQuery = `
-SELECT data
-FROM users u
-WHERE u.id = ? AND u.deleted != 1`
+SELECT IF((vk_id IS NOT NULL or fb_id IS NOT NULL), 0, 1) as dummy , data from users u where u.id=? AND u.deleted != 1`
 
 	//UpdateUserDataQuery - mysql query to update data field of the user record
 	UpdateUserDataQuery = `
