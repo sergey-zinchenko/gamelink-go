@@ -3,6 +3,7 @@ package admingrpc
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	msg "gamelink-go/proto_msg"
 	push "gamelink-go/proto_nats_msg"
 	"gamelink-go/storage"
@@ -20,8 +21,7 @@ type (
 )
 
 const (
-	androidNatsChannel = "android_push"
-	iosNatsChannel     = "ios_push"
+	natsPushChannel = "gamelink_push"
 )
 
 //Dbs - set dbs to adminServiceServer
@@ -151,7 +151,8 @@ func (s *AdminServiceServer) Delete(ctx context.Context, in *msg.MultiCriteriaRe
 
 //SendPush - handle /send_push command
 func (s *AdminServiceServer) SendPush(ctx context.Context, in *msg.PushCriteriaRequest) (*msg.StringResponse, error) {
-	var ios, android []*push.UserInfo
+	fmt.Println(in)
+	var users []*push.UserInfo
 	b := storage.QueryBuilder{}.SelectQueryWithDeviceJoin().WithMultipleClause(in.Params)
 	_, err := s.dbs.Query(b, func(scanFunc storage.ScanFunc) (interface{}, error) {
 		var name, deviceID, deviceOs sql.NullString
@@ -167,34 +168,22 @@ func (s *AdminServiceServer) SendPush(ctx context.Context, in *msg.PushCriteriaR
 			info.DeviceID = deviceID.String
 		}
 		if deviceOs.Valid {
-			switch deviceOs.String {
-			case "android":
-				android = append(android, &info)
-			case "ios":
-				ios = append(ios, &info)
-			}
+			info.DeviceOS = deviceOs.String
 		}
+		users = append(users, &info)
 		return info, nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	if ios != nil {
-		err = s.sendPushByNats(iosNatsChannel, in.Message, ios)
-	}
-	if err != nil {
-		return nil, err
-	}
-	if android != nil {
-		err = s.sendPushByNats(androidNatsChannel, in.Message, android)
-	}
+	err = s.sendPushInfoToClient(natsPushChannel, in.Message, users)
 	if err != nil {
 		return nil, err
 	}
 	return &msg.StringResponse{Response: "message successfully send"}, nil
 }
 
-func (s *AdminServiceServer) sendPushByNats(subject string, msg string, receivers []*push.UserInfo) error {
+func (s *AdminServiceServer) sendPushInfoToClient(subject string, msg string, receivers []*push.UserInfo) error {
 	sendStruct := push.PushMsgStruct{Message: msg, UserInfo: receivers}
 	data, err := proto.Marshal(&sendStruct)
 	if err != nil {

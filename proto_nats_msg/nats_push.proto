@@ -8,4 +8,5 @@ message PushMsgStruct {
 message UserInfo {
     string deviceID = 1;
     string name = 2;
+    string deviceOS = 3;
 }
