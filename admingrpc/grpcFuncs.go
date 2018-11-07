@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"gamelink-go/config"
 	msg "gamelink-go/proto_msg"
 	push "gamelink-go/proto_nats_msg"
 	"gamelink-go/storage"
@@ -18,10 +19,6 @@ type (
 		dbs *storage.DBS
 		nc  *nats.Conn
 	}
-)
-
-const (
-	natsPushChannel = "gamelink_push"
 )
 
 //Dbs - set dbs to adminServiceServer
@@ -52,6 +49,7 @@ func (s *AdminServiceServer) Count(ctx context.Context, in *msg.MultiCriteriaReq
 	if !ok {
 		return nil, errors.New("can't convert to int")
 	}
+	fmt.Println(r)
 	return &msg.CountResponse{Count: r}, nil
 }
 
@@ -170,13 +168,15 @@ func (s *AdminServiceServer) SendPush(ctx context.Context, in *msg.PushCriteriaR
 		if deviceOs.Valid {
 			info.DeviceOS = deviceOs.String
 		}
-		users = append(users, &info)
+		if info.DeviceID != "" && info.DeviceOS != "" && info.Name != "" {
+			users = append(users, &info)
+		}
 		return info, nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	err = s.sendPushInfoToClient(natsPushChannel, in.Message, users)
+	err = s.sendPushInfoToClient(config.NatsChan, in.Message, users)
 	if err != nil {
 		return nil, err
 	}
