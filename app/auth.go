@@ -85,13 +85,13 @@ func (a *App) registerLogin(ctx iris.Context) {
 		if err != nil {
 			return
 		}
-		authToken, err = user.DummyToken()
+		authToken, err = user.AuthToken(true)
 	} else {
 		user, err = a.dbs.ThirdPartyUser(thirdPartyToken, deviceID, deviceType)
 		if err != nil {
 			return
 		}
-		authToken, err = user.AuthToken()
+		authToken, err = user.AuthToken(false)
 	}
 	if err != nil {
 		return

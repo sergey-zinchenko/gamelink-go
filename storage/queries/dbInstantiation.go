@@ -190,7 +190,7 @@ ENGINE = InnoDB;`
 	AddTableDeviceIds = `CREATE TABLE IF NOT EXISTS gamelink.device_ids (
   user_id INT NOT NULL,
   device_id VARCHAR(45) NOT NULL,
-  device_os VARCHAR(15), 	
+  device_os ENUM('ios', 'android') DEFAULT NULL, 	
   PRIMARY KEY (user_id, device_id),
   INDEX userid (user_id ASC),
   INDEX device_id (user_id ASC),

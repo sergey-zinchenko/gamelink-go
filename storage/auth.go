@@ -2,6 +2,7 @@ package storage
 
 import (
 	"errors"
+	"fmt"
 	C "gamelink-go/common"
 	"gamelink-go/graceful"
 	"gamelink-go/social"
@@ -26,18 +27,22 @@ func (dbs DBS) AuthorizedUser(token string) (*User, error) {
 		var isDummy bool
 		var idStr string
 		var err error
-		idStr, err = tx.Get(authRedisKeyPref + token).Result()
-		if err != nil && err != redis.Nil {
-			return err
-		} else if err == redis.Nil {
-			idStr, err = tx.Get(dummyRedisKeyPref + token).Result()
-			if err != nil {
-				if err == redis.Nil {
-					return graceful.UnauthorizedError{Message: "key doesn't exist in redis"}
-				}
-				return err
-			}
+		fmt.Println("token", token)
+		fmt.Println("firstfive", token[:5])
+		if token[:5] == "dummy" {
+			fmt.Println("dummytrue")
 			isDummy = true
+		}
+		if !isDummy {
+			idStr, err = tx.Get(authRedisKeyPref + token).Result()
+		} else {
+			idStr, err = tx.Get(dummyRedisKeyPref + token).Result()
+		}
+		if err != nil {
+			if err == redis.Nil {
+				return graceful.UnauthorizedError{Message: "key doesn't exist in redis"}
+			}
+			return err
 		}
 		id, err = strconv.ParseInt(idStr, 10, 64)
 		if err != nil {
@@ -49,10 +54,12 @@ func (dbs DBS) AuthorizedUser(token string) (*User, error) {
 			_, err = tx.Set(dummyRedisKeyPref+token, id, 24*30*time.Hour).Result()
 		}
 		return err
-	}, authRedisKeyPref+token)
+		//}, authRedisKeyPref+token) //Тестим без 2 параметра
+	}, token) //Тестим без префикса 2  параметра
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println(id)
 	return &User{id, &dbs}, nil
 }
 
@@ -75,34 +82,26 @@ func (dbs DBS) ThirdPartyUser(token social.ThirdPartyToken, deviceID string, dev
 }
 
 //AuthToken - Function to generate and store auth token in rc.
-func (u User) AuthToken() (string, error) {
+func (u User) AuthToken(isDummy bool) (string, error) {
 	if u.dbs.rc == nil {
 		return "", errors.New("databases not initialized")
 	}
-	var authToken string
+	var authToken, authKey string
 	for ok := false; !ok; {
-		authToken = C.RandStringBytes(40)
-		authKey := authRedisKeyPref + authToken
 		var err error
-		ok, err = u.dbs.rc.SetNX(authKey, u.ID(), time.Hour).Result()
-		if err != nil {
-			return "", err
+		fmt.Println(isDummy)
+		if isDummy == false {
+			authToken = C.RandStringBytes(40)
+			if authToken[:5] == "dummy" {
+				authToken = C.RandStringBytes(40)
+			}
+			authKey = authRedisKeyPref + authToken
+			ok, err = u.dbs.rc.SetNX(authKey, u.ID(), time.Hour).Result()
+		} else {
+			authToken = "dummy" + C.RandStringBytes(35)
+			authKey = dummyRedisKeyPref + authToken
+			ok, err = u.dbs.rc.SetNX(authKey, u.ID(), 24*30*time.Hour).Result()
 		}
-	}
-	return authToken, nil
-}
-
-//DummyToken - Function to generate and store dummy token in rc.
-func (u User) DummyToken() (string, error) {
-	if u.dbs.rc == nil {
-		return "", errors.New("databases not initialized")
-	}
-	var authToken string
-	for ok := false; !ok; {
-		authToken = C.RandStringBytes(40)
-		authKey := dummyRedisKeyPref + authToken
-		var err error
-		ok, err = u.dbs.rc.SetNX(authKey, u.ID(), 24*30*time.Hour).Result()
 		if err != nil {
 			return "", err
 		}
