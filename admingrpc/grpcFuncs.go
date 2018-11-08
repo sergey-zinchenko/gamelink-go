@@ -3,13 +3,10 @@ package admingrpc
 import (
 	"database/sql"
 	"errors"
-	"fmt"
-	"gamelink-go/config"
+	"gamelink-go/adminnats"
 	msg "gamelink-go/proto_msg"
 	push "gamelink-go/proto_nats_msg"
 	"gamelink-go/storage"
-	"github.com/gogo/protobuf/proto"
-	"github.com/nats-io/go-nats"
 	"golang.org/x/net/context"
 )
 
@@ -17,7 +14,7 @@ type (
 	//AdminServiceServer - grpc server struct
 	AdminServiceServer struct {
 		dbs *storage.DBS
-		nc  *nats.Conn
+		nc  *adminnats.NatsService
 	}
 )
 
@@ -27,7 +24,7 @@ func (s *AdminServiceServer) Dbs(dbs *storage.DBS) {
 }
 
 //Nats - set nats connection to adminServiceServer
-func (s *AdminServiceServer) Nats(nc *nats.Conn) {
+func (s *AdminServiceServer) Nats(nc *adminnats.NatsService) {
 	s.nc = nc
 }
 
@@ -49,7 +46,6 @@ func (s *AdminServiceServer) Count(ctx context.Context, in *msg.MultiCriteriaReq
 	if !ok {
 		return nil, errors.New("can't convert to int")
 	}
-	fmt.Println(r)
 	return &msg.CountResponse{Count: r}, nil
 }
 
@@ -149,7 +145,6 @@ func (s *AdminServiceServer) Delete(ctx context.Context, in *msg.MultiCriteriaRe
 
 //SendPush - handle /send_push command
 func (s *AdminServiceServer) SendPush(ctx context.Context, in *msg.PushCriteriaRequest) (*msg.StringResponse, error) {
-	fmt.Println(in)
 	var users []*push.UserInfo
 	b := storage.QueryBuilder{}.SelectQueryWithDeviceJoin().WithMultipleClause(in.Params)
 	_, err := s.dbs.Query(b, func(scanFunc storage.ScanFunc) (interface{}, error) {
@@ -176,21 +171,9 @@ func (s *AdminServiceServer) SendPush(ctx context.Context, in *msg.PushCriteriaR
 	if err != nil {
 		return nil, err
 	}
-	err = s.sendPushInfoToClient(config.NatsChan, in.Message, users)
+	err = s.nc.PreparePushMessage(in.Message, users)
 	if err != nil {
 		return nil, err
 	}
 	return &msg.StringResponse{Response: "message successfully send"}, nil
-}
-
-func (s *AdminServiceServer) sendPushInfoToClient(subject string, msg string, receivers []*push.UserInfo) error {
-	sendStruct := push.PushMsgStruct{Message: msg, UserInfo: receivers}
-	data, err := proto.Marshal(&sendStruct)
-	if err != nil {
-		return err
-	}
-	if err := s.nc.Publish(subject, data); err != nil {
-		return err
-	}
-	return nil
 }

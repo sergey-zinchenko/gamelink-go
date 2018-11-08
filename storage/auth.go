@@ -2,7 +2,6 @@ package storage
 
 import (
 	"errors"
-	"fmt"
 	C "gamelink-go/common"
 	"gamelink-go/graceful"
 	"gamelink-go/social"
@@ -27,10 +26,7 @@ func (dbs DBS) AuthorizedUser(token string) (*User, error) {
 		var isDummy bool
 		var idStr string
 		var err error
-		fmt.Println("token", token)
-		fmt.Println("firstfive", token[:5])
 		if token[:5] == "dummy" {
-			fmt.Println("dummytrue")
 			isDummy = true
 		}
 		if !isDummy {
@@ -59,7 +55,6 @@ func (dbs DBS) AuthorizedUser(token string) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(id)
 	return &User{id, &dbs}, nil
 }
 
@@ -89,7 +84,6 @@ func (u User) AuthToken(isDummy bool) (string, error) {
 	var authToken, authKey string
 	for ok := false; !ok; {
 		var err error
-		fmt.Println(isDummy)
 		if isDummy == false {
 			authToken = C.RandStringBytes(40)
 			if authToken[:5] == "dummy" {
