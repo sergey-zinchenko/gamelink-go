@@ -181,6 +181,28 @@ ENGINE = InnoDB;`
 	InsertVersionZero = `INSERT IGNORE INTO gamelink.db_version (version) VALUES (0);`
 	//ModifyBdateColumn - change varchar column to DATE
 	ModifyBdateColumn = `ALTER TABLE gamelink.users MODIFY COLUMN bdate INT GENERATED ALWAYS AS (json_extract(data,'$.bdate')) VIRTUAL ;`
+	//AddColumnMadePayment - add generated from data json column contains true if user made a payment
+	AddColumnMadePayment = `ALTER TABLE gamelink.users ADD COLUMN made_payment TINYINT(1) GENERATED ALWAYS AS (json_extract(data,'$.made_payment')) AFTER deleted;`
+	//AddColumnWatchedAds - add generated from data json column contains true if user watch adwert
+	AddColumnWatchedAds = `ALTER TABLE gamelink.users ADD COLUMN watched_ads TINYINT(1) GENERATED ALWAYS AS (json_extract(data,'$.watched_ads')) AFTER made_payment;`
+	//AddColumnDummy - add generated column dummy to users table
+	AddColumnDummy = `ALTER TABLE gamelink.users ADD COLUMN dummy TINYINT(1) GENERATED ALWAYS AS (if(((vk_id is not null) or (fb_id is not null)),0,1)) AFTER watched_ads;`
+
+	//AddTableDeviceIds - create table for deviceIds which will use to send push
+	AddTableDeviceIds = `CREATE TABLE IF NOT EXISTS gamelink.device_ids (
+  user_id INT NOT NULL,
+  device_id VARCHAR(300) NOT NULL,
+  device_os ENUM('ios', 'android') DEFAULT NULL, 	
+  PRIMARY KEY (user_id, device_id),
+  INDEX userid (user_id ASC),
+  INDEX device_id (user_id ASC),
+  INDEX type (user_id ASC),
+  CONSTRAINT fk_user_id
+    FOREIGN KEY (user_id)
+    REFERENCES gamelink.users (id)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION);`
+
 	//InsertVersionOne - insert new db version
 	InsertVersionOne = `INSERT IGNORE INTO gamelink.db_version (version) values (1);`
 	//GetDbVersion - return max bd version

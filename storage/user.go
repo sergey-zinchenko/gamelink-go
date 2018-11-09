@@ -9,13 +9,24 @@ import (
 	"gamelink-go/graceful"
 	"gamelink-go/social"
 	"gamelink-go/storage/queries"
+	"math/rand"
+	"time"
 )
+
+func init() {
+	rand.Seed(time.Now().UTC().UnixNano())
+}
 
 type (
 	//User - structure to work with user in our system. Developed to be passed through context of request.
 	User struct {
 		id  int64
 		dbs *DBS
+	}
+	//Device - struct for device data
+	Device struct {
+		deviceID   string
+		deviceType string
 	}
 )
 
@@ -25,6 +36,9 @@ func (u User) ID() int64 {
 }
 
 func (u *User) txCheck(userData social.ThirdPartyUser, tx *sql.Tx) (bool, error) {
+	if userData.ID() == nil {
+		return false, nil
+	}
 	var deletedFlag int
 	queryString := fmt.Sprintf(queries.CheckUserQuery, userData.ID().Name())
 	err := tx.QueryRow(queryString, userData.ID().Value()).Scan(&u.id)
@@ -137,28 +151,6 @@ func (u User) DataString() (string, error) {
 	return str, nil
 }
 
-//Data - returns user's field data from database
-//TODO вот это нам не нужно, если только где-то не понадобится вызов Data по коду см.выше реализацию
-func (u User) Data() (C.J, error) {
-	var bytes []byte
-	if u.dbs.mySQL == nil {
-		return nil, errors.New("databases not initialized")
-	}
-	err := u.dbs.mySQL.QueryRow(queries.GetExtraUserDataQuery, u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID()).Scan(&bytes)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, graceful.NotFoundError{Message: "user not found"}
-		}
-		return nil, err
-	}
-	var data C.J
-	err = json.Unmarshal(bytes, &data)
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
-}
-
 func (u User) txData(tx *sql.Tx) (C.J, error) {
 	var bytes []byte
 	err := tx.QueryRow(queries.GetUserDataQuery, u.ID()).Scan(&bytes)
@@ -225,11 +217,6 @@ func (u User) txSyncFriends(friendsIds []social.ThirdPartyID, tx *sql.Tx) error 
 			return err
 		}
 	}
-	return nil
-}
-
-func (u User) logout() error {
-	//TODO: нужно имплементировать
 	return nil
 }
 
@@ -322,6 +309,10 @@ func (u User) Delete(fields []string) (C.J, error) {
 func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 	var transaction = func(userData social.ThirdPartyUser, tx *sql.Tx) (C.J, error) {
 		data, err := u.txData(tx)
+		var isDummy bool
+		if data["vk_id"] == nil && data["fb_id"] == nil {
+			isDummy = true
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -329,6 +320,14 @@ func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 			return nil, graceful.BadRequestError{Message: "account already exist"}
 		}
 		data[userData.ID().Name()] = userData.ID().Value()
+		if isDummy {
+			fmt.Println("i m here")
+			data["name"] = userData.Name()
+			data["sex"] = userData.Sex()
+			data["email"] = userData.Email()
+			data["country"] = userData.Country()
+			data["bdate"] = userData.BirthDate()
+		}
 		err = u.txUpdate(data, tx)
 		if err != nil {
 			return nil, err
@@ -362,4 +361,22 @@ func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 		return nil, err
 	}
 	return updData, nil
+}
+
+//AddDevice - add device id and type to device_ids table
+func (u User) AddDevice(device *Device) error {
+	_, err := u.dbs.mySQL.Exec(queries.AddDeviceID, u.ID(), device.deviceID, device.deviceType)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+//DeleteDummyToken - delete dummy redis token
+func (u User) DeleteDummyToken(redisToken string) error {
+	cmd := u.dbs.rc.Del(authRedisKeyPref + redisToken)
+	if cmd.Err() != nil {
+		return cmd.Err()
+	}
+	return nil
 }

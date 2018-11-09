@@ -60,9 +60,7 @@ SELECT (SELECT CAST(CONCAT( 	'{"id":'  , 	u.id,
 
 	//GetUserDataQuery - mysql query to get user's data json
 	GetUserDataQuery = `
-SELECT data
-FROM users u
-WHERE u.id = ? AND u.deleted != 1`
+SELECT data from users u where u.id=? AND u.deleted != 1`
 
 	//UpdateUserDataQuery - mysql query to update data field of the user record
 	UpdateUserDataQuery = `
@@ -82,4 +80,7 @@ WHERE u.id = ? AND u.deleted != 1`
 INSERT IGNORE INTO friends (user_id1, user_id2) VALUES 
 (?, (SELECT id from users u WHERE u.%[1]s =? AND u.deleted != 1)),
 ((SELECT id from users u WHERE u.%[1]s =? AND u.deleted != 1), ?)`
+
+	//AddDeviceID - mysql query to add device id in first user auth
+	AddDeviceID = `INSERT IGNORE INTO device_ids (user_id, device_id, device_os) values (?,?,?)`
 )

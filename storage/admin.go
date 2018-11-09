@@ -14,6 +14,8 @@ const (
 	QueryCount QueryKind = iota
 	//QuerySelect - const for Select query
 	QuerySelect
+	//QuerySelectWithDeviceJoin - const for select query with join
+	QuerySelectWithDeviceJoin
 	//QueryUpdate - const for update query
 	QueryUpdate
 	//QueryDelete - const for delete query
@@ -92,6 +94,12 @@ func (q QueryBuilder) SelectQuery() QueryBuilder {
 	return q
 }
 
+//SelectQueryWithDeviceJoin - first part of select query with join to deviceID table
+func (q QueryBuilder) SelectQueryWithDeviceJoin() QueryBuilder {
+	q.kind = QuerySelectWithDeviceJoin
+	return q
+}
+
 //UpdateQuery - query for update command
 func (q QueryBuilder) UpdateQuery() QueryBuilder {
 	q.kind = QueryUpdate
@@ -107,13 +115,15 @@ func (q QueryBuilder) DeleteQuery() QueryBuilder {
 //QueryWithDB - execute query, scan result
 func (q QueryBuilder) QueryWithDB(mysql *sql.DB, worker RowWorker) ([]interface{}, error) {
 	switch q.kind {
-	case QuerySelect, QueryCount, QueryDelete:
+	case QuerySelect, QueryCount, QueryDelete, QuerySelectWithDeviceJoin:
 		var query string
 		switch q.kind {
 		case QueryCount:
 			query = `SELECT COUNT(id) FROM users`
 		case QuerySelect:
 			query = `SELECT id, vk_id, fb_id, name, email, sex, timestampdiff(YEAR, bdate, curdate()), country, date(created_at), deleted from users`
+		case QuerySelectWithDeviceJoin:
+			query = `SELECT name, device_id, device_os from users LEFT JOIN device_ids ON id=user_id`
 		case QueryDelete:
 			query = `UPDATE users SET deleted=1`
 		}

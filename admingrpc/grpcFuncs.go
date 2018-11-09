@@ -3,19 +3,18 @@ package admingrpc
 import (
 	"database/sql"
 	"errors"
-	"fmt"
+	"gamelink-go/adminnats"
 	msg "gamelink-go/proto_msg"
+	push "gamelink-go/proto_nats_msg"
 	"gamelink-go/storage"
-	"github.com/nats-io/go-nats"
 	"golang.org/x/net/context"
-	"log"
 )
 
 type (
 	//AdminServiceServer - grpc server struct
 	AdminServiceServer struct {
 		dbs *storage.DBS
-		nc  *nats.Conn
+		nc  *adminnats.NatsService
 	}
 )
 
@@ -25,7 +24,7 @@ func (s *AdminServiceServer) Dbs(dbs *storage.DBS) {
 }
 
 //Nats - set nats connection to adminServiceServer
-func (s *AdminServiceServer) Nats(nc *nats.Conn) {
+func (s *AdminServiceServer) Nats(nc *adminnats.NatsService) {
 	s.nc = nc
 }
 
@@ -105,9 +104,6 @@ func (s *AdminServiceServer) Find(ctx context.Context, in *msg.MultiCriteriaRequ
 	if err != nil {
 		return nil, err
 	}
-	if err != nil {
-		return nil, err
-	}
 	return &msg.MultiUserResponse{Users: users}, nil
 }
 
@@ -149,12 +145,35 @@ func (s *AdminServiceServer) Delete(ctx context.Context, in *msg.MultiCriteriaRe
 
 //SendPush - handle /send_push command
 func (s *AdminServiceServer) SendPush(ctx context.Context, in *msg.PushCriteriaRequest) (*msg.StringResponse, error) {
-	//b := storage.QueryBuilder{}
-	//b.PushQuery().WithMultipleClause(in.Params)
-	//обрабытваем то шо нашли по запросу из базы
-	fmt.Println(in.Message)
-	if err := s.nc.Publish("updates", []byte(in.Message)); err != nil {
-		log.Fatal("message" + err.Error())
+	var users []*push.UserInfo
+	b := storage.QueryBuilder{}.SelectQueryWithDeviceJoin().WithMultipleClause(in.Params)
+	_, err := s.dbs.Query(b, func(scanFunc storage.ScanFunc) (interface{}, error) {
+		var name, deviceID, deviceOs sql.NullString
+		err := scanFunc(&name, &deviceID, &deviceOs)
+		if err != nil {
+			return nil, err
+		}
+		var info push.UserInfo
+		if name.Valid {
+			info.Name = name.String
+		}
+		if deviceID.Valid {
+			info.DeviceID = deviceID.String
+		}
+		if deviceOs.Valid {
+			info.DeviceOS = deviceOs.String
+		}
+		if info.DeviceID != "" && info.DeviceOS != "" && info.Name != "" {
+			users = append(users, &info)
+		}
+		return info, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	err = s.nc.PreparePushMessage(in.Message, users)
+	if err != nil {
+		return nil, err
 	}
 	return &msg.StringResponse{Response: "message successfully send"}, nil
 }
