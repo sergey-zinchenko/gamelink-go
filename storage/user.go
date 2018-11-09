@@ -327,7 +327,6 @@ func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 			data["email"] = userData.Email()
 			data["country"] = userData.Country()
 			data["bdate"] = userData.BirthDate()
-			data["dummy"] = 0
 		}
 		err = u.txUpdate(data, tx)
 		if err != nil {
