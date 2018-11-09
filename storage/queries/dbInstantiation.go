@@ -189,7 +189,7 @@ ENGINE = InnoDB;`
 	//AddTableDeviceIds - create table for deviceIds which will use to send push
 	AddTableDeviceIds = `CREATE TABLE IF NOT EXISTS gamelink.device_ids (
   user_id INT NOT NULL,
-  device_id VARCHAR(45) NOT NULL,
+  device_id VARCHAR(300) NOT NULL,
   device_os ENUM('ios', 'android') DEFAULT NULL, 	
   PRIMARY KEY (user_id, device_id),
   INDEX userid (user_id ASC),
