@@ -9,7 +9,6 @@ import (
 	"gamelink-go/graceful"
 	"gamelink-go/social"
 	"gamelink-go/storage/queries"
-	"github.com/go-redis/redis"
 	"math/rand"
 	"time"
 )
@@ -75,8 +74,8 @@ func (u *User) txRegister(user social.ThirdPartyUser, tx *sql.Tx) error {
 }
 
 //LoginUsingThirdPartyToken - function to fill users id by third party token
-func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken, device *Device) error {
-	var transaction = func(user social.ThirdPartyUser, device *Device, tx *sql.Tx) error {
+func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken) error {
+	var transaction = func(user social.ThirdPartyUser, tx *sql.Tx) error {
 		registered, err := u.txCheck(user, tx)
 		if err != nil {
 			return err
@@ -106,13 +105,6 @@ func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken, device *D
 				return err
 			}
 		}
-		// Add deviceID to db
-		if device != nil {
-			_, err = tx.Exec(queries.AddDeviceID, u.ID(), device.deviceID, device.deviceType)
-			if err != nil {
-				return err
-			}
-		}
 		err = u.txSyncFriends(user.Friends(), tx)
 		if err != nil {
 			return err
@@ -127,7 +119,7 @@ func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken, device *D
 	if err != nil {
 		return err
 	}
-	err = transaction(userData, device, tx)
+	err = transaction(userData, tx)
 	if err != nil {
 		u.id = 0
 		e := tx.Rollback()
@@ -159,19 +151,18 @@ func (u User) DataString() (string, error) {
 	return str, nil
 }
 
-func (u User) txData(tx *sql.Tx) (int, C.J, error) {
+func (u User) txData(tx *sql.Tx) (C.J, error) {
 	var bytes []byte
-	var dummy int
-	err := tx.QueryRow(queries.GetUserDataQuery, u.ID()).Scan(&dummy, &bytes)
+	err := tx.QueryRow(queries.GetUserDataQuery, u.ID()).Scan(&bytes)
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 	var data C.J
 	err = json.Unmarshal(bytes, &data)
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
-	return dummy, data, nil
+	return data, nil
 }
 
 func (u User) txUpdate(data C.J, tx *sql.Tx) error {
@@ -232,7 +223,7 @@ func (u User) txSyncFriends(friendsIds []social.ThirdPartyID, tx *sql.Tx) error 
 //Update - allow user update data
 func (u User) Update(data C.J) (C.J, error) {
 	var transaction = func(upd C.J, tx *sql.Tx) (C.J, error) {
-		_, data, err := u.txData(tx)
+		data, err := u.txData(tx)
 		if err != nil {
 			return nil, err
 		}
@@ -274,7 +265,7 @@ func (u User) Update(data C.J) (C.J, error) {
 func (u User) Delete(fields []string) (C.J, error) {
 	var transaction = func(fields []string, tx *sql.Tx) (C.J, error) {
 		if len(fields) != 0 {
-			_, data, err := u.txData(tx)
+			data, err := u.txData(tx)
 			if err != nil {
 				return nil, err
 			}
@@ -317,7 +308,11 @@ func (u User) Delete(fields []string) (C.J, error) {
 // AddSocial - allow
 func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 	var transaction = func(userData social.ThirdPartyUser, tx *sql.Tx) (C.J, error) {
-		dummy, data, err := u.txData(tx)
+		data, err := u.txData(tx)
+		var isDummy bool
+		if data["vk_id"] == nil && data["fb_id"] == nil {
+			isDummy = true
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -325,7 +320,8 @@ func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 			return nil, graceful.BadRequestError{Message: "account already exist"}
 		}
 		data[userData.ID().Name()] = userData.ID().Value()
-		if dummy == 1 {
+		if isDummy {
+			fmt.Println("i m here")
 			data["name"] = userData.Name()
 			data["sex"] = userData.Sex()
 			data["email"] = userData.Email()
@@ -377,25 +373,11 @@ func (u User) AddDevice(device *Device) error {
 	return nil
 }
 
-//SwitchRedisToken - change redis token from dummy to auth
-func (u User) SwitchRedisToken(redisToken string) error {
-	err := u.dbs.rc.Watch(func(tx *redis.Tx) error {
-		_, err := tx.Get(dummyRedisKeyPref + redisToken).Result()
-		if err != nil {
-			if err == redis.Nil {
-				return nil
-			}
-			return err
-		}
-		_, err = tx.Set(authRedisKeyPref+redisToken, u.ID(), 8*time.Hour).Result()
-		if err != nil {
-			return err
-		}
-		tx.Del(dummyRedisKeyPref + redisToken)
-		return nil
-	}, redisToken)
-	if err != nil {
-		return err
+//DeleteDummyToken - delete dummy redis token
+func (u User) DeleteDummyToken(redisToken string) error {
+	cmd := u.dbs.rc.Del(authRedisKeyPref + redisToken)
+	if cmd.Err() != nil {
+		return cmd.Err()
 	}
 	return nil
 }

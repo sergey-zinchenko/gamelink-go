@@ -88,7 +88,7 @@ func (a *App) addAuth(ctx iris.Context) {
 	header := strings.TrimSpace(ctx.GetHeader("Authorization"))
 	arr := strings.Split(header, " ")
 	if arr[1] != "" {
-		err = user.SwitchRedisToken(arr[1])
+		err = user.DeleteDummyToken(arr[1])
 		if err != nil {
 			return
 		}

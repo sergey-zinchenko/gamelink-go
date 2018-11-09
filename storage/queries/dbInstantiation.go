@@ -185,6 +185,8 @@ ENGINE = InnoDB;`
 	AddColumnMadePayment = `ALTER TABLE gamelink.users ADD COLUMN made_payment TINYINT(1) GENERATED ALWAYS AS (json_extract(data,'$.made_payment')) AFTER deleted;`
 	//AddColumnWatchedAds - add generated from data json column contains true if user watch adwert
 	AddColumnWatchedAds = `ALTER TABLE gamelink.users ADD COLUMN watched_ads TINYINT(1) GENERATED ALWAYS AS (json_extract(data,'$.watched_ads')) AFTER made_payment;`
+	//AddColumnDummy - add generated column dummy to users table
+	AddColumnDummy = `ALTER TABLE gamelink.users ADD COLUMN dummy TINYINT(1) GENERATED ALWAYS AS (if(((vk_id is not null) or (fb_id is not null)),0,1)) AFTER watched_ads;`
 
 	//AddTableDeviceIds - create table for deviceIds which will use to send push
 	AddTableDeviceIds = `CREATE TABLE IF NOT EXISTS gamelink.device_ids (

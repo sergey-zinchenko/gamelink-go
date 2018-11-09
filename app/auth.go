@@ -78,20 +78,27 @@ func (a *App) registerLogin(ctx iris.Context) {
 			handleError(err, ctx)
 		}
 	}()
-	deviceID, deviceType = a.checkDeviceHeader(ctx)
+
 	thirdPartyToken := tokenFromValues(ctx.Request().URL.Query())
 	if thirdPartyToken == nil {
-		user, err = a.dbs.ThirdPartyUser(social.DummyToken(""), deviceID, deviceType)
+		user, err = a.dbs.ThirdPartyUser(social.DummyToken(""))
 		if err != nil {
 			return
 		}
 		authToken, err = user.AuthToken(true)
 	} else {
-		user, err = a.dbs.ThirdPartyUser(thirdPartyToken, deviceID, deviceType)
+		user, err = a.dbs.ThirdPartyUser(thirdPartyToken)
 		if err != nil {
 			return
 		}
 		authToken, err = user.AuthToken(false)
+	}
+	deviceID, deviceType = a.checkDeviceHeader(ctx)
+	if deviceID != "" {
+		err := user.AddDeviceID(deviceID, deviceType)
+		if err != nil {
+			return
+		}
 	}
 	if err != nil {
 		return
