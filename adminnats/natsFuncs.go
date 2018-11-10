@@ -15,6 +15,7 @@ type NatsService struct {
 //ConnectionNats - add nats connection to natsService struct
 func (ns *NatsService) ConnectionNats(nc *nats.Conn) {
 	ns.nc = nc
+	//TODO: надо бы сюда перенести код подключения к натс
 }
 
 //PreparePushMessage - divides receivers into two arrays
@@ -33,6 +34,8 @@ func (ns *NatsService) PreparePushMessage(msg string, receivers []*push.UserInfo
 	//ns.sendIosPush(msg, iosReceivers)
 	return nil
 }
+
+//TODO: Есть такое предположение, что нуно слить PreparePushMessage и sendAndroidPush и sendIosPush - отправлять пуши по одному и не париться - будет меньше кода
 
 //sendAndroidPush - send push messages to android receivers
 func (ns *NatsService) sendAndroidPush(msg string, receivers []*push.UserInfo) error {

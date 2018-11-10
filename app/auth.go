@@ -7,6 +7,7 @@ import (
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
 	"net/url"
+	"reflect"
 	"strings"
 )
 
@@ -67,11 +68,11 @@ func (a *App) authMiddleware(ctx iris.Context) {
 
 func (a *App) registerLogin(ctx iris.Context) {
 	var (
-		authToken  string
-		user       *storage.User
-		deviceID   string
-		deviceType string
-		err        error
+		authToken string
+		user      *storage.User
+		//deviceID   string
+		//deviceType string
+		err error
 	)
 	defer func() {
 		if err != nil {
@@ -79,35 +80,48 @@ func (a *App) registerLogin(ctx iris.Context) {
 		}
 	}()
 
+	//thirdPartyToken := tokenFromValues(ctx.Request().URL.Query())
+	//if thirdPartyToken == nil {
+	//	user, err = a.dbs.ThirdPartyUser(social.DummyToken(""))
+	//	if err != nil {
+	//		return
+	//	}
+	//	authToken, err = user.AuthToken(true)
+	//} else {
+	//	user, err = a.dbs.ThirdPartyUser(thirdPartyToken)
+	//	if err != nil {
+	//		return
+	//	}
+	//	authToken, err = user.AuthToken(false)
+	//}
+
+	//TODO: так же короче писать???
 	thirdPartyToken := tokenFromValues(ctx.Request().URL.Query())
 	if thirdPartyToken == nil {
-		user, err = a.dbs.ThirdPartyUser(social.DummyToken(""))
-		if err != nil {
-			return
-		}
-		authToken, err = user.AuthToken(true)
-	} else {
-		user, err = a.dbs.ThirdPartyUser(thirdPartyToken)
-		if err != nil {
-			return
-		}
-		authToken, err = user.AuthToken(false)
+		thirdPartyToken = social.DummyToken("")
 	}
-	deviceID, deviceType = a.checkDeviceHeader(ctx)
-	if deviceID != "" {
-		err := user.AddDeviceID(deviceID, deviceType)
-		if err != nil {
-			return
-		}
-	}
+	authToken, err = user.AuthToken(reflect.TypeOf(thirdPartyToken) == reflect.TypeOf(social.DummyToken("")))
+	//TODO: из за предыдущей строчки веротяно лучше сделать isDummy в токене - не красивая запись получается
+	//deviceID, deviceType = a.checkDeviceHeader(ctx)
+	//if deviceID != "" {
+	//	err := user.AddDeviceID(deviceID, deviceType)
+	//	if err != nil {
+	//		return
+	//	}
+	//}
+
+	//TODO:И тут таже история, естетсвенно функцию чуть допилить придется
+	err = user.AddDeviceID(a.checkDeviceHeader(ctx))
 	if err != nil {
 		return
 	}
+
 	ctx.JSON(C.J{"token": authToken})
 }
 
 func (a *App) checkDeviceHeader(ctx iris.Context) (string, string) {
 	var deviceID, deviceType string
+	//TODO: глупая связка ctx.GetHeader - можно по два раза не вызывать
 	if ctx.GetHeader("iosdevice") != "" {
 		deviceID = ctx.GetHeader("iosdevice")
 		deviceType = iosDeviceType

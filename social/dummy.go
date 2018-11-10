@@ -23,6 +23,7 @@ type (
 	}
 )
 
+//TODO: вообще в этом файле есть веротяно лишний тип и константа
 const (
 	//DummyID - const name of Dummy identifier column in the db
 	DummyID = ""
@@ -40,11 +41,11 @@ func (d DummyIdentifier) Value() string {
 
 //ID - return dummyID
 func (d DummyInfo) ID() ThirdPartyID {
-	return nil
+	return nil //TODO: вот по этому есть один лишний тип
 }
 
 func (token DummyToken) get(userInfo *DummyInfo) error {
-	userInfo.FullName = petname.Generate(2, " ")
+	userInfo.FullName = petname.Generate(2, " ") //TODO: не уверен что это правильное место - оно будет перегенриь имена при каждом обращении к функции чтоле? Вызвал два раза UserInfo у одного объекта - получил два разных имени
 	return nil
 }
 

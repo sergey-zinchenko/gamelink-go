@@ -43,6 +43,7 @@ func (a *App) ConnectDataBases() error {
 
 //ConnetcGRPC - tries to make grpc connection
 func (a *App) ConnetcGRPC() {
+	//TODO: наверное лучше спрятать этот код в модуль раоты с грпц
 	lis, err := net.Listen(config.GRPCNetwork, config.GRPCPort)
 	if err != nil {
 		log.Fatal(err.Error())
@@ -59,12 +60,14 @@ func (a *App) ConnetcGRPC() {
 	}
 }
 
+//TODO:Держать ради этого целую функцию не нужно (она вызывается парой строчек выше)
 func (a *App) adminServiceServer(s *admingrpc.AdminServiceServer) {
 	a.admin = s
 }
 
 //ConnectNATS - tries to make connection to NATS
 func (a *App) ConnectNATS() {
+	//TODO: наверное лучге спрятать этот код в модуль с натсом
 	connats := adminnats.NatsService{}
 	nc, err := nats.Connect(config.NATSPort)
 	if err != nil {

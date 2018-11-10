@@ -85,6 +85,8 @@ func (a *App) addAuth(ctx iris.Context) {
 	if err != nil {
 		return
 	}
+
+	//TODO: а если он не дами тоже чтото будем удалять?
 	header := strings.TrimSpace(ctx.GetHeader("Authorization"))
 	arr := strings.Split(header, " ")
 	if arr[1] != "" {

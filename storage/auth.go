@@ -25,6 +25,7 @@ func (dbs DBS) AuthorizedUser(token string) (*User, error) {
 	if token[:5] == "dummy" {
 		isDummy = true
 	}
+	//TODO: надо вынести authRedisKeyPref + token за цикл и вообще в отдельную переменнную
 	for {
 		err := dbs.rc.Watch(func(tx *redis.Tx) error {
 			var idStr string
@@ -40,6 +41,7 @@ func (dbs DBS) AuthorizedUser(token string) (*User, error) {
 			if err != nil {
 				return err
 			}
+			//TODO: плохой стиль в условиях вызвывать одну и туже функцию - по условию меняй переменную а потом вызывай функцию с ней в качестве параметра
 			if !isDummy {
 				_, err = tx.Set(authRedisKeyPref+token, id, 8*time.Hour).Result()
 			} else {
@@ -91,7 +93,7 @@ func (u User) AuthToken(isDummy bool) (string, error) {
 		} else {
 			authToken = "dummy" + C.RandStringBytes(35)
 			authKey = authRedisKeyPref + authToken
-			ok, err = u.dbs.rc.SetNX(authKey, u.ID(), 24*30*time.Hour).Result()
+			ok, err = u.dbs.rc.SetNX(authKey, u.ID(), 24*30*time.Hour).Result() //TODO: та же история с этой функцией и временем - вызывай ее за условным оператором одни раз
 		}
 		if err != nil {
 			return "", err
@@ -102,6 +104,7 @@ func (u User) AuthToken(isDummy bool) (string, error) {
 
 //AddDeviceID - add deviceID to db
 func (u User) AddDeviceID(deviceID string, deviceType string) error {
+	//TODO: нужно модифицировать если применять правки из апп/аус
 	_, err := u.dbs.mySQL.Exec(queries.AddDeviceID, u.ID(), deviceID, deviceType)
 	if err != nil {
 		return err
