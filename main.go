@@ -21,8 +21,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	go a.ConnetcGRPC()
-	go a.ConnectNATS()
+	go a.NewAdminService()
 	err = a.Run()
 	if err != nil {
 		log.Fatal(err.Error())

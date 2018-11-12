@@ -2,17 +2,11 @@ package app
 
 import (
 	"gamelink-go/admingrpc"
-	"gamelink-go/adminnats"
 	C "gamelink-go/common"
 	"gamelink-go/config"
-	service "gamelink-go/proto_service"
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/middleware/basicauth"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
-	"log"
-	"net"
 	"time"
 )
 
@@ -40,36 +34,12 @@ func (a *App) ConnectDataBases() error {
 	return nil
 }
 
+//NewAdminService - tries to make grpc and nats connections for admin purpose
 func (a *App) NewAdminService() {
-
-}
-
-//ConnetcGRPC - tries to make grpc connection
-func (a *App) ConnetcGRPC() {
-	//TODO: наверное лучше спрятать этот код в модуль раоты с грпц
-	lis, err := net.Listen(config.GRPCNetwork, config.GRPCPort)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-	s := grpc.NewServer()
 	serv := admingrpc.AdminServiceServer{}
-	service.RegisterAdminServiceServer(s, &serv)
-	// Register reflection service on gRPC server.
 	serv.Dbs(a.dbs)
-	reflection.Register(s)
-	a.admin = &serv
-	if err := s.Serve(lis); err != nil {
-		log.Fatal(err.Error())
-	}
-}
-
-//ConnectNATS - tries to make connection to NATS
-func (a *App) ConnectNATS() {
-	nc, err := adminnats.ConnectNats()
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-	a.admin.Nats(nc)
+	go serv.GRPC()
+	go serv.Nats()
 }
 
 //NewApp - You can construct and initialize App (application) object with that function

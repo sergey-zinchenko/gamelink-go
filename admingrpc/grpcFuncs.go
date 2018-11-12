@@ -4,10 +4,16 @@ import (
 	"database/sql"
 	"errors"
 	"gamelink-go/adminnats"
+	"gamelink-go/config"
 	msg "gamelink-go/proto_msg"
 	push "gamelink-go/proto_nats_msg"
+	service "gamelink-go/proto_service"
 	"gamelink-go/storage"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
+	"log"
+	"net"
 )
 
 type (
@@ -18,13 +24,32 @@ type (
 	}
 )
 
+//GRPC - set grpc connection to adminServiceServer
+func (s *AdminServiceServer) GRPC() {
+	lis, err := net.Listen(config.GRPCNetwork, config.GRPCPort)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	grpcServ := grpc.NewServer()
+	service.RegisterAdminServiceServer(grpcServ, s)
+	// Register reflection service on gRPC server.
+	reflection.Register(grpcServ)
+	if err := grpcServ.Serve(lis); err != nil {
+		log.Fatal(err.Error())
+	}
+}
+
 //Dbs - set dbs to adminServiceServer
 func (s *AdminServiceServer) Dbs(dbs *storage.DBS) {
 	s.dbs = dbs
 }
 
 //Nats - set nats connection to adminServiceServer
-func (s *AdminServiceServer) Nats(nc *adminnats.NatsService) {
+func (s *AdminServiceServer) Nats() {
+	nc, err := adminnats.ConnectNats()
+	if err != nil {
+		log.Fatal(err.Error())
+	}
 	s.nc = nc
 }
 
