@@ -25,12 +25,12 @@ func (dbs DBS) AuthorizedUser(token string) (*User, error) {
 	if token[:5] == "dummy" {
 		isDummy = true
 	}
-	//TODO: надо вынести authRedisKeyPref + token за цикл и вообще в отдельную переменнную
+	tokenWithPrefix := authRedisKeyPref + token
 	for {
 		err := dbs.rc.Watch(func(tx *redis.Tx) error {
 			var idStr string
 			var err error
-			idStr, err = tx.Get(authRedisKeyPref + token).Result()
+			idStr, err = tx.Get(tokenWithPrefix).Result()
 			if err != nil {
 				if err == redis.Nil {
 					return graceful.UnauthorizedError{Message: "key doesn't exist in redis"}
@@ -41,14 +41,15 @@ func (dbs DBS) AuthorizedUser(token string) (*User, error) {
 			if err != nil {
 				return err
 			}
-			//TODO: плохой стиль в условиях вызвывать одну и туже функцию - по условию меняй переменную а потом вызывай функцию с ней в качестве параметра
-			if !isDummy {
-				_, err = tx.Set(authRedisKeyPref+token, id, 8*time.Hour).Result()
+			var lifetime time.Duration
+			if isDummy {
+				lifetime = 24 * 30 * time.Hour
 			} else {
-				_, err = tx.Set(authRedisKeyPref+token, id, 24*30*time.Hour).Result()
+				lifetime = 8 * time.Hour
 			}
+			_, err = tx.Set(tokenWithPrefix, id, lifetime).Result()
 			return err
-		}, authRedisKeyPref+token)
+		}, tokenWithPrefix)
 		if err != nil {
 			if err == redis.TxFailedErr {
 				continue
@@ -83,18 +84,20 @@ func (u User) AuthToken(isDummy bool) (string, error) {
 	var authToken, authKey string
 	for ok := false; !ok; {
 		var err error
+		var lifetime time.Duration
 		if isDummy == false {
 			authToken = C.RandStringBytes(40)
 			if authToken[:5] == "dummy" {
 				authToken = C.RandStringBytes(40)
 			}
 			authKey = authRedisKeyPref + authToken
-			ok, err = u.dbs.rc.SetNX(authKey, u.ID(), time.Hour).Result()
+			lifetime = time.Hour
 		} else {
 			authToken = "dummy" + C.RandStringBytes(35)
 			authKey = authRedisKeyPref + authToken
-			ok, err = u.dbs.rc.SetNX(authKey, u.ID(), 24*30*time.Hour).Result() //TODO: та же история с этой функцией и временем - вызывай ее за условным оператором одни раз
+			lifetime = 24 * 30 * time.Hour
 		}
+		ok, err = u.dbs.rc.SetNX(authKey, u.ID(), lifetime).Result()
 		if err != nil {
 			return "", err
 		}
