@@ -327,3 +327,8 @@ func (token VkToken) getFriends(userInfo *VkInfo) error {
 
 	return nil
 }
+
+//IsDummy - false cause it's vk token
+func (token VkToken) IsDummy() bool {
+	return false
+}

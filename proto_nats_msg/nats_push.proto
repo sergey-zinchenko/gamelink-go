@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 message PushMsgStruct {
-    repeated UserInfo  userInfo = 1;
+    UserInfo  userInfo = 1;
     string    message  = 2;
 }
 

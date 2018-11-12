@@ -6,8 +6,8 @@ import (
 	"gamelink-go/social"
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
+	"github.com/sirupsen/logrus"
 	"net/url"
-	"reflect"
 	"strings"
 )
 
@@ -70,49 +70,29 @@ func (a *App) registerLogin(ctx iris.Context) {
 	var (
 		authToken string
 		user      *storage.User
-		//deviceID   string
-		//deviceType string
-		err error
+		err       error
 	)
 	defer func() {
 		if err != nil {
 			handleError(err, ctx)
 		}
 	}()
-
-	//thirdPartyToken := tokenFromValues(ctx.Request().URL.Query())
-	//if thirdPartyToken == nil {
-	//	user, err = a.dbs.ThirdPartyUser(social.DummyToken(""))
-	//	if err != nil {
-	//		return
-	//	}
-	//	authToken, err = user.AuthToken(true)
-	//} else {
-	//	user, err = a.dbs.ThirdPartyUser(thirdPartyToken)
-	//	if err != nil {
-	//		return
-	//	}
-	//	authToken, err = user.AuthToken(false)
-	//}
-
-	//TODO: так же короче писать???
 	thirdPartyToken := tokenFromValues(ctx.Request().URL.Query())
 	if thirdPartyToken == nil {
 		thirdPartyToken = social.DummyToken("")
 	}
-	authToken, err = user.AuthToken(reflect.TypeOf(thirdPartyToken) == reflect.TypeOf(social.DummyToken("")))
-	//TODO: из за предыдущей строчки веротяно лучше сделать isDummy в токене - не красивая запись получается
-	//deviceID, deviceType = a.checkDeviceHeader(ctx)
-	//if deviceID != "" {
-	//	err := user.AddDeviceID(deviceID, deviceType)
-	//	if err != nil {
-	//		return
-	//	}
-	//}
-
-	//TODO:И тут таже история, естетсвенно функцию чуть допилить придется
+	user, err = a.dbs.ThirdPartyUser(thirdPartyToken)
+	if err != nil {
+		return
+	}
+	authToken, err = user.AuthToken(thirdPartyToken.IsDummy())
+	if err != nil {
+		logrus.Warn(err.Error())
+		return
+	}
 	err = user.AddDeviceID(a.checkDeviceHeader(ctx))
 	if err != nil {
+		logrus.Warn(err.Error())
 		return
 	}
 

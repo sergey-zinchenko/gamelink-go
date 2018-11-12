@@ -2,6 +2,7 @@ package storage
 
 import (
 	"errors"
+	"fmt"
 	C "gamelink-go/common"
 	"gamelink-go/graceful"
 	"gamelink-go/social"
@@ -102,15 +103,17 @@ func (u User) AuthToken(isDummy bool) (string, error) {
 			return "", err
 		}
 	}
+	fmt.Println("aaa", authToken)
 	return authToken, nil
 }
 
 //AddDeviceID - add deviceID to db
 func (u User) AddDeviceID(deviceID string, deviceType string) error {
-	//TODO: нужно модифицировать если применять правки из апп/аус
-	_, err := u.dbs.mySQL.Exec(queries.AddDeviceID, u.ID(), deviceID, deviceType)
-	if err != nil {
-		return err
+	if deviceID != "" && deviceType != "" {
+		_, err := u.dbs.mySQL.Exec(queries.AddDeviceID, u.ID(), deviceID, deviceType)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

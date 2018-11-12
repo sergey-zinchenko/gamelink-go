@@ -58,3 +58,8 @@ func (token DummyToken) UserInfo() (ThirdPartyUser, error) {
 	}
 	return userInfo, nil
 }
+
+//IsDummy - true cause it's dummy token
+func (token DummyToken) IsDummy() bool {
+	return true
+}
