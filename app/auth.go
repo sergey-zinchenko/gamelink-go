@@ -120,15 +120,11 @@ func (a *App) registerLogin(ctx iris.Context) {
 }
 
 func (a *App) checkDeviceHeader(ctx iris.Context) (string, string) {
-	var deviceID, deviceType string
-	//TODO: глупая связка ctx.GetHeader - можно по два раза не вызывать
 	if ctx.GetHeader("iosdevice") != "" {
-		deviceID = ctx.GetHeader("iosdevice")
-		deviceType = iosDeviceType
+		return ctx.GetHeader("iosdevice"), iosDeviceType
 	}
 	if ctx.GetHeader("androiddevice") != "" {
-		deviceID = ctx.GetHeader("androiddevice")
-		deviceType = androidDeviceType
+		return ctx.GetHeader("androiddevice"), androidDeviceType
 	}
-	return deviceID, deviceType
+	return "", ""
 }

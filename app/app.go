@@ -54,15 +54,10 @@ func (a *App) ConnetcGRPC() {
 	// Register reflection service on gRPC server.
 	serv.Dbs(a.dbs)
 	reflection.Register(s)
-	a.adminServiceServer(&serv)
+	a.admin = &serv
 	if err := s.Serve(lis); err != nil {
 		log.Fatal(err.Error())
 	}
-}
-
-//TODO:Держать ради этого целую функцию не нужно (она вызывается парой строчек выше)
-func (a *App) adminServiceServer(s *admingrpc.AdminServiceServer) {
-	a.admin = s
 }
 
 //ConnectNATS - tries to make connection to NATS
