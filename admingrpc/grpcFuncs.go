@@ -45,11 +45,7 @@ func (s *AdminServiceServer) Dbs(dbs *storage.DBS) {
 }
 
 //Nats - set nats connection to adminServiceServer
-func (s *AdminServiceServer) Nats() {
-	nc, err := adminnats.ConnectNats()
-	if err != nil {
-		log.Fatal(err.Error())
-	}
+func (s *AdminServiceServer) Nats(nc *adminnats.NatsService) {
 	s.nc = nc
 }
 

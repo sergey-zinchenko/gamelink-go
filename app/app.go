@@ -2,11 +2,13 @@ package app
 
 import (
 	"gamelink-go/admingrpc"
+	"gamelink-go/adminnats"
 	C "gamelink-go/common"
 	"gamelink-go/config"
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/middleware/basicauth"
+	"log"
 	"time"
 )
 
@@ -36,10 +38,17 @@ func (a *App) ConnectDataBases() error {
 
 //NewAdminService - tries to make grpc and nats connections for admin purpose
 func (a *App) NewAdminService() {
-	serv := admingrpc.AdminServiceServer{}
-	serv.Dbs(a.dbs)
-	go serv.GRPC()
-	go serv.Nats()
+	a.admin.Dbs(a.dbs)
+	a.admin.GRPC()
+}
+
+//ConnectNats - make nats connection
+func (a *App) ConnectNats() {
+	nc, err := adminnats.ConnectNats()
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	a.admin.Nats(nc)
 }
 
 //NewApp - You can construct and initialize App (application) object with that function
@@ -48,6 +57,7 @@ func NewApp() (a *App) {
 	a = new(App)
 	a.iris = iris.New()
 	a.dbs = &storage.DBS{}
+	a.admin = &admingrpc.AdminServiceServer{}
 
 	auth := a.iris.Party("/auth")
 	{
