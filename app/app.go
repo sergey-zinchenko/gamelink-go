@@ -9,7 +9,6 @@ import (
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/middleware/basicauth"
-	"github.com/nats-io/go-nats"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	"log"
@@ -41,6 +40,10 @@ func (a *App) ConnectDataBases() error {
 	return nil
 }
 
+func (a *App) NewAdminService() {
+
+}
+
 //ConnetcGRPC - tries to make grpc connection
 func (a *App) ConnetcGRPC() {
 	//TODO: наверное лучше спрятать этот код в модуль раоты с грпц
@@ -62,14 +65,11 @@ func (a *App) ConnetcGRPC() {
 
 //ConnectNATS - tries to make connection to NATS
 func (a *App) ConnectNATS() {
-	//TODO: наверное лучге спрятать этот код в модуль с натсом
-	connats := adminnats.NatsService{}
-	nc, err := nats.Connect(config.NATSPort)
+	nc, err := adminnats.ConnectNats()
 	if err != nil {
-		log.Fatal("connect" + err.Error())
+		log.Fatal(err.Error())
 	}
-	connats.ConnectionNats(nc)
-	a.admin.Nats(&connats)
+	a.admin.Nats(nc)
 }
 
 //NewApp - You can construct and initialize App (application) object with that function

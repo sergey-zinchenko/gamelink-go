@@ -13,9 +13,14 @@ type NatsService struct {
 }
 
 //ConnectionNats - add nats connection to natsService struct
-func (ns *NatsService) ConnectionNats(nc *nats.Conn) {
-	ns.nc = nc
-	//TODO: надо бы сюда перенести код подключения к натс
+func ConnectNats() (*NatsService, error) {
+	connats := NatsService{}
+	nc, err := nats.Connect(config.NATSPort)
+	if err != nil {
+		return nil, err
+	}
+	connats.nc = nc
+	return &connats, nil
 }
 
 //PreparePushMessage - divides receivers into two arrays
