@@ -79,7 +79,7 @@ func (a *App) registerLogin(ctx iris.Context) {
 	}()
 	thirdPartyToken := tokenFromValues(ctx.Request().URL.Query())
 	if thirdPartyToken == nil {
-		thirdPartyToken = social.DummyToken("")
+		thirdPartyToken = social.NewDummyToken()
 	}
 	user, err = a.dbs.ThirdPartyUser(thirdPartyToken)
 	if err != nil {
@@ -100,11 +100,13 @@ func (a *App) registerLogin(ctx iris.Context) {
 }
 
 func (a *App) checkDeviceHeader(ctx iris.Context) (string, string) {
-	if ctx.GetHeader("iosdevice") != "" {
-		return ctx.GetHeader("iosdevice"), iosDeviceType
+	iosHeader := ctx.GetHeader("iosdevice")
+	if iosHeader != "" {
+		return iosHeader, iosDeviceType
 	}
-	if ctx.GetHeader("androiddevice") != "" {
-		return ctx.GetHeader("androiddevice"), androidDeviceType
+	androidHeader := ctx.GetHeader("androiddevice")
+	if androidHeader != "" {
+		return androidHeader, iosDeviceType
 	}
 	return "", ""
 }
