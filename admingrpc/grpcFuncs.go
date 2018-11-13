@@ -182,9 +182,17 @@ func (s *AdminServiceServer) SendPush(ctx context.Context, in *msg.PushCriteriaR
 			info.DeviceID = deviceID.String
 		}
 		if deviceOs.Valid {
-			info.DeviceOS = deviceOs.String
+			os := deviceOs.String
+			switch os {
+			case push.UserInfo_ios.String():
+				info.DeviceOS = push.UserInfo_ios
+			case push.UserInfo_android.String():
+				info.DeviceOS = push.UserInfo_android
+			default:
+				info.DeviceOS = push.UserInfo_undef
+			}
 		}
-		if info.DeviceID != "" && info.DeviceOS != "" && info.Name != "" {
+		if info.DeviceID != "" && info.DeviceOS != push.UserInfo_undef && info.Name != "" {
 			users = append(users, &info)
 		}
 		return info, nil

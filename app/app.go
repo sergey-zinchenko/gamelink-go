@@ -8,7 +8,6 @@ import (
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/middleware/basicauth"
-	"log"
 	"time"
 )
 
@@ -39,11 +38,11 @@ func (a *App) ConnectDataBases() error {
 }
 
 //ConnectGrpc - tries to make grpc connections for admin purpose
-func (a *App) ConnectGrpc() {
-	err := a.admin.Connect()
-	if err != nil {
-		log.Fatal(err.Error())
+func (a *App) ConnectGrpc() error {
+	if err := a.admin.Connect(); err != nil {
+		return err
 	}
+	return nil
 }
 
 //ConnectNats - make nats connection

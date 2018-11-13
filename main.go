@@ -25,7 +25,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	go a.ConnectGrpc()
+	go func() {
+		err = a.ConnectGrpc()
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+	}()
 	err = a.Run()
 	if err != nil {
 		log.Fatal(err.Error())
