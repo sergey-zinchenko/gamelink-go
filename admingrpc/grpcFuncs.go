@@ -39,13 +39,13 @@ func (s *AdminServiceServer) Connect() error {
 	return nil
 }
 
-//SetDbsToAdminService - set dbs to adminServiceServer
-func (s *AdminServiceServer) SetDbsToAdminService(dbs *storage.DBS) {
+//SetDbs - set dbs to adminServiceServer
+func (s *AdminServiceServer) SetDbs(dbs *storage.DBS) {
 	s.dbs = dbs
 }
 
-//SetNatsToAdminService - set nats connection to adminServiceServer
-func (s *AdminServiceServer) SetNatsToAdminService(nc *adminnats.NatsService) {
+//SetNats - set nats connection to adminServiceServer
+func (s *AdminServiceServer) SetNats(nc *adminnats.NatsService) {
 	s.nc = nc
 }
 

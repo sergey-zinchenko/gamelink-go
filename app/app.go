@@ -33,7 +33,7 @@ func (a *App) ConnectDataBases() error {
 	if err := a.dbs.CheckTables(); err != nil {
 		return err
 	}
-	a.admin.SetDbsToAdminService(a.dbs)
+	a.admin.SetDbs(a.dbs)
 	return nil
 }
 
@@ -50,7 +50,7 @@ func (a *App) ConnectNats() error {
 	if err := a.nc.Connect(); err != nil {
 		return err
 	}
-	a.admin.SetNatsToAdminService(a.nc)
+	a.admin.SetNats(a.nc)
 	return nil
 }
 
