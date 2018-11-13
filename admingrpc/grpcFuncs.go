@@ -39,8 +39,8 @@ func (s *AdminServiceServer) GRPC() error {
 	return nil
 }
 
-//Dbs - set dbs to adminServiceServer
-func (s *AdminServiceServer) Dbs(dbs *storage.DBS) {
+//SetDbsToAdminService - set dbs to adminServiceServer
+func (s *AdminServiceServer) SetDbsToAdminService(dbs *storage.DBS) {
 	s.dbs = dbs
 }
 

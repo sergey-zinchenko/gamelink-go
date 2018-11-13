@@ -33,7 +33,7 @@ func (a *App) ConnectDataBases() error {
 	if err := a.dbs.CheckTables(); err != nil {
 		return err
 	}
-	a.admin.Dbs(a.dbs)
+	a.admin.SetDbsToAdminService(a.dbs)
 	return nil
 }
 
