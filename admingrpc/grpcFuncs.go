@@ -12,7 +12,6 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	"log"
 	"net"
 )
 
@@ -25,18 +24,19 @@ type (
 )
 
 //GRPC - set grpc connection to adminServiceServer
-func (s *AdminServiceServer) GRPC() {
+func (s *AdminServiceServer) GRPC() error {
 	lis, err := net.Listen(config.GRPCNetwork, config.GRPCPort)
 	if err != nil {
-		log.Fatal(err.Error())
+		return err
 	}
 	grpcServ := grpc.NewServer()
 	service.RegisterAdminServiceServer(grpcServ, s)
 	// Register reflection service on gRPC server.
 	reflection.Register(grpcServ)
 	if err := grpcServ.Serve(lis); err != nil {
-		log.Fatal(err.Error())
+		return err
 	}
+	return nil
 }
 
 //Dbs - set dbs to adminServiceServer

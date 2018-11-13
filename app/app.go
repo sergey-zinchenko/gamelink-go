@@ -33,13 +33,16 @@ func (a *App) ConnectDataBases() error {
 	if err := a.dbs.CheckTables(); err != nil {
 		return err
 	}
+	a.admin.Dbs(a.dbs)
 	return nil
 }
 
-//NewAdminService - tries to make grpc and nats connections for admin purpose
+//NewAdminService - tries to make grpc connections for admin purpose
 func (a *App) NewAdminService() {
-	a.admin.Dbs(a.dbs)
-	a.admin.GRPC()
+	err := a.admin.GRPC()
+	if err != nil {
+		log.Fatal(err.Error())
+	}
 }
 
 //ConnectNats - make nats connection
