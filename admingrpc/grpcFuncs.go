@@ -182,8 +182,7 @@ func (s *AdminServiceServer) SendPush(ctx context.Context, in *msg.PushCriteriaR
 			info.DeviceID = deviceID.String
 		}
 		if deviceOs.Valid {
-			os := deviceOs.String
-			switch os {
+			switch deviceOs.String {
 			case push.UserInfo_ios.String():
 				info.DeviceOS = push.UserInfo_ios
 			case push.UserInfo_android.String():
