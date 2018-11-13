@@ -21,10 +21,7 @@ func (dbs DBS) AuthorizedUser(token string) (*User, error) {
 		return nil, errors.New("databases not initialized")
 	}
 	var id int64
-	var isDummy bool
-	if token[:5] == "dummy" {
-		isDummy = true
-	}
+	isDummy := token[:5] == "dummy"
 	tokenWithPrefix := authRedisKeyPref + token
 	for {
 		err := dbs.rc.Watch(func(tx *redis.Tx) error {
