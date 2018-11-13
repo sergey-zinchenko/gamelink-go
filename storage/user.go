@@ -321,7 +321,6 @@ func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 		}
 		data[userData.ID().Name()] = userData.ID().Value()
 		if isDummy {
-			fmt.Println("i m here")
 			data["name"] = userData.Name()
 			data["sex"] = userData.Sex()
 			data["email"] = userData.Email()

@@ -12,15 +12,14 @@ type NatsService struct {
 	nc *nats.Conn
 }
 
-//ConnectNats - add nats connection to natsService struct
-func ConnectNats() (*NatsService, error) {
-	connats := NatsService{}
+//Connect - add nats connection to natsService struct
+func (ns *NatsService) Connect() error {
 	nc, err := nats.Connect(config.NATSPort)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	connats.nc = nc
-	return &connats, nil
+	ns.nc = nc
+	return nil
 }
 
 //PreparePushMessage - divides receivers into two arrays
@@ -31,11 +30,12 @@ func (ns *NatsService) PreparePushMessage(msg string, receivers []*push.UserInfo
 		if err != nil {
 			return err
 		}
-		if v.DeviceOS == "ios" {
+		switch v.DeviceOS {
+		case "ios":
 			if err := ns.nc.Publish(config.NatsIosChan, data); err != nil {
 				return err
 			}
-		} else if v.DeviceOS == "android" {
+		case "android":
 			if err := ns.nc.Publish(config.NatsAndroidChan, data); err != nil {
 				return err
 			}

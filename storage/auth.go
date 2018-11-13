@@ -2,7 +2,6 @@ package storage
 
 import (
 	"errors"
-	"fmt"
 	C "gamelink-go/common"
 	"gamelink-go/graceful"
 	"gamelink-go/social"
@@ -86,9 +85,9 @@ func (u User) AuthToken(isDummy bool) (string, error) {
 	for ok := false; !ok; {
 		var err error
 		var lifetime time.Duration
-		if isDummy == false {
+		if !isDummy {
 			authToken = C.RandStringBytes(40)
-			if authToken[:5] == "dummy" {
+			for authToken[:5] == "dummy" {
 				authToken = C.RandStringBytes(40)
 			}
 			authKey = authRedisKeyPref + authToken
@@ -103,7 +102,6 @@ func (u User) AuthToken(isDummy bool) (string, error) {
 			return "", err
 		}
 	}
-	fmt.Println("aaa", authToken)
 	return authToken, nil
 }
 

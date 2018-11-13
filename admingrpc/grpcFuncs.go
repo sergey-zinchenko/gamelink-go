@@ -23,8 +23,8 @@ type (
 	}
 )
 
-//GRPC - set grpc connection to adminServiceServer
-func (s *AdminServiceServer) GRPC() error {
+//Connect - set grpc connection to adminServiceServer
+func (s *AdminServiceServer) Connect() error {
 	lis, err := net.Listen(config.GRPCNetwork, config.GRPCPort)
 	if err != nil {
 		return err
@@ -44,8 +44,8 @@ func (s *AdminServiceServer) SetDbsToAdminService(dbs *storage.DBS) {
 	s.dbs = dbs
 }
 
-//Nats - set nats connection to adminServiceServer
-func (s *AdminServiceServer) Nats(nc *adminnats.NatsService) {
+//SetNatsToAdminService - set nats connection to adminServiceServer
+func (s *AdminServiceServer) SetNatsToAdminService(nc *adminnats.NatsService) {
 	s.nc = nc
 }
 

@@ -22,6 +22,7 @@ type (
 		dbs   *storage.DBS
 		iris  *iris.Application
 		admin *admingrpc.AdminServiceServer
+		nc    *adminnats.NatsService
 	}
 )
 
@@ -37,21 +38,21 @@ func (a *App) ConnectDataBases() error {
 	return nil
 }
 
-//NewAdminService - tries to make grpc connections for admin purpose
-func (a *App) NewAdminService() {
-	err := a.admin.GRPC()
+//ConnectGrpc - tries to make grpc connections for admin purpose
+func (a *App) ConnectGrpc() {
+	err := a.admin.Connect()
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 }
 
 //ConnectNats - make nats connection
-func (a *App) ConnectNats() {
-	nc, err := adminnats.ConnectNats()
-	if err != nil {
-		log.Fatal(err.Error())
+func (a *App) ConnectNats() error {
+	if err := a.nc.Connect(); err != nil {
+		return err
 	}
-	a.admin.Nats(nc)
+	a.admin.SetNatsToAdminService(a.nc)
+	return nil
 }
 
 //NewApp - You can construct and initialize App (application) object with that function
@@ -61,6 +62,7 @@ func NewApp() (a *App) {
 	a.iris = iris.New()
 	a.dbs = &storage.DBS{}
 	a.admin = &admingrpc.AdminServiceServer{}
+	a.nc = &adminnats.NatsService{}
 
 	auth := a.iris.Party("/auth")
 	{
