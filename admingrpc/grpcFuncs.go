@@ -169,8 +169,8 @@ func (s *AdminServiceServer) SendPush(ctx context.Context, in *msg.PushCriteriaR
 	var users []*push.UserInfo
 	b := storage.QueryBuilder{}.SelectQueryWithDeviceJoin().WithMultipleClause(in.Params)
 	_, err := s.dbs.Query(b, func(scanFunc storage.ScanFunc) (interface{}, error) {
-		var name, deviceID, deviceOs sql.NullString
-		err := scanFunc(&name, &deviceID, &deviceOs)
+		var name, deviceID, messageSystem sql.NullString
+		err := scanFunc(&name, &deviceID, &messageSystem)
 		if err != nil {
 			return nil, err
 		}
@@ -181,8 +181,8 @@ func (s *AdminServiceServer) SendPush(ctx context.Context, in *msg.PushCriteriaR
 		if deviceID.Valid {
 			info.DeviceID = deviceID.String
 		}
-		if deviceOs.Valid {
-			switch deviceOs.String {
+		if messageSystem.Valid {
+			switch messageSystem.String {
 			case push.UserInfo_apns.String():
 				info.MsgSystem = push.UserInfo_apns
 			case push.UserInfo_firebase.String():

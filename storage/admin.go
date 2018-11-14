@@ -123,7 +123,7 @@ func (q QueryBuilder) QueryWithDB(mysql *sql.DB, worker RowWorker) ([]interface{
 		case QuerySelect:
 			query = `SELECT id, vk_id, fb_id, name, email, sex, timestampdiff(YEAR, bdate, curdate()), country, date(created_at), deleted from users`
 		case QuerySelectWithDeviceJoin:
-			query = `SELECT name, device_id, device_os from users LEFT JOIN device_ids ON id=user_id`
+			query = `SELECT name, device_id, message_system from users LEFT JOIN device_ids ON id=user_id`
 		case QueryDelete:
 			query = `UPDATE users SET deleted=1`
 		}

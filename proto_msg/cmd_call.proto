@@ -14,7 +14,7 @@ message OneCriteriaStruct {
        age          = 5;
        created_at   = 6;
        deleted      = 7;
-       device_os    = 8;
+       message_system    = 8;
        watched_ads  = 9;
        made_payment = 10;
        updated_at   = 11;
