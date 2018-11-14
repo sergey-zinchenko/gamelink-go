@@ -3,6 +3,7 @@ package main
 import (
 	"gamelink-go/app"
 	"gamelink-go/config"
+	"gamelink-go/version"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -35,4 +36,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+	log.Printf(
+		"Starting the service...\ncommit: %s, build time: %s, release: %s",
+		version.Commit, version.BuildTime, version.Release,
+	)
 }

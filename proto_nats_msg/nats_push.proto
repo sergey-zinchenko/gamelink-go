@@ -8,10 +8,10 @@ message PushMsgStruct {
 message UserInfo {
     string deviceID = 1;
     string name = 2;
-    enum DeviceOS {
+    enum MessageSystem {
         undef = 0;
-        ios = 1;
-        android = 2;
+        apns = 1;
+        firebase = 2;
     }
-    DeviceOS deviceOS = 3;
+    MessageSystem msgSystem = 3;
 }

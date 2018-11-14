@@ -63,6 +63,8 @@ func NewApp() (a *App) {
 	a.admin = &admingrpc.AdminServiceServer{}
 	a.nc = &adminnats.NatsService{}
 
+	a.iris.Get("/version", a.version)
+
 	auth := a.iris.Party("/auth")
 	{
 		auth.Get("/", a.registerLogin)

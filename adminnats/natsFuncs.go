@@ -30,12 +30,12 @@ func (ns *NatsService) PreparePushMessage(msg string, receivers []*push.UserInfo
 		if err != nil {
 			return err
 		}
-		switch v.DeviceOS {
-		case push.UserInfo_ios:
+		switch v.MsgSystem {
+		case push.UserInfo_apns:
 			if err := ns.nc.Publish(config.NatsIosChan, data); err != nil {
 				return err
 			}
-		case push.UserInfo_android:
+		case push.UserInfo_firebase:
 			if err := ns.nc.Publish(config.NatsAndroidChan, data); err != nil {
 				return err
 			}

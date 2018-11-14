@@ -192,11 +192,11 @@ ENGINE = InnoDB;`
 	AddTableDeviceIds = `CREATE TABLE IF NOT EXISTS gamelink.device_ids (
   user_id INT NOT NULL,
   device_id VARCHAR(300) NOT NULL,
-  device_os ENUM('ios', 'android') DEFAULT NULL, 	
+  message_system ENUM('firebase', 'apns') DEFAULT NULL, 	
   PRIMARY KEY (user_id, device_id),
   INDEX userid (user_id ASC),
-  INDEX device_id (user_id ASC),
-  INDEX type (user_id ASC),
+  INDEX device_id (device_id ASC),
+  INDEX message_system (message_system ASC),
   CONSTRAINT fk_user_id
     FOREIGN KEY (user_id)
     REFERENCES gamelink.users (id)

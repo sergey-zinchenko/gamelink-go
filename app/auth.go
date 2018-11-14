@@ -13,8 +13,8 @@ import (
 
 const (
 	userCtxKey        = "user"
-	iosDeviceType     = "ios"
-	androidDeviceType = "android"
+	firebaseMsgSystem = "firebase"
+	apnsMsgSystem     = "apns"
 )
 
 var (
@@ -30,10 +30,8 @@ var (
 
 func (a *App) authMiddleware(ctx iris.Context) {
 	var (
-		err        error
-		deviceID   string
-		deviceType string
-		user       *storage.User
+		err  error
+		user *storage.User
 	)
 	defer func() {
 		if err != nil {
@@ -56,12 +54,9 @@ func (a *App) authMiddleware(ctx iris.Context) {
 	if err != nil {
 		return
 	}
-	deviceID, deviceType = a.checkDeviceHeader(ctx)
-	if deviceID != "" {
-		err := user.AddDeviceID(deviceID, deviceType)
-		if err != nil {
-			return
-		}
+	err = user.AddDeviceID(a.checkDeviceHeader(ctx))
+	if err != nil {
+		return
 	}
 	ctx.Values().Set(userCtxKey, user)
 }
@@ -95,18 +90,17 @@ func (a *App) registerLogin(ctx iris.Context) {
 		logrus.Warn(err.Error())
 		return
 	}
-
 	ctx.JSON(C.J{"token": authToken})
 }
 
 func (a *App) checkDeviceHeader(ctx iris.Context) (string, string) {
-	iosHeader := ctx.GetHeader("iosdevice")
-	if iosHeader != "" {
-		return iosHeader, iosDeviceType
+	firebaseHeader := ctx.GetHeader(firebaseMsgSystem)
+	if firebaseHeader != "" {
+		return firebaseHeader, firebaseMsgSystem
 	}
-	androidHeader := ctx.GetHeader("androiddevice")
-	if androidHeader != "" {
-		return androidHeader, iosDeviceType
+	apnsHeader := ctx.GetHeader(apnsMsgSystem)
+	if apnsHeader != "" {
+		return apnsHeader, apnsMsgSystem
 	}
 	return "", ""
 }
