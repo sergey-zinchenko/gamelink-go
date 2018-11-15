@@ -22,8 +22,8 @@ func (ns *NatsService) Connect() error {
 	return nil
 }
 
-//PreparePushMessage - divides receivers into two arrays
-func (ns *NatsService) PreparePushMessage(msg string, receivers []*push.UserInfo) error {
+//PrepareAndPushMessage - divides receivers into two arrays
+func (ns *NatsService) PrepareAndPushMessage(msg string, receivers []*push.UserInfo) error {
 	for _, v := range receivers {
 		sendStruct := push.PushMsgStruct{Message: msg, UserInfo: v}
 		data, err := proto.Marshal(&sendStruct)

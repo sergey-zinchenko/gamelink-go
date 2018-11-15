@@ -199,7 +199,7 @@ func (s *AdminServiceServer) SendPush(ctx context.Context, in *msg.PushCriteriaR
 	if err != nil {
 		return nil, err
 	}
-	err = s.nc.PreparePushMessage(in.Message, users)
+	err = s.nc.PrepareAndPushMessage(in.Message, users)
 	if err != nil {
 		return nil, err
 	}

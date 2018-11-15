@@ -83,4 +83,7 @@ INSERT IGNORE INTO friends (user_id1, user_id2) VALUES
 
 	//AddDeviceID - mysql query to add device id in first user auth
 	AddDeviceID = `INSERT IGNORE INTO device_ids (user_id, device_id, message_system) values (?,?,?)`
+
+	//GetUserName - mysql query to get user name
+	GetUserName = `SELECT IFNULL(nickname, name) FROM users WHERE id = ?`
 )
