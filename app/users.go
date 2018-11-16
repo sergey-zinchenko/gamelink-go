@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	C "gamelink-go/common"
+	"gamelink-go/config"
 	"gamelink-go/graceful"
 	push "gamelink-go/proto_nats_msg"
 	"gamelink-go/storage"
@@ -28,7 +29,7 @@ func (a *App) postUser(ctx iris.Context) {
 	var (
 		data, updated C.J
 		newScore      int
-		recievers     []*push.UserInfo
+		receivers     []*push.UserInfo
 		err           error
 	)
 	defer func() {
@@ -41,32 +42,31 @@ func (a *App) postUser(ctx iris.Context) {
 	if err != nil {
 		return
 	}
-	for lbNum := 1; lbNum < storage.NumOfLeaderBoards+1; lbNum++ {
-		if data[fmt.Sprintf("lb%d", lbNum)] != nil {
-			newScore = int(data[fmt.Sprintf("lb%d", lbNum)].(float64))
-			logrus.Warn(fmt.Sprintf("lb%d - ", lbNum), newScore)
-			r, err := user.GetPushReceivers(newScore, lbNum)
-			if err != nil {
-				logrus.Warn(err.Error()) //Тут можно бы вставить и ретурны, но нужно валить сохранение юезра, если косяк с пушами? К юзеру то это не имеет отношения
+	if config.PushWhenOutrun {
+		for lbNum := 1; lbNum < storage.NumOfLeaderBoards+1; lbNum++ {
+			if data[fmt.Sprintf("lb%d", lbNum)] != nil {
+				newScore = int(data[fmt.Sprintf("lb%d", lbNum)].(float64))
+				r, err := user.GetPushReceivers(newScore, lbNum)
+				if err != nil {
+					logrus.Warn(err.Error()) //Тут можно бы вставить и ретурны, но нужно валить сохранение юезра, если косяк с пушами? К юзеру то это не имеет отношения
+				}
+				receivers = append(receivers, r...)
 			}
-			logrus.Warn("get recievers", r)
-			recievers = append(recievers, r...)
 		}
 	}
 	updated, err = user.Update(data)
 	if err != nil {
 		return
 	}
-	if recievers != nil {
+	if receivers != nil {
 		var userName string
-		if updated["username"] != nil {
-			userName = updated["username"].(string)
+		if updated["nickname"] != nil {
+			userName = updated["nickname"].(string)
 		} else {
 			userName = updated["name"].(string)
 		}
-		logrus.Warn("get username", userName)
 		msg := fmt.Sprintf("Hey! Your friend %s beat you. Check the leaderboard to make sure", userName)
-		err = a.nc.PrepareAndPushMessage(msg, recievers)
+		err = a.nc.PrepareAndPushMessage(msg, receivers)
 		if err != nil {
 			logrus.Warn(err.Error()) //Тут можно бы вставить и ретурны, но нужно валить сохранение юезра, если косяк с пушами? К юзеру то это не имеет отношения
 		}

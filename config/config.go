@@ -45,6 +45,8 @@ var (
 	NatsAndroidChan string
 	//NatsIosChan NATS Chan for ios push
 	NatsIosChan string
+	//PushWhenOutrun if true sends push if the user is outrun of his friends on points
+	PushWhenOutrun bool
 )
 
 const (
@@ -70,6 +72,7 @@ const (
 	natsPort           = "NATSPORT"
 	natsAndroidChannel = "NATSCHANANDROID"
 	natsIosChannel     = "NATSCHANIOS"
+	pushWhenOutrun     = "PUSHWHENOUTRUN"
 )
 
 //GetEnvironment - this function returns mode string of the os environment or "development" mode if empty or not defined
@@ -175,5 +178,13 @@ func LoadEnvironment() {
 	NatsAndroidChan = os.Getenv(natsAndroidChannel)
 	if NatsAndroidChan == "" {
 		log.Fatal("nats android chan must be set")
+	}
+	switch os.Getenv(pushWhenOutrun) {
+	case "true":
+		PushWhenOutrun = true
+	case "false":
+		PushWhenOutrun = false
+	default:
+		log.Fatal("push option must be set true or false")
 	}
 }
