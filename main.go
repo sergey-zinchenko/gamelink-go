@@ -17,6 +17,10 @@ func init() {
 }
 
 func main() {
+	log.Printf(
+		"Starting the service...\ncommit: %s, build time: %s, release: %s",
+		version.Commit, version.BuildTime, version.Release,
+	)
 	a := app.NewApp()
 	err := a.ConnectDataBases()
 	if err != nil {
@@ -36,8 +40,5 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	log.Printf(
-		"Starting the service...\ncommit: %s, build time: %s, release: %s",
-		version.Commit, version.BuildTime, version.Release,
-	)
+
 }
