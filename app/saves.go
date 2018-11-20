@@ -19,8 +19,7 @@ func (a *App) getSave(ctx iris.Context) {
 		}
 	}()
 	user := ctx.Values().Get(userCtxKey).(*storage.User)
-	_, flag := ctx.Params().GetEntry("id")
-	if flag != false {
+	if ctx.Params().GetEntry("id").ValueRaw != nil {
 		saveID, err = ctx.Params().GetInt("id")
 		if err != nil {
 			return
@@ -50,8 +49,7 @@ func (a *App) postSave(ctx iris.Context) {
 	if err != nil {
 		return
 	}
-	_, flag := ctx.Params().GetEntry("id")
-	if flag != false {
+	if ctx.Params().GetEntry("id").ValueRaw != nil {
 		saveID, err = ctx.Params().GetInt("id")
 		if err != nil {
 			return
