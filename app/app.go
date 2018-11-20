@@ -2,16 +2,12 @@ package app
 
 import (
 	"gamelink-go/admingrpc"
+	"gamelink-go/adminnats"
 	C "gamelink-go/common"
 	"gamelink-go/config"
-	service "gamelink-go/proto_service"
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/middleware/basicauth"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
-	"log"
-	"net"
 	"time"
 )
 
@@ -22,8 +18,10 @@ const (
 type (
 	//App structure - connects databases with the middleware and handlers of router
 	App struct {
-		dbs  *storage.DBS
-		iris *iris.Application
+		dbs   *storage.DBS
+		iris  *iris.Application
+		admin *admingrpc.AdminServiceServer
+		nc    *adminnats.NatsService
 	}
 )
 
@@ -35,24 +33,25 @@ func (a *App) ConnectDataBases() error {
 	if err := a.dbs.CheckTables(); err != nil {
 		return err
 	}
+	a.admin.SetDbs(a.dbs)
 	return nil
 }
 
-//ConnetcGRPC - tries to make grpc connection
-func (a *App) ConnetcGRPC() {
-	lis, err := net.Listen(config.GRPCNetwork, config.GRPCPort)
-	if err != nil {
-		log.Fatal(err.Error())
+//ConnectGrpc - tries to make grpc connections for admin purpose
+func (a *App) ConnectGrpc() error {
+	if err := a.admin.Connect(); err != nil {
+		return err
 	}
-	s := grpc.NewServer()
-	serv := admingrpc.AdminServiceServer{}
-	service.RegisterAdminServiceServer(s, &serv)
-	// Register reflection service on gRPC server.
-	serv.Dbs(a.dbs)
-	reflection.Register(s)
-	if err := s.Serve(lis); err != nil {
-		log.Fatal(err.Error())
+	return nil
+}
+
+//ConnectNats - make nats connection
+func (a *App) ConnectNats() error {
+	if err := a.nc.Connect(); err != nil {
+		return err
 	}
+	a.admin.SetNats(a.nc)
+	return nil
 }
 
 //NewApp - You can construct and initialize App (application) object with that function
@@ -61,6 +60,10 @@ func NewApp() (a *App) {
 	a = new(App)
 	a.iris = iris.New()
 	a.dbs = &storage.DBS{}
+	a.admin = &admingrpc.AdminServiceServer{}
+	a.nc = &adminnats.NatsService{}
+
+	a.iris.Get("/version", a.version)
 
 	auth := a.iris.Party("/auth")
 	{

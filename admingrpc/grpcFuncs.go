@@ -3,28 +3,55 @@ package admingrpc
 import (
 	"database/sql"
 	"errors"
-	"fmt"
+	"gamelink-go/adminnats"
+	"gamelink-go/config"
 	msg "gamelink-go/proto_msg"
+	push "gamelink-go/proto_nats_msg"
+	service "gamelink-go/proto_service"
 	"gamelink-go/storage"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
+	"net"
 )
 
 type (
 	//AdminServiceServer - grpc server struct
 	AdminServiceServer struct {
 		dbs *storage.DBS
+		nc  *adminnats.NatsService
 	}
 )
 
-//Dbs - set dbs to adminServiceServer
-func (s *AdminServiceServer) Dbs(dbs *storage.DBS) {
+//Connect - set grpc connection to adminServiceServer
+func (s *AdminServiceServer) Connect() error {
+	lis, err := net.Listen(config.GRPCNetwork, config.GRPCPort)
+	if err != nil {
+		return err
+	}
+	grpcServ := grpc.NewServer()
+	service.RegisterAdminServiceServer(grpcServ, s)
+	// Register reflection service on gRPC server.
+	reflection.Register(grpcServ)
+	if err := grpcServ.Serve(lis); err != nil {
+		return err
+	}
+	return nil
+}
+
+//SetDbs - set dbs to adminServiceServer
+func (s *AdminServiceServer) SetDbs(dbs *storage.DBS) {
 	s.dbs = dbs
+}
+
+//SetNats - set nats connection to adminServiceServer
+func (s *AdminServiceServer) SetNats(nc *adminnats.NatsService) {
+	s.nc = nc
 }
 
 //Count - handle /count command from bot
 func (s *AdminServiceServer) Count(ctx context.Context, in *msg.MultiCriteriaRequest) (*msg.CountResponse, error) {
-	b := storage.QueryBuilder{}
-	b.CountQuery().WithMultipleClause(in.Params)
+	b := storage.QueryBuilder{}.CountQuery().WithMultipleClause(in.Params)
 	res, err := s.dbs.Query(b, func(scanFunc storage.ScanFunc) (interface{}, error) {
 		var countresp int64
 		err := scanFunc(&countresp)
@@ -45,9 +72,8 @@ func (s *AdminServiceServer) Count(ctx context.Context, in *msg.MultiCriteriaReq
 
 //Find - handle /find command from bot
 func (s *AdminServiceServer) Find(ctx context.Context, in *msg.MultiCriteriaRequest) (*msg.MultiUserResponse, error) {
-	b := storage.QueryBuilder{}
 	var users []*msg.UserResponseStruct
-	b.SelectQuery().WithMultipleClause(in.Params)
+	b := storage.QueryBuilder{}.SelectQuery().WithMultipleClause(in.Params)
 	_, err := s.dbs.Query(b, func(scanFunc storage.ScanFunc) (interface{}, error) {
 		var (
 			id, age                                          sql.NullInt64
@@ -99,23 +125,24 @@ func (s *AdminServiceServer) Find(ctx context.Context, in *msg.MultiCriteriaRequ
 	if err != nil {
 		return nil, err
 	}
-	if err != nil {
-		return nil, err
-	}
 	return &msg.MultiUserResponse{Users: users}, nil
 }
 
 //Update - handle /update command from bot
-func (s *AdminServiceServer) Update(ctx context.Context, in *msg.MultiCriteriaRequest) (*msg.MultiUserResponse, error) {
-	var users []*msg.UserResponseStruct
-	//Реализация метода
-	return &msg.MultiUserResponse{Users: users}, nil
+func (s *AdminServiceServer) Update(ctx context.Context, in *msg.UpdateCriteriaRequest) (*msg.StringResponse, error) {
+	b := storage.QueryBuilder{}.UpdateQuery().WithMultipleClause(in.FindParams).WithData(in.UpdParams)
+	_, err := s.dbs.Query(b, func(scanFunc storage.ScanFunc) (interface{}, error) {
+		return nil, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &msg.StringResponse{Response: "success"}, nil
 }
 
 //Delete - handle /delete command from bot
 func (s *AdminServiceServer) Delete(ctx context.Context, in *msg.MultiCriteriaRequest) (*msg.OneUserResponse, error) {
-	b := storage.QueryBuilder{}
-	b.DeleteQuery().WithMultipleClause(in.Params)
+	b := storage.QueryBuilder{}.DeleteQuery().WithMultipleClause(in.Params)
 	_, err := s.dbs.Query(b, func(scanFunc storage.ScanFunc) (interface{}, error) {
 		var deleted interface{}
 		err := scanFunc(&deleted)
@@ -138,11 +165,43 @@ func (s *AdminServiceServer) Delete(ctx context.Context, in *msg.MultiCriteriaRe
 }
 
 //SendPush - handle /send_push command
-func (s *AdminServiceServer) SendPush(ctx context.Context, in *msg.MultiCriteriaRequest) (*msg.StringResponse, error) {
-	fmt.Println(in.Params)
-	b := storage.QueryBuilder{}
-	b.PushQuery().WithMultipleClause(in.Params)
-	//обрабытваем то шо нашли по запросу из базы
-	fmt.Println(b.Message())
+func (s *AdminServiceServer) SendPush(ctx context.Context, in *msg.PushCriteriaRequest) (*msg.StringResponse, error) {
+	var users []*push.UserInfo
+	b := storage.QueryBuilder{}.SelectQueryWithDeviceJoin().WithMultipleClause(in.Params)
+	_, err := s.dbs.Query(b, func(scanFunc storage.ScanFunc) (interface{}, error) {
+		var name, deviceID, messageSystem sql.NullString
+		err := scanFunc(&name, &deviceID, &messageSystem)
+		if err != nil {
+			return nil, err
+		}
+		var info push.UserInfo
+		if name.Valid {
+			info.Name = name.String
+		}
+		if deviceID.Valid {
+			info.DeviceID = deviceID.String
+		}
+		if messageSystem.Valid {
+			switch messageSystem.String {
+			case push.UserInfo_apns.String():
+				info.MsgSystem = push.UserInfo_apns
+			case push.UserInfo_firebase.String():
+				info.MsgSystem = push.UserInfo_firebase
+			default:
+				info.MsgSystem = push.UserInfo_undef
+			}
+		}
+		if info.DeviceID != "" && info.MsgSystem != push.UserInfo_undef && info.Name != "" {
+			users = append(users, &info)
+		}
+		return info, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	err = s.nc.PrepareAndPushMessage(in.Message, users)
+	if err != nil {
+		return nil, err
+	}
 	return &msg.StringResponse{Response: "message successfully send"}, nil
 }

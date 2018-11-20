@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+message PushMsgStruct {
+    UserInfo  userInfo = 1;
+    string    message  = 2;
+}
+
+message UserInfo {
+    string deviceID = 1;
+    string name = 2;
+    enum MessageSystem {
+        undef = 0;
+        apns = 1;
+        firebase = 2;
+    }
+    MessageSystem msgSystem = 3;
+}

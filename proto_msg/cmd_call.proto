@@ -14,7 +14,10 @@ message OneCriteriaStruct {
        age          = 5;
        created_at   = 6;
        deleted      = 7;
-       message      = 8;
+       message_system    = 8;
+       watched_ads  = 9;
+       made_payment = 10;
+       updated_at   = 11;
     }
     enum Option {
         x = 0;
@@ -28,12 +31,43 @@ message OneCriteriaStruct {
     string   value = 3;
 }
 
+message UpdateCriteriaStruct {
+    enum UpdCriteria {
+        undef        = 0;
+        id           = 1;
+        vk_id        = 2;
+        fb_id        = 3;
+        sex          = 4;
+        age          = 5;
+        country      = 6;
+        deleted      = 7;
+    }
+    enum UpdOption {
+        x     = 0;
+        set   = 1;
+        delete   = 2;
+    }
+    UpdCriteria ucr = 1;
+    UpdOption   uop = 2;
+    string    value = 3;
+}
+
 message OneCriteriaRequest {
     OneCriteriaStruct param = 1;
 }
 
 message MultiCriteriaRequest {
     repeated OneCriteriaStruct params = 1;
+}
+
+message PushCriteriaRequest {
+    repeated OneCriteriaStruct params = 1;
+    string   message = 2;
+}
+
+message UpdateCriteriaRequest {
+    repeated OneCriteriaStruct findParams = 1;
+    repeated UpdateCriteriaStruct updParams = 2;
 }
 
 message UserResponseStruct {

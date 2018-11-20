@@ -18,6 +18,8 @@ type (
 	ThirdPartyToken interface {
 		//UserInfo - get user info or error (d = NotFound if token is invalid or obsolete)
 		UserInfo() (ThirdPartyUser, error) //social id, name, friendsIds, error
+		//IsDummy - return true if this is dummy token
+		IsDummy() bool
 	}
 
 	//ThirdPartyUser - interface for user Data
@@ -26,7 +28,7 @@ type (
 		//Name - returns user name
 		Name() string
 		//Bdate - return user birthday
-		BirthDate() string
+		BirthDate() int64
 		//Sex - return user UserSex
 		Sex() string
 		//Email - return user email
@@ -39,7 +41,7 @@ type (
 
 	commonInfo struct {
 		FullName    string `json:"name"`
-		Bdate       string `json:"bdate,omitempty"`
+		Bdate       int64  `json:"bdate,omitempty"`
 		UserSex     string `json:"sex,omitempty"`
 		UserEmail   string `json:"email,omitempty"`
 		UserCountry string `json:"country,omitempty"`
@@ -63,7 +65,7 @@ func (d commonInfo) Name() string {
 }
 
 //Age - user age
-func (d commonInfo) BirthDate() string {
+func (d commonInfo) BirthDate() int64 {
 	return d.Bdate
 }
 
