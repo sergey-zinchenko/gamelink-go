@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gamelink-config
+  namespace: default
+data:
+  FBAPPID: "592395097793753"
+  VKAPPID: "6467949"
+  SERVADDR: "0.0.0.0:3000"
+  REDISADDR: "redis:6379"
+  REDISDB: "0"
+  PUSHWHENOUTRUN: "true"
+  MYSQLADDR: "tcp(mysql)"
+  MYSQLDATABASE: "gamelink"
+  MYSQLUSERNAME: "admin"
+  TAUSERNAME: "login"
+  NATSPORT: "nats:4222"
+  NATSCHANANDROID: "gamelink_firebase"
+  NATSCHANIOS: "gamelink_apns"

@@ -20,6 +20,9 @@ func (dbs DBS) AuthorizedUser(token string) (*User, error) {
 	if dbs.rc == nil {
 		return nil, errors.New("databases not initialized")
 	}
+	if len(token) < 6 {
+		return nil, graceful.UnauthorizedError{Message: "token too short"}
+	}
 	var id int64
 	isDummy := token[:5] == "dummy"
 	tokenWithPrefix := authRedisKeyPref + token

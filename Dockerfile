@@ -2,7 +2,7 @@ FROM alpine
 
 WORKDIR /app
 
-COPY development.env gamelink-go ./
+COPY gamelink-go ./
 
 EXPOSE 3000
 

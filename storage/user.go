@@ -243,6 +243,9 @@ func (u User) Update(data C.J) (C.J, error) {
 	delete(data, "bdate")
 	delete(data, "email")
 	delete(data, "sex")
+	if data["nickname"] != nil && data["nickname"] == "" {
+		delete(data, "nickname")
+	}
 	tx, err := u.dbs.mySQL.Begin()
 	if err != nil {
 		return nil, err
