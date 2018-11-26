@@ -246,6 +246,14 @@ func (u User) Update(data C.J) (C.J, error) {
 	if data["nickname"] != nil && data["nickname"] == "" {
 		delete(data, "nickname")
 	}
+	meta := data["meta"].(map[string]interface{})
+	if len(meta) == 0 {
+		delete(data, "meta")
+	}
+	saves := data["saves"].([]interface{})
+	if len(saves) == 0 {
+		delete(data, "saves")
+	}
 	tx, err := u.dbs.mySQL.Begin()
 	if err != nil {
 		return nil, err
