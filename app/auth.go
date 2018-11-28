@@ -78,6 +78,7 @@ func (a *App) registerLogin(ctx iris.Context) {
 	}
 	user, err = a.dbs.ThirdPartyUser(thirdPartyToken)
 	if err != nil {
+		logrus.Warn(err.Error())
 		return
 	}
 	authToken, err = user.AuthToken(thirdPartyToken.IsDummy())

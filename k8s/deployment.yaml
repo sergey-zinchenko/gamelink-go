@@ -13,65 +13,108 @@ spec:
     spec:
       containers:
         - name: gamelink
-          image: 'registry.gitlab.smedialink.com/z/gamelink-go:latest'
+#          image: 'registry.gitlab.smedialink.com/z/gamelink-go:latest'
+          image: 'mrcarrot/gamelink-go:latest'
           env:
           - name: REDISADDR
             valueFrom:
               configMapKeyRef:
-                name: gamelink
+                name: gamelink-config
                 key: REDISADDR
           - name: REDISDB
             valueFrom:
               configMapKeyRef:
-                 name: gamelink
+                 name: gamelink-config
                  key: REDISDB
-          - name: REDISPWD
-            valueFrom:
-              secretKeyRef:
-                name: gamelink
-                key: REDISPWD
+#          - name: REDISPWD
+#            valueFrom:
+#              secretKeyRef:
+#                name: gamelink-secret
+#                key: REDISPWD
           - name: SERVADDR
             value: "0.0.0.0:3000"
           - name: FBAPPID
             valueFrom:
               configMapKeyRef:
-                name: gamelink
+                name: gamelink-config
                 key: FBAPPID
           - name: FBAPPSEC
             valueFrom:
               secretKeyRef:
-                name: gamelink
+                name: gamelink-secret
                 key: FBAPPSEC
           - name: VKAPPID
             valueFrom:
               configMapKeyRef:
-                name: gamelink
+                name: gamelink-config
                 key: VKAPPID
           - name: VKAPPSEC
             valueFrom:
               secretKeyRef:
-                name: gamelink
+                name: gamelink-secret
                 key: VKAPPSEC
           - name: MYSQLADDR
             valueFrom:
               configMapKeyRef:
-                 name: gamelink
+                 name: gamelink-config
                  key: MYSQLADDR
           - name: MYSQLDATABASE
             valueFrom:
               configMapKeyRef:
-                name: gamelink
+                name: gamelink-config
                 key: MYSQLDATABASE
           - name: MYSQLUSERNAME
             valueFrom:
               configMapKeyRef:
-                name: gamelink
+                name: gamelink-config
                 key: MYSQLUSERNAME
           - name: MYSQLPASSWORD
             valueFrom:
               secretKeyRef:
-                name: gamelink
+                name: gamelink-secret
                 key: MYSQLPASSWORD
+          - name: TAUSERNAME
+            valueFrom:
+              configMapKeyRef:
+                name: gamelink-config
+                key: TAUSERNAME
+          - name: TAPASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: gamelink-secret
+                key: TAPASSWORD
+          - name: GRPCPORT
+            valueFrom:
+              configMapKeyRef:
+                name: gamelink-config
+                key: GRPCPORT
+          - name: GRPCNETWORK
+            valueFrom:
+              configMapKeyRef:
+                name: gamelink-config
+                key: GRPCNETWORK
+          - name: NATSDIAL
+            valueFrom:
+              configMapKeyRef:
+                name: gamelink-config
+                key: NATSDIAL
+          - name: NATSCHANFIREBASE
+            valueFrom:
+              configMapKeyRef:
+                name: gamelink-config
+                key: NATSCHANFIREBASE
+          - name: NATSCHANAPNS
+            valueFrom:
+              configMapKeyRef:
+                name: gamelink-config
+                key: NATSCHANAPNS
+          - name: PUSHWHENOUTRUN
+            valueFrom:
+              configMapKeyRef:
+                name: gamelink-config
+                key: PUSHWHENOUTRUN
           ports:
             - containerPort: 3000
               name: http
+            - containerPort: 7777
+              name: grpc

@@ -141,7 +141,7 @@ func (u User) DataString() (string, error) {
 	if u.dbs.mySQL == nil {
 		return "", errors.New("databases not initialized")
 	}
-	err := u.dbs.mySQL.QueryRow(queries.GetExtraUserDataQuery, u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID()).Scan(&str)
+	err := u.dbs.mySQL.QueryRow(queries.GetExtraUserDataQuery, u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID()).Scan(&str)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return "", graceful.NotFoundError{Message: "user not found"}
@@ -243,6 +243,17 @@ func (u User) Update(data C.J) (C.J, error) {
 	delete(data, "bdate")
 	delete(data, "email")
 	delete(data, "sex")
+	if data["nickname"] != nil && data["nickname"] == "" {
+		delete(data, "nickname")
+	}
+	meta := data["meta"].(map[string]interface{})
+	if len(meta) == 0 {
+		delete(data, "meta")
+	}
+	saves := data["saves"].([]interface{})
+	if len(saves) == 0 {
+		delete(data, "saves")
+	}
 	tx, err := u.dbs.mySQL.Begin()
 	if err != nil {
 		return nil, err
