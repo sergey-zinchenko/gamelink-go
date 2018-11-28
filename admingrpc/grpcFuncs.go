@@ -12,6 +12,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
+	"log"
 	"net"
 )
 
@@ -29,6 +30,7 @@ func (s *AdminServiceServer) Connect() error {
 	if err != nil {
 		return err
 	}
+	log.Print("listening for grpc calls on:", config.GRPCPort)
 	grpcServ := grpc.NewServer()
 	service.RegisterAdminServiceServer(grpcServ, s)
 	// Register reflection service on gRPC server.

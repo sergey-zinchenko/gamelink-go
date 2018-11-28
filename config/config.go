@@ -69,9 +69,9 @@ const (
 	taPwdKey           = "TAPASSWORD"
 	grpcPort           = "GRPCPORT"
 	grpcNetwork        = "GRPCNETWORK"
-	natsPort           = "NATSPORT"
-	natsAndroidChannel = "NATSCHANANDROID"
-	natsIosChannel     = "NATSCHANIOS"
+	natsPort           = "NATSDIAL"
+	natsAndroidChannel = "NATSCHANFIREBASE"
+	natsIosChannel     = "NATSCHANAPNS"
 	pushWhenOutrun     = "PUSHWHENOUTRUN"
 )
 

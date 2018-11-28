@@ -86,28 +86,28 @@ spec:
           - name: GRPCPORT
             valueFrom:
               configMapKeyRef:
-                name: grpc-config
+                name: gamelink-config
                 key: GRPCPORT
           - name: GRPCNETWORK
             valueFrom:
               configMapKeyRef:
-                name: grpc-config
+                name: gamelink-config
                 key: GRPCNETWORK
-          - name: NATSPORT
+          - name: NATSDIAL
             valueFrom:
               configMapKeyRef:
                 name: gamelink-config
-                key: NATSPORT
-          - name: NATSCHANANDROID
+                key: NATSDIAL
+          - name: NATSCHANFIREBASE
             valueFrom:
               configMapKeyRef:
                 name: gamelink-config
-                key: NATSCHANANDROID
-          - name: NATSCHANIOS
+                key: NATSCHANFIREBASE
+          - name: NATSCHANAPNS
             valueFrom:
               configMapKeyRef:
                 name: gamelink-config
-                key: NATSCHANIOS
+                key: NATSCHANAPNS
           - name: PUSHWHENOUTRUN
             valueFrom:
               configMapKeyRef:
@@ -116,3 +116,5 @@ spec:
           ports:
             - containerPort: 3000
               name: http
+            - containerPort: 7777
+              name: grpc

@@ -18,6 +18,7 @@ message OneCriteriaStruct {
        watched_ads  = 9;
        made_payment = 10;
        updated_at   = 11;
+       dummy        = 12;
     }
     enum Option {
         x = 0;

@@ -9,5 +9,10 @@ spec:
   - name: http
     port: 80
     targetPort: 3000
+#    newPort
+  - name: grpc
+    port: 7777
+    protocol: TCP
+    targetPort: 7777
   selector:
     app: gamelink
