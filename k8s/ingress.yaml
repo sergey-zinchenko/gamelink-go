@@ -8,7 +8,8 @@ metadata:
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
 spec:
   rules:
-  - host: gamelink.dev.smedialink.com
+#  - host: gamelink.dev.smedialink.com
+  - host: gamelink.test.io
     http:
       paths:
       - path: /
@@ -17,5 +18,6 @@ spec:
           servicePort: 80
   tls:
   - hosts:
-    - gamelink.dev.smedialink.com
-    secretName: gamelink-tls
+#    - gamelink.dev.smedialink.com
+    - gamelink.test.io
+#    secretName: gamelink-tls

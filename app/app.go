@@ -1,6 +1,8 @@
 package app
 
 import (
+	"gamelink-go/admingrpc"
+	"gamelink-go/adminnats"
 	C "gamelink-go/common"
 	"gamelink-go/config"
 	"gamelink-go/storage"
@@ -16,8 +18,10 @@ const (
 type (
 	//App structure - connects databases with the middleware and handlers of router
 	App struct {
-		dbs  *storage.DBS
-		iris *iris.Application
+		dbs   *storage.DBS
+		iris  *iris.Application
+		admin *admingrpc.AdminServiceServer
+		nc    *adminnats.NatsService
 	}
 )
 
@@ -29,6 +33,24 @@ func (a *App) ConnectDataBases() error {
 	if err := a.dbs.CheckTables(); err != nil {
 		return err
 	}
+	a.admin.SetDbs(a.dbs)
+	return nil
+}
+
+//ConnectGrpc - tries to make grpc connections for admin purpose
+func (a *App) ConnectGrpc() error {
+	if err := a.admin.Connect(); err != nil {
+		return err
+	}
+	return nil
+}
+
+//ConnectNats - make nats connection
+func (a *App) ConnectNats() error {
+	if err := a.nc.Connect(); err != nil {
+		return err
+	}
+	a.admin.SetNats(a.nc)
 	return nil
 }
 
@@ -38,6 +60,10 @@ func NewApp() (a *App) {
 	a = new(App)
 	a.iris = iris.New()
 	a.dbs = &storage.DBS{}
+	a.admin = &admingrpc.AdminServiceServer{}
+	a.nc = &adminnats.NatsService{}
+
+	a.iris.Get("/version", a.version)
 
 	auth := a.iris.Party("/auth")
 	{

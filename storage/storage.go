@@ -23,6 +23,11 @@ type (
 	}
 )
 
+//Query - return new queryBuilder with connection to mysql
+func (dbs DBS) Query(qb QueryBuilder, worker RowWorker) ([]interface{}, error) {
+	return qb.QueryWithDB(dbs.mySQL, worker)
+}
+
 //Connect - Connections to all databases will be established here.
 func (dbs *DBS) Connect() (err error) {
 	if dbs.mySQL, err = sql.Open("mysql", config.MysqlDsn); err != nil {
@@ -85,6 +90,39 @@ func (dbs *DBS) CheckTables() (err error) {
 				return err
 			}
 		}
+
+		if _, err = tx.Exec(queries.CreateTableDbVersion); err != nil {
+			return err
+		}
+		if _, err = tx.Exec(queries.InsertVersionZero); err != nil {
+			return err
+		}
+		var ver int
+		err = tx.QueryRow(queries.GetDbVersion).Scan(&ver)
+		if err != nil {
+			return err
+		}
+		if ver < 1 {
+			if _, err = tx.Exec(queries.ModifyBdateColumn); err != nil {
+				return err
+			}
+			if _, err = tx.Exec(queries.AddColumnMadePayment); err != nil {
+				return err
+			}
+			if _, err = tx.Exec(queries.AddColumnWatchedAds); err != nil {
+				return err
+			}
+			if _, err = tx.Exec(queries.AddColumnDummy); err != nil {
+				return err
+			}
+			if _, err = tx.Exec(queries.AddTableDeviceIds); err != nil {
+				return err
+			}
+			if _, err = tx.Exec(queries.InsertVersionOne); err != nil {
+				return err
+			}
+		}
+
 		return nil
 	}
 	tx, err := dbs.mySQL.Begin()

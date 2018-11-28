@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 )
 
 type (
@@ -245,7 +246,13 @@ func (token VkToken) get(userInfo *VkInfo) error {
 		userInfo.UserCountry = *f.Response[0].Country.LocName
 	}
 	if f.Response[0].Bdate != nil {
-		userInfo.Bdate = *f.Response[0].Bdate
+		bdate := *f.Response[0].Bdate
+		lay := "2.1.2006"
+		t, err := time.Parse(lay, bdate)
+		if err != nil {
+			return errors.New("can't parse bdate")
+		}
+		userInfo.Bdate = t.Unix()
 	}
 	if f.Response[0].Sex != nil {
 		if *f.Response[0].Sex == 1 {
@@ -319,4 +326,9 @@ func (token VkToken) getFriends(userInfo *VkInfo) error {
 	userInfo.friends = friendsIds
 
 	return nil
+}
+
+//IsDummy - false cause it's vk token
+func (token VkToken) IsDummy() bool {
+	return false
 }

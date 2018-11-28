@@ -35,19 +35,19 @@ spec:
 #          value: gamelink
           valueFrom:
             configMapKeyRef:
-              name: gamelink
+              name: gamelink-config
               key: MYSQLDATABASE
         - name: MYSQL_USER
 #          value: gamelink
           valueFrom:
              configMapKeyRef:
-               name: gamelink
+               name: gamelink-config
                key: MYSQLUSERNAME
         - name: MYSQL_PASSWORD
 #          value: password
           valueFrom:
             secretKeyRef:
-               name: gamelink
+               name: gamelink-secret
                key: MYSQLPASSWORD
         ports:
         - containerPort: 3306

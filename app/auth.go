@@ -6,12 +6,15 @@ import (
 	"gamelink-go/social"
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
+	"github.com/sirupsen/logrus"
 	"net/url"
 	"strings"
 )
 
 const (
-	userCtxKey = "user"
+	userCtxKey        = "user"
+	firebaseMsgSystem = "firebase"
+	apnsMsgSystem     = "apns"
 )
 
 var (
@@ -51,6 +54,10 @@ func (a *App) authMiddleware(ctx iris.Context) {
 	if err != nil {
 		return
 	}
+	err = user.AddDeviceID(a.checkDeviceHeader(ctx))
+	if err != nil {
+		return
+	}
 	ctx.Values().Set(userCtxKey, user)
 }
 
@@ -67,16 +74,34 @@ func (a *App) registerLogin(ctx iris.Context) {
 	}()
 	thirdPartyToken := tokenFromValues(ctx.Request().URL.Query())
 	if thirdPartyToken == nil {
-		err = graceful.BadRequestError{Message: "query without vk or fb token"}
-		return
+		thirdPartyToken = social.NewDummyToken()
 	}
 	user, err = a.dbs.ThirdPartyUser(thirdPartyToken)
 	if err != nil {
+		logrus.Warn(err.Error())
 		return
 	}
-	authToken, err = user.AuthToken()
+	authToken, err = user.AuthToken(thirdPartyToken.IsDummy())
 	if err != nil {
+		logrus.Warn(err.Error())
+		return
+	}
+	err = user.AddDeviceID(a.checkDeviceHeader(ctx))
+	if err != nil {
+		logrus.Warn(err.Error())
 		return
 	}
 	ctx.JSON(C.J{"token": authToken})
+}
+
+func (a *App) checkDeviceHeader(ctx iris.Context) (string, string) {
+	firebaseHeader := ctx.GetHeader(firebaseMsgSystem)
+	if firebaseHeader != "" {
+		return firebaseHeader, firebaseMsgSystem
+	}
+	apnsHeader := ctx.GetHeader(apnsMsgSystem)
+	if apnsHeader != "" {
+		return apnsHeader, apnsMsgSystem
+	}
+	return "", ""
 }
