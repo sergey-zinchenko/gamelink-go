@@ -137,7 +137,7 @@ func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken) error {
 
 //DataString - returns user's field data from database as text
 func (u User) DataString() (string, error) {
-	var str string
+	var str sql.NullString
 	if u.dbs.mySQL == nil {
 		return "", errors.New("databases not initialized")
 	}
@@ -148,7 +148,10 @@ func (u User) DataString() (string, error) {
 		}
 		return "", err
 	}
-	return str, nil
+	if !str.Valid {
+		return "", graceful.NotFoundError{Message: "user not found"}
+	}
+	return str.String, nil
 }
 
 func (u User) txData(tx *sql.Tx) (C.J, error) {
