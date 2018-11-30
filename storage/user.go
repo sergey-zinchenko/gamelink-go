@@ -9,6 +9,8 @@ import (
 	"gamelink-go/graceful"
 	"gamelink-go/social"
 	"gamelink-go/storage/queries"
+	"github.com/go-sql-driver/mysql"
+	"github.com/sirupsen/logrus"
 	"math/rand"
 	"time"
 )
@@ -143,6 +145,7 @@ func (u User) DataString() (string, error) {
 	}
 	err := u.dbs.mySQL.QueryRow(queries.GetExtraUserDataQuery, u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID()).Scan(&str)
 	if err != nil {
+		logrus.Warn(err.Error())
 		if err == sql.ErrNoRows {
 			return "", graceful.NotFoundError{Message: "user not found"}
 		}
@@ -175,7 +178,14 @@ func (u User) txUpdate(data C.J, tx *sql.Tx) error {
 	}
 	_, err = tx.Exec(queries.UpdateUserDataQuery, upd, u.ID())
 	if err != nil {
-		return err
+		switch v := err.(type) {
+		case *mysql.MySQLError:
+			if v.Number == mysqlKeyExist {
+				return graceful.ConflictError{Message: "user with this social account already exist"}
+			}
+		default:
+			return err
+		}
 	}
 	return nil
 }
@@ -330,6 +340,7 @@ func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		if _, ok := data[userData.ID().Name()]; ok {
 			return nil, graceful.BadRequestError{Message: "account already exist"}
 		}
@@ -389,6 +400,7 @@ func (u User) AddDevice(device *Device) error {
 func (u User) DeleteDummyToken(redisToken string) error {
 	cmd := u.dbs.rc.Del(authRedisKeyPref + redisToken)
 	if cmd.Err() != nil {
+		logrus.Warn("redis delete token error", cmd.Err())
 		return cmd.Err()
 	}
 	return nil

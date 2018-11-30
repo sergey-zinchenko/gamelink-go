@@ -120,7 +120,7 @@ func (a *App) addAuth(ctx iris.Context) {
 	arr := strings.Split(header, " ")
 	tokenValue := arr[1]
 	if tokenValue != "" && tokenValue[:5] == "dummy" {
-		err = user.DeleteDummyToken(arr[1])
+		err = user.DeleteDummyToken(tokenValue)
 		if err != nil {
 			return
 		}
