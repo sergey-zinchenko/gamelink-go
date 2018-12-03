@@ -56,6 +56,12 @@ UPDATE users u
 SET u.data = ?
 WHERE u.id = ? AND u.deleted != 1`
 
+	//UpdateRecoveryUserDataAndIDQuery - mysql query to update data on addAuth when third party user already in database
+	UpdateRecoveryUserDataAndIDQuery = `UPDATE users u SET u.id = ?, u.data = ? WHERE u.%s = ? AND u.deleted != 1`
+
+	//DeleteDummyUserFromDB - delete user from table users. USED to delete dummy users only!!!
+	DeleteDummyUserFromDB = `DELETE FROM users WHERE id = ? AND dummy = 1;`
+
 	//DeleteUserQuery - mysql query to mark deleted user
 	DeleteUserQuery = `
 	UPDATE users u SET u.deleted=1 WHERE u.id=?`

@@ -354,6 +354,15 @@ func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 		}
 		err = u.txUpdate(data, tx)
 		if err != nil {
+			//Обработчик 409
+			switch err.(type) {
+			case graceful.ConflictError:
+				err = u.ReloginWithUpdate(data, userData, tx)
+				if err != nil {
+					return nil, err
+				}
+				return data, nil
+			}
 			return nil, err
 		}
 		err = u.txSyncFriends(userData.Friends(), tx)
@@ -385,6 +394,24 @@ func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 		return nil, err
 	}
 	return updData, nil
+}
+
+//ReloginWithUpdate - delete dummy user from db then update old account with social and change its id to deleted dummy id
+func (u User) ReloginWithUpdate(data C.J, thirdPartyUserData social.ThirdPartyUser, tx *sql.Tx) error {
+	_, err := tx.Exec(queries.DeleteDummyUserFromDB, u.ID())
+	if err != nil {
+		return err
+	}
+	q := fmt.Sprintf(queries.UpdateRecoveryUserDataAndIDQuery, thirdPartyUserData.ID().Name())
+	upd, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(q, u.ID(), upd, thirdPartyUserData.ID().Value())
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 //AddDevice - add device id and type to device_ids table
