@@ -116,14 +116,17 @@ func (a *App) addAuth(ctx iris.Context) {
 	if err != nil {
 		return
 	}
+	response := make(map[string]interface{})
+	response["data"] = data
 	header := strings.TrimSpace(ctx.GetHeader("Authorization"))
 	arr := strings.Split(header, " ")
 	tokenValue := arr[1]
 	if tokenValue != "" && tokenValue[:5] == "dummy" {
-		err = user.DeleteDummyToken(tokenValue)
+		newToken, err := user.DeleteDummyCreateNormalRedisToken(tokenValue)
 		if err != nil {
 			return
 		}
+		response["token"] = newToken
 	}
-	ctx.JSON(data)
+	ctx.JSON(response)
 }

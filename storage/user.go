@@ -341,9 +341,9 @@ func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 			return nil, err
 		}
 
-		if _, ok := data[userData.ID().Name()]; ok {
-			return nil, graceful.BadRequestError{Message: "account already exist"}
-		}
+		//if _, ok := data[userData.ID().Name()]; ok {
+		//	return nil, graceful.BadRequestError{Message: "account already exist"}
+		//}
 		data[userData.ID().Name()] = userData.ID().Value()
 		if isDummy {
 			data["name"] = userData.Name()
@@ -396,12 +396,23 @@ func (u User) AddDevice(device *Device) error {
 	return nil
 }
 
-//DeleteDummyToken - delete dummy redis token
-func (u User) DeleteDummyToken(redisToken string) error {
-	cmd := u.dbs.rc.Del(authRedisKeyPref + redisToken)
+//DeleteDummyCreateNormalRedisToken - delete dummy user from redis
+func (u User) DeleteDummyCreateNormalRedisToken(redisToken string) (string, error) {
+	var err error
+	var newToken string
+	for ok := false; !ok; {
+		newToken = C.RandStringBytes(40)
+		authKey := AuthRedisKeyPref + newToken
+		lifetime := time.Hour * 8
+		ok, err = u.dbs.rc.SetNX(authKey, u.ID(), lifetime).Result()
+		if err != nil {
+			return "", err
+		}
+	}
+	cmd := u.dbs.rc.Del(AuthRedisKeyPref + redisToken)
 	if cmd.Err() != nil {
 		logrus.Warn("redis delete token error", cmd.Err())
-		return cmd.Err()
+		return "", cmd.Err()
 	}
-	return nil
+	return newToken, nil
 }

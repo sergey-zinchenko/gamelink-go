@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	authRedisKeyPref = "auth:"
+	//AuthRedisKeyPref - auth redis key prefix
+	AuthRedisKeyPref = "auth:"
 )
 
 //AuthorizedUser - function to check our own authorization token from header. Returns user or nil if not valid token.
@@ -25,7 +26,7 @@ func (dbs DBS) AuthorizedUser(token string) (*User, error) {
 	}
 	var id int64
 	isDummy := token[:5] == "dummy"
-	tokenWithPrefix := authRedisKeyPref + token
+	tokenWithPrefix := AuthRedisKeyPref + token
 	for {
 		err := dbs.rc.Watch(func(tx *redis.Tx) error {
 			var idStr string
@@ -90,11 +91,11 @@ func (u User) AuthToken(isDummy bool) (string, error) {
 			for authToken[:5] == "dummy" {
 				authToken = C.RandStringBytes(40)
 			}
-			authKey = authRedisKeyPref + authToken
+			authKey = AuthRedisKeyPref + authToken
 			lifetime = time.Hour
 		} else {
 			authToken = "dummy" + C.RandStringBytes(35)
-			authKey = authRedisKeyPref + authToken
+			authKey = AuthRedisKeyPref + authToken
 			lifetime = 24 * 30 * time.Hour
 		}
 		ok, err = u.dbs.rc.SetNX(authKey, u.ID(), lifetime).Result()
