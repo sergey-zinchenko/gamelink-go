@@ -333,11 +333,16 @@ func (u User) Delete(fields []string) (C.J, error) {
 func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 	var transaction = func(userData social.ThirdPartyUser, tx *sql.Tx) (C.J, error) {
 		data, err := u.txData(tx)
+		if err != nil {
+			logrus.Warn(err)
+			return nil, err
+		}
 		var isDummy bool
 		if data["vk_id"] == nil && data["fb_id"] == nil {
 			isDummy = true
 		}
 		if err != nil {
+			logrus.Warn(err)
 			return nil, err
 		}
 
@@ -354,16 +359,19 @@ func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 		}
 		err = u.txUpdate(data, tx)
 		if err != nil {
-			//Обработчик 409
+			logrus.Warn(err)
+			//409 handler
 			switch err.(type) {
 			case graceful.ConflictError:
-				err = u.ReloginWithUpdate(data, userData, tx)
+				logrus.Warn("409 error")
+				data, err = u.reloginWithUpdate(data, userData, tx)
 				if err != nil {
+					logrus.Warn(err)
 					return nil, err
 				}
-				return data, nil
+			default:
+				return nil, err
 			}
-			return nil, err
 		}
 		err = u.txSyncFriends(userData.Friends(), tx)
 		if err != nil {
@@ -380,10 +388,12 @@ func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 	}
 	userData, err := token.UserInfo()
 	if err != nil {
+		logrus.Warn(err)
 		return nil, err
 	}
 	updData, err := transaction(userData, tx)
 	if err != nil {
+		logrus.Warn(err)
 		if e := tx.Rollback(); e != nil {
 			return nil, err
 		}
@@ -391,27 +401,51 @@ func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 	}
 	err = tx.Commit()
 	if err != nil {
+		logrus.Warn(err)
 		return nil, err
 	}
 	return updData, nil
 }
 
-//ReloginWithUpdate - delete dummy user from db then update old account with social and change its id to deleted dummy id
-func (u User) ReloginWithUpdate(data C.J, thirdPartyUserData social.ThirdPartyUser, tx *sql.Tx) error {
-	_, err := tx.Exec(queries.DeleteDummyUserFromDB, u.ID())
+//reloginWithUpdate - delete dummy user from db then update old account with social and change its id to deleted dummy id
+func (u User) reloginWithUpdate(data C.J, thirdPartyUserData social.ThirdPartyUser, tx *sql.Tx) (C.J, error) {
+	q := fmt.Sprintf(queries.DeleteDeviceIDs, thirdPartyUserData.ID().Name())
+	_, err := tx.Exec(q, thirdPartyUserData.ID().Value())
 	if err != nil {
-		return err
+		logrus.Warn(err)
+		return nil, err
 	}
-	q := fmt.Sprintf(queries.UpdateRecoveryUserDataAndIDQuery, thirdPartyUserData.ID().Name())
-	upd, err := json.Marshal(data)
+	_, err = tx.Exec(queries.DeleteDummyUserFromDB, u.ID())
 	if err != nil {
-		return err
+		logrus.Warn(err)
+		return nil, err
 	}
+	ud, err := json.Marshal(data)
+	if err != nil {
+		logrus.Warn(err)
+		return nil, err
+	}
+	var upd []byte
+	q = fmt.Sprintf(queries.GetMergedUserDataBySocialID, thirdPartyUserData.ID().Name())
+	err = tx.QueryRow(q, ud, thirdPartyUserData.ID().Value()).Scan(&upd)
+	if err != nil {
+		logrus.Warn(err)
+		return nil, err
+	}
+	var updatedData C.J
+	err = json.Unmarshal(upd, &updatedData)
+	if err != nil {
+		logrus.Warn(err)
+		return nil, err
+	}
+	q = fmt.Sprintf(queries.UpdateRecoveryUserDataAndIDQuery, thirdPartyUserData.ID().Name())
 	_, err = tx.Exec(q, u.ID(), upd, thirdPartyUserData.ID().Value())
 	if err != nil {
-		return err
+		logrus.Warn(err)
+		return nil, err
 	}
-	return nil
+	return updatedData, nil
+
 }
 
 //AddDevice - add device id and type to device_ids table
