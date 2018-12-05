@@ -128,7 +128,11 @@ func (a *App) addAuth(ctx iris.Context) {
 		} else {
 			updID = user.ID()
 		}
-		newToken, err := user.DeleteDummyCreateNormalRedisToken(tokenValue, updID)
+		newToken, err := a.dbs.AuthToken(false, updID) //false cause we want generate new token for normal user not for dummy
+		if err != nil {
+			return
+		}
+		err = a.dbs.DeleteRedisToken(tokenValue)
 		if err != nil {
 			return
 		}

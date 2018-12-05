@@ -7,6 +7,7 @@ import (
 	"gamelink-go/social"
 	"gamelink-go/storage/queries"
 	"github.com/go-redis/redis"
+	"github.com/sirupsen/logrus"
 	"strconv"
 	"time"
 )
@@ -78,15 +79,15 @@ func (dbs DBS) ThirdPartyUser(token social.ThirdPartyToken) (*User, error) {
 }
 
 //AuthToken - Function to generate and store auth token in rc.
-func (u User) AuthToken(isDummy bool) (string, error) {
-	if u.dbs.rc == nil {
+func (dbs DBS) AuthToken(generateDummyToken bool, id int64) (string, error) {
+	if dbs.rc == nil {
 		return "", errors.New("databases not initialized")
 	}
 	var authToken, authKey string
 	for ok := false; !ok; {
 		var err error
 		var lifetime time.Duration
-		if !isDummy {
+		if !generateDummyToken {
 			authToken = C.RandStringBytes(40)
 			for authToken[:5] == "dummy" {
 				authToken = C.RandStringBytes(40)
@@ -98,12 +99,22 @@ func (u User) AuthToken(isDummy bool) (string, error) {
 			authKey = AuthRedisKeyPref + authToken
 			lifetime = 24 * 30 * time.Hour
 		}
-		ok, err = u.dbs.rc.SetNX(authKey, u.ID(), lifetime).Result()
+		ok, err = dbs.rc.SetNX(authKey, id, lifetime).Result()
 		if err != nil {
 			return "", err
 		}
 	}
 	return authToken, nil
+}
+
+//DeleteRedisToken - delete token from redis
+func (dbs DBS) DeleteRedisToken(token string) error {
+	cmd := dbs.rc.Del(AuthRedisKeyPref + token)
+	if cmd.Err() != nil {
+		logrus.Warn("redis delete token error", cmd.Err())
+		return cmd.Err()
+	}
+	return nil
 }
 
 //AddDeviceID - add deviceID to db

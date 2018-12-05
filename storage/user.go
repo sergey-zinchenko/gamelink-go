@@ -446,24 +446,3 @@ func (u User) AddDevice(device *Device) error {
 	}
 	return nil
 }
-
-//DeleteDummyCreateNormalRedisToken - delete dummy user from redis
-func (u User) DeleteDummyCreateNormalRedisToken(redisToken string, id int64) (string, error) {
-	var err error
-	var newToken string
-	for ok := false; !ok; {
-		newToken = C.RandStringBytes(40)
-		authKey := AuthRedisKeyPref + newToken
-		lifetime := time.Hour * 8
-		ok, err = u.dbs.rc.SetNX(authKey, id, lifetime).Result()
-		if err != nil {
-			return "", err
-		}
-	}
-	cmd := u.dbs.rc.Del(AuthRedisKeyPref + redisToken)
-	if cmd.Err() != nil {
-		logrus.Warn("redis delete token error", cmd.Err())
-		return "", cmd.Err()
-	}
-	return newToken, nil
-}

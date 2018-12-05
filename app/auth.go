@@ -81,7 +81,7 @@ func (a *App) registerLogin(ctx iris.Context) {
 		logrus.Warn(err.Error())
 		return
 	}
-	authToken, err = user.AuthToken(thirdPartyToken.IsDummy())
+	authToken, err = a.dbs.AuthToken(thirdPartyToken.IsDummy(), user.ID())
 	if err != nil {
 		logrus.Warn(err.Error())
 		return
