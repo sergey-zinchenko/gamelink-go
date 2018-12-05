@@ -98,8 +98,9 @@ func (a *App) deleteUser(ctx iris.Context) {
 
 func (a *App) addAuth(ctx iris.Context) {
 	var (
-		err  error
-		data C.J
+		err       error
+		data      C.J
+		existedID int64
 	)
 	defer func() {
 		if err != nil {
@@ -112,7 +113,7 @@ func (a *App) addAuth(ctx iris.Context) {
 		err = graceful.BadRequestError{Message: "invalid token"}
 		return
 	}
-	data, err = user.AddSocial(token)
+	data, existedID, err = user.AddSocial(token)
 	if err != nil {
 		return
 	}
@@ -123,8 +124,8 @@ func (a *App) addAuth(ctx iris.Context) {
 	tokenValue := arr[1]
 	if tokenValue != "" && tokenValue[:5] == "dummy" {
 		var updID int64
-		if val, ok := data["id"]; ok {
-			updID = int64(val.(float64))
+		if existedID != 0 {
+			updID = existedID
 		} else {
 			updID = user.ID()
 		}

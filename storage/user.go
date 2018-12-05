@@ -329,13 +329,14 @@ func (u User) Delete(fields []string) (C.J, error) {
 	return updData, nil
 }
 
-// AddSocial - allow
-func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
-	var transaction = func(userData social.ThirdPartyUser, tx *sql.Tx) (C.J, error) {
+// AddSocial - bind third party accoutn
+func (u User) AddSocial(token social.ThirdPartyToken) (C.J, int64, error) {
+	var transaction = func(userData social.ThirdPartyUser, tx *sql.Tx) (C.J, int64, error) {
+		var existedID int64
 		data, err := u.txData(tx)
 		if err != nil {
 			logrus.Warn(err)
-			return nil, err
+			return nil, 0, err
 		}
 		var isDummy bool
 		if data["vk_id"] == nil && data["fb_id"] == nil {
@@ -343,7 +344,7 @@ func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 		}
 		if err != nil {
 			logrus.Warn(err)
-			return nil, err
+			return nil, 0, err
 		}
 		data[userData.ID().Name()] = userData.ID().Value()
 		if isDummy {
@@ -360,81 +361,82 @@ func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 			switch err.(type) {
 			case graceful.ConflictError:
 				logrus.Warn("409 error")
-				data, err = u.reloginWithUpdate(data, userData, tx)
+				data, existedID, err = u.reloginWithUpdate(data, userData, tx)
 				if err != nil {
 					logrus.Warn(err)
-					return nil, err
+					return nil, 0, err
 				}
 			default:
-				return nil, err
+				return nil, 0, err
 			}
 		}
 		err = u.txSyncFriends(userData.Friends(), tx)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
-		return data, nil
+		return data, existedID, nil
 	}
 	tx, err := u.dbs.mySQL.Begin()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	if token == nil {
-		return nil, graceful.BadRequestError{Message: "empty token"}
+		return nil, 0, graceful.BadRequestError{Message: "empty token"}
 	}
 	userData, err := token.UserInfo()
 	if err != nil {
 		logrus.Warn(err)
-		return nil, err
+		return nil, 0, err
 	}
-	updData, err := transaction(userData, tx)
+	updData, existedID, err := transaction(userData, tx)
 	if err != nil {
 		logrus.Warn(err)
 		if e := tx.Rollback(); e != nil {
-			return nil, err
+			return nil, 0, err
 		}
-		return nil, err
+		return nil, 0, err
 	}
 	err = tx.Commit()
 	if err != nil {
 		logrus.Warn(err)
-		return nil, err
+		return nil, 0, err
 	}
-	return updData, nil
+	return updData, existedID, nil
 }
 
 //reloginWithUpdate - delete dummy user from db then update old account with social and change its id to deleted dummy id
-func (u User) reloginWithUpdate(data C.J, thirdPartyUserData social.ThirdPartyUser, tx *sql.Tx) (C.J, error) {
+func (u User) reloginWithUpdate(data C.J, thirdPartyUserData social.ThirdPartyUser, tx *sql.Tx) (C.J, int64, error) {
 	_, err := tx.Exec(queries.DeleteDummyUserFromDB, u.ID())
 	if err != nil {
 		logrus.Warn(err)
-		return nil, err
+		return nil, 0, err
 	}
 	ud, err := json.Marshal(data)
 	if err != nil {
 		logrus.Warn(err)
-		return nil, err
+		return nil, 0, err
 	}
 	var upd []byte
-	q := fmt.Sprintf(queries.GetMergedUserDataBySocialID, thirdPartyUserData.ID().Name(), thirdPartyUserData.ID().Name())
-	err = tx.QueryRow(q, ud, thirdPartyUserData.ID().Value(), thirdPartyUserData.ID().Value()).Scan(&upd)
+	var existedID int64
+	q := fmt.Sprintf(queries.GetMergedUserDataBySocialID, thirdPartyUserData.ID().Name())
+	err = tx.QueryRow(q, ud, thirdPartyUserData.ID().Value()).Scan(&existedID, &upd)
 	if err != nil {
 		logrus.Warn(err)
-		return nil, err
+		return nil, 0, err
 	}
 	var updatedData C.J
 	err = json.Unmarshal(upd, &updatedData)
 	if err != nil {
 		logrus.Warn(err)
-		return nil, err
+		return nil, 0, err
 	}
 	q = fmt.Sprintf(queries.UpdateUserDataByThirdPartyID, thirdPartyUserData.ID().Name())
 	_, err = tx.Exec(q, upd, thirdPartyUserData.ID().Value())
 	if err != nil {
 		logrus.Warn(err)
-		return nil, err
+		return nil, 0, err
 	}
-	return updatedData, nil
+	return updatedData, existedID, nil
 
 }
 
