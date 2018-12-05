@@ -49,12 +49,12 @@ CREATE TABLE IF NOT EXISTS friends (
   FOREIGN KEY (user_id1)
   REFERENCES users (id)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
+    ON UPDATE CASCADE,
   CONSTRAINT fk_users_has_users_users2
   FOREIGN KEY (user_id2)
   REFERENCES users (id)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION
+    ON UPDATE CASCADE
 )
   ENGINE = InnoDB
   DEFAULT CHARACTER SET = utf8;`
@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS friends (
    FOREIGN KEY (user_id)
    REFERENCES users (id)
    ON DELETE NO ACTION
-   ON UPDATE NO ACTION)
+   ON UPDATE CASCADE)
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;`
 
@@ -200,7 +200,7 @@ ENGINE = InnoDB;`
   CONSTRAINT fk_user_id
     FOREIGN KEY (user_id)
     REFERENCES gamelink.users (id)
-    ON DELETE NO ACTION
+    ON DELETE CASCADE
     ON UPDATE NO ACTION);`
 
 	//InsertVersionOne - insert new db version

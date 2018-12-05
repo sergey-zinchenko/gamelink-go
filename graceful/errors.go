@@ -1,6 +1,8 @@
 package graceful
 
-import "net/http"
+import (
+	"net/http"
+)
 
 type (
 	//UnauthorizedError - class needed to handle unauthorized cases gracefully, separate from other serious errors.
@@ -17,6 +19,10 @@ type (
 	}
 	//ForbiddenError - specific error class for forbidden object handling
 	ForbiddenError struct {
+		Message string
+	}
+	//ConflictError - specific error class for conflict object handling
+	ConflictError struct {
 		Message string
 	}
 	//StatusCode - interface for getting http status code from errors
@@ -57,6 +63,19 @@ func (fb ForbiddenError) Error() string {
 //StatusCode - function to meet StatusCode interface - returns Unauthorized http code
 func (fb ForbiddenError) StatusCode() int {
 	return http.StatusForbidden
+}
+
+//StatusCode - function to meet StatusCode interface - returns conflict http code
+func (cf ConflictError) StatusCode() int {
+	return http.StatusConflict
+}
+
+//Error - function required by error interface; It returns default message if not defined.
+func (cf ConflictError) Error() string {
+	if cf.Message != "" {
+		return cf.Message
+	}
+	return "conflict"
 }
 
 //StatusCode - function to meet StatusCode interface - returns BadRequest http code

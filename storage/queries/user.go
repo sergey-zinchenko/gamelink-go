@@ -50,11 +50,17 @@ SELECT (SELECT  JSON_MERGE_PATCH (CAST(CONCAT( 	'{"id":'  , 	u.id,
 	GetUserDataQuery = `
 SELECT data from users u where u.id=? AND u.deleted != 1`
 
+	//GetMergedUserDataBySocialID - get user data by social id
+	GetMergedUserDataBySocialID = `SELECT u.id, JSON_MERGE_PATCH(? , u.data) from users u  WHERE %s = ?`
+
 	//UpdateUserDataQuery - mysql query to update data field of the user record
-	UpdateUserDataQuery = `
-UPDATE users u
-SET u.data = ?
-WHERE u.id = ? AND u.deleted != 1`
+	UpdateUserDataQuery = `UPDATE users u SET u.data = ? WHERE u.id = ? AND u.deleted != 1`
+
+	//UpdateUserDataByThirdPartyID - mysql query to update data on addAuth when third party user already in database
+	UpdateUserDataByThirdPartyID = `UPDATE users u SET u.data = ? WHERE u.%s = ? AND u.deleted != 1`
+
+	//DeleteDummyUserFromDB - delete user from table users. USED to delete dummy users only!!!
+	DeleteDummyUserFromDB = `DELETE FROM users WHERE id = ? AND dummy = 1;`
 
 	//DeleteUserQuery - mysql query to mark deleted user
 	DeleteUserQuery = `
@@ -71,7 +77,4 @@ INSERT IGNORE INTO friends (user_id1, user_id2) VALUES
 
 	//AddDeviceID - mysql query to add device id in first user auth
 	AddDeviceID = `INSERT IGNORE INTO device_ids (user_id, device_id, message_system) values (?,?,?)`
-
-	//GetUserName - mysql query to get user name
-	GetUserName = `SELECT IFNULL(nickname, name) FROM users WHERE id = ?`
 )

@@ -9,6 +9,8 @@ import (
 	"gamelink-go/graceful"
 	"gamelink-go/social"
 	"gamelink-go/storage/queries"
+	"github.com/go-sql-driver/mysql"
+	"github.com/sirupsen/logrus"
 	"math/rand"
 	"time"
 )
@@ -137,18 +139,22 @@ func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken) error {
 
 //DataString - returns user's field data from database as text
 func (u User) DataString() (string, error) {
-	var str string
+	var str sql.NullString
 	if u.dbs.mySQL == nil {
 		return "", errors.New("databases not initialized")
 	}
 	err := u.dbs.mySQL.QueryRow(queries.GetExtraUserDataQuery, u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID()).Scan(&str)
 	if err != nil {
+		logrus.Warn(err.Error())
 		if err == sql.ErrNoRows {
 			return "", graceful.NotFoundError{Message: "user not found"}
 		}
 		return "", err
 	}
-	return str, nil
+	if !str.Valid {
+		return "", graceful.NotFoundError{Message: "user not found"}
+	}
+	return str.String, nil
 }
 
 func (u User) txData(tx *sql.Tx) (C.J, error) {
@@ -172,7 +178,14 @@ func (u User) txUpdate(data C.J, tx *sql.Tx) error {
 	}
 	_, err = tx.Exec(queries.UpdateUserDataQuery, upd, u.ID())
 	if err != nil {
-		return err
+		switch v := err.(type) {
+		case *mysql.MySQLError:
+			if v.Number == mysqlKeyExist {
+				return graceful.ConflictError{Message: "user with this social account already exist"}
+			}
+		default:
+			return err
+		}
 	}
 	return nil
 }
@@ -316,19 +329,22 @@ func (u User) Delete(fields []string) (C.J, error) {
 	return updData, nil
 }
 
-// AddSocial - allow
-func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
-	var transaction = func(userData social.ThirdPartyUser, tx *sql.Tx) (C.J, error) {
+// AddSocial - bind third party accoutn
+func (u User) AddSocial(token social.ThirdPartyToken) (C.J, int64, error) {
+	var transaction = func(userData social.ThirdPartyUser, tx *sql.Tx) (C.J, int64, error) {
+		var existedID int64
 		data, err := u.txData(tx)
+		if err != nil {
+			logrus.Warn(err)
+			return nil, 0, err
+		}
 		var isDummy bool
 		if data["vk_id"] == nil && data["fb_id"] == nil {
 			isDummy = true
 		}
 		if err != nil {
-			return nil, err
-		}
-		if _, ok := data[userData.ID().Name()]; ok {
-			return nil, graceful.BadRequestError{Message: "account already exist"}
+			logrus.Warn(err)
+			return nil, 0, err
 		}
 		data[userData.ID().Name()] = userData.ID().Value()
 		if isDummy {
@@ -340,37 +356,88 @@ func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 		}
 		err = u.txUpdate(data, tx)
 		if err != nil {
-			return nil, err
+			logrus.Warn(err)
+			//409 handler
+			switch err.(type) {
+			case graceful.ConflictError:
+				logrus.Warn("409 error")
+				data, existedID, err = u.reloginWithUpdate(data, userData, tx)
+				if err != nil {
+					logrus.Warn(err)
+					return nil, 0, err
+				}
+			default:
+				return nil, 0, err
+			}
 		}
 		err = u.txSyncFriends(userData.Friends(), tx)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
-		return data, nil
+		return data, existedID, nil
 	}
 	tx, err := u.dbs.mySQL.Begin()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	if token == nil {
-		return nil, graceful.BadRequestError{Message: "empty token"}
+		return nil, 0, graceful.BadRequestError{Message: "empty token"}
 	}
 	userData, err := token.UserInfo()
 	if err != nil {
-		return nil, err
+		logrus.Warn(err)
+		return nil, 0, err
 	}
-	updData, err := transaction(userData, tx)
+	updData, existedID, err := transaction(userData, tx)
 	if err != nil {
+		logrus.Warn(err)
 		if e := tx.Rollback(); e != nil {
-			return nil, err
+			return nil, 0, err
 		}
-		return nil, err
+		return nil, 0, err
 	}
 	err = tx.Commit()
 	if err != nil {
-		return nil, err
+		logrus.Warn(err)
+		return nil, 0, err
 	}
-	return updData, nil
+	return updData, existedID, nil
+}
+
+//reloginWithUpdate - delete dummy user from db then update old account with social and change its id to deleted dummy id
+func (u User) reloginWithUpdate(data C.J, thirdPartyUserData social.ThirdPartyUser, tx *sql.Tx) (C.J, int64, error) {
+	_, err := tx.Exec(queries.DeleteDummyUserFromDB, u.ID())
+	if err != nil {
+		logrus.Warn(err)
+		return nil, 0, err
+	}
+	ud, err := json.Marshal(data)
+	if err != nil {
+		logrus.Warn(err)
+		return nil, 0, err
+	}
+	var upd []byte
+	var existedID int64
+	q := fmt.Sprintf(queries.GetMergedUserDataBySocialID, thirdPartyUserData.ID().Name())
+	err = tx.QueryRow(q, ud, thirdPartyUserData.ID().Value()).Scan(&existedID, &upd)
+	if err != nil {
+		logrus.Warn(err)
+		return nil, 0, err
+	}
+	var updatedData C.J
+	err = json.Unmarshal(upd, &updatedData)
+	if err != nil {
+		logrus.Warn(err)
+		return nil, 0, err
+	}
+	q = fmt.Sprintf(queries.UpdateUserDataByThirdPartyID, thirdPartyUserData.ID().Name())
+	_, err = tx.Exec(q, upd, thirdPartyUserData.ID().Value())
+	if err != nil {
+		logrus.Warn(err)
+		return nil, 0, err
+	}
+	return updatedData, existedID, nil
+
 }
 
 //AddDevice - add device id and type to device_ids table
@@ -378,15 +445,6 @@ func (u User) AddDevice(device *Device) error {
 	_, err := u.dbs.mySQL.Exec(queries.AddDeviceID, u.ID(), device.deviceID, device.deviceType)
 	if err != nil {
 		return err
-	}
-	return nil
-}
-
-//DeleteDummyToken - delete dummy redis token
-func (u User) DeleteDummyToken(redisToken string) error {
-	cmd := u.dbs.rc.Del(authRedisKeyPref + redisToken)
-	if cmd.Err() != nil {
-		return cmd.Err()
 	}
 	return nil
 }
