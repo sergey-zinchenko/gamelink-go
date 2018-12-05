@@ -345,10 +345,6 @@ func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 			logrus.Warn(err)
 			return nil, err
 		}
-
-		//if _, ok := data[userData.ID().Name()]; ok {
-		//	return nil, graceful.BadRequestError{Message: "account already exist"}
-		//}
 		data[userData.ID().Name()] = userData.ID().Value()
 		if isDummy {
 			data["name"] = userData.Name()
@@ -409,13 +405,7 @@ func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 
 //reloginWithUpdate - delete dummy user from db then update old account with social and change its id to deleted dummy id
 func (u User) reloginWithUpdate(data C.J, thirdPartyUserData social.ThirdPartyUser, tx *sql.Tx) (C.J, error) {
-	q := fmt.Sprintf(queries.DeleteDeviceIDs, thirdPartyUserData.ID().Name())
-	_, err := tx.Exec(q, thirdPartyUserData.ID().Value())
-	if err != nil {
-		logrus.Warn(err)
-		return nil, err
-	}
-	_, err = tx.Exec(queries.DeleteDummyUserFromDB, u.ID())
+	_, err := tx.Exec(queries.DeleteDummyUserFromDB, u.ID())
 	if err != nil {
 		logrus.Warn(err)
 		return nil, err
@@ -426,8 +416,8 @@ func (u User) reloginWithUpdate(data C.J, thirdPartyUserData social.ThirdPartyUs
 		return nil, err
 	}
 	var upd []byte
-	q = fmt.Sprintf(queries.GetMergedUserDataBySocialID, thirdPartyUserData.ID().Name())
-	err = tx.QueryRow(q, ud, thirdPartyUserData.ID().Value()).Scan(&upd)
+	q := fmt.Sprintf(queries.GetMergedUserDataBySocialID, thirdPartyUserData.ID().Name(), thirdPartyUserData.ID().Name())
+	err = tx.QueryRow(q, ud, thirdPartyUserData.ID().Value(), thirdPartyUserData.ID().Value()).Scan(&upd)
 	if err != nil {
 		logrus.Warn(err)
 		return nil, err
@@ -438,8 +428,8 @@ func (u User) reloginWithUpdate(data C.J, thirdPartyUserData social.ThirdPartyUs
 		logrus.Warn(err)
 		return nil, err
 	}
-	q = fmt.Sprintf(queries.UpdateRecoveryUserDataAndIDQuery, thirdPartyUserData.ID().Name())
-	_, err = tx.Exec(q, u.ID(), upd, thirdPartyUserData.ID().Value())
+	q = fmt.Sprintf(queries.UpdateUserDataByThirdPartyID, thirdPartyUserData.ID().Name())
+	_, err = tx.Exec(q, upd, thirdPartyUserData.ID().Value())
 	if err != nil {
 		logrus.Warn(err)
 		return nil, err
@@ -458,14 +448,14 @@ func (u User) AddDevice(device *Device) error {
 }
 
 //DeleteDummyCreateNormalRedisToken - delete dummy user from redis
-func (u User) DeleteDummyCreateNormalRedisToken(redisToken string) (string, error) {
+func (u User) DeleteDummyCreateNormalRedisToken(redisToken string, id int64) (string, error) {
 	var err error
 	var newToken string
 	for ok := false; !ok; {
 		newToken = C.RandStringBytes(40)
 		authKey := AuthRedisKeyPref + newToken
 		lifetime := time.Hour * 8
-		ok, err = u.dbs.rc.SetNX(authKey, u.ID(), lifetime).Result()
+		ok, err = u.dbs.rc.SetNX(authKey, id, lifetime).Result()
 		if err != nil {
 			return "", err
 		}

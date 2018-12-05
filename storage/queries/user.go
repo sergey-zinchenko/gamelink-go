@@ -51,16 +51,13 @@ SELECT (SELECT  JSON_MERGE_PATCH (CAST(CONCAT( 	'{"id":'  , 	u.id,
 SELECT data from users u where u.id=? AND u.deleted != 1`
 
 	//GetMergedUserDataBySocialID - get user data by social id
-	GetMergedUserDataBySocialID = `SELECT JSON_MERGE_PATCH(? , (SELECT data from users  WHERE %s = ?))`
+	GetMergedUserDataBySocialID = `SELECT JSON_MERGE_PATCH(? , JSON_INSERT((SELECT data from users  WHERE %s = ?), '$.id', (SELECT id from users  WHERE %s = ?)))`
 
 	//UpdateUserDataQuery - mysql query to update data field of the user record
-	UpdateUserDataQuery = `
-UPDATE users u
-SET u.data = ?
-WHERE u.id = ? AND u.deleted != 1`
+	UpdateUserDataQuery = `UPDATE users u SET u.data = ? WHERE u.id = ? AND u.deleted != 1`
 
-	//UpdateRecoveryUserDataAndIDQuery - mysql query to update data on addAuth when third party user already in database
-	UpdateRecoveryUserDataAndIDQuery = `UPDATE users u SET u.id = ?, u.data = ? WHERE u.%s = ? AND u.deleted != 1`
+	//UpdateUserDataByThirdPartyID - mysql query to update data on addAuth when third party user already in database
+	UpdateUserDataByThirdPartyID = `UPDATE users u SET u.data = ? WHERE u.%s = ? AND u.deleted != 1`
 
 	//DeleteDeviceIDs - delete device ids from table device_ids
 	DeleteDeviceIDs = `DELETE FROM device_ids WHERE user_id = (SELECT id from users WHERE %s = ?)`

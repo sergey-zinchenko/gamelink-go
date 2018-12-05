@@ -122,7 +122,13 @@ func (a *App) addAuth(ctx iris.Context) {
 	arr := strings.Split(header, " ")
 	tokenValue := arr[1]
 	if tokenValue != "" && tokenValue[:5] == "dummy" {
-		newToken, err := user.DeleteDummyCreateNormalRedisToken(tokenValue)
+		var updID int64
+		if val, ok := data["id"]; ok {
+			updID = int64(val.(float64))
+		} else {
+			updID = user.ID()
+		}
+		newToken, err := user.DeleteDummyCreateNormalRedisToken(tokenValue, updID)
 		if err != nil {
 			return
 		}
