@@ -17,12 +17,16 @@ import (
 func (a *App) getUser(ctx iris.Context) {
 	user := ctx.Values().Get(userCtxKey).(*storage.User)
 	data, err := user.DataString()
+	defer func() {
+		if err != nil {
+			handleError(err, ctx)
+		}
+	}()
 	if err != nil {
-		handleError(err, ctx)
 		return
 	}
 	ctx.ContentType(context.ContentJSONHeaderValue)
-	ctx.WriteString(data)
+	_, err = ctx.WriteString(data)
 }
 
 func (a *App) postUser(ctx iris.Context) {
@@ -71,7 +75,7 @@ func (a *App) postUser(ctx iris.Context) {
 			logrus.Warn(err.Error()) //Тут можно бы вставить и ретурны, но нужно валить сохранение юезра, если косяк с пушами? К юзеру то это не имеет отношения
 		}
 	}
-	ctx.JSON(updated)
+	_, err = ctx.JSON(updated)
 }
 
 func (a *App) deleteUser(ctx iris.Context) {
@@ -92,7 +96,7 @@ func (a *App) deleteUser(ctx iris.Context) {
 	if data == nil {
 		ctx.StatusCode(http.StatusNoContent)
 	} else {
-		ctx.JSON(data)
+		_, err = ctx.JSON(data)
 	}
 }
 
@@ -139,5 +143,5 @@ func (a *App) addAuth(ctx iris.Context) {
 		}
 		response["token"] = newToken
 	}
-	ctx.JSON(response)
+	_, err = ctx.JSON(response)
 }
