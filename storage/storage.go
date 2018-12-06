@@ -103,9 +103,6 @@ func (dbs *DBS) CheckTables() (err error) {
 			return err
 		}
 		if ver < 1 {
-			if _, err = tx.Exec(queries.ModifyBdateColumn); err != nil {
-				return err
-			}
 			if _, err = tx.Exec(queries.AddColumnMadePayment); err != nil {
 				return err
 			}

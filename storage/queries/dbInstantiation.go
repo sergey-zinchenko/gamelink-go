@@ -13,9 +13,9 @@ CREATE TABLE IF NOT EXISTS users (
   sex        VARCHAR(1)   			GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.sex'))) VIRTUAL,
   lb1        INT(11)                GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.lb1'))) VIRTUAL,
   lb2        INT(11)                GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.lb2'))) VIRTUAL,
-  lb3        INT(11)                GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.lb3'))),
-  bdate      VARCHAR(45)            GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.bdate'))),
-  email      VARCHAR(45)            GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.email'))),
+  lb3        INT(11)                GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.lb3'))) VIRTUAL,
+  bdate      INT(11)                GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.bdate'))) VIRTUAL,
+  email      VARCHAR(45)            GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.email'))) VIRTUAL,
   meta     JSON                   GENERATED ALWAYS AS (json_unquote(json_extract(data, '$.meta'))),
   data       JSON      NOT NULL,
   created_at TIMESTAMP NOT NULL     DEFAULT CURRENT_TIMESTAMP,
@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS friends (
   FOREIGN KEY (user_id2)
   REFERENCES users (id)
     ON DELETE NO ACTION
-    ON UPDATE CASCADE
+    ON UPDATE NO ACTION
 )
   ENGINE = InnoDB
   DEFAULT CHARACTER SET = utf8;`
@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS friends (
    FOREIGN KEY (user_id)
    REFERENCES users (id)
    ON DELETE NO ACTION
-   ON UPDATE CASCADE)
+   ON UPDATE NO ACTION)
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;`
 
@@ -179,8 +179,6 @@ ENGINE = InnoDB;`
  PRIMARY KEY (version));`
 	//InsertVersionZero - insert 0 version of db
 	InsertVersionZero = `INSERT IGNORE INTO gamelink.db_version (version) VALUES (0);`
-	//ModifyBdateColumn - change varchar column to DATE
-	ModifyBdateColumn = `ALTER TABLE gamelink.users MODIFY COLUMN bdate INT GENERATED ALWAYS AS (json_extract(data,'$.bdate')) VIRTUAL ;`
 	//AddColumnMadePayment - add generated from data json column contains true if user made a payment
 	AddColumnMadePayment = `ALTER TABLE gamelink.users ADD COLUMN made_payment TINYINT(1) GENERATED ALWAYS AS (json_extract(data,'$.made_payment')) AFTER deleted;`
 	//AddColumnWatchedAds - add generated from data json column contains true if user watch adwert
