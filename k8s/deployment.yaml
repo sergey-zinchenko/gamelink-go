@@ -14,7 +14,7 @@ spec:
       containers:
         - name: gamelink
 #          image: 'registry.gitlab.smedialink.com/z/gamelink-go:latest'
-          image: 'mrcarrot/gamelink-go:latest'
+          image: 'mrcarrot/gamelink-go:1.0.1'
           env:
           - name: REDISADDR
             valueFrom:
