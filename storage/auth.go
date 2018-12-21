@@ -35,7 +35,7 @@ func (dbs DBS) AuthorizedUser(token string) (*User, error) {
 			idStr, err = tx.Get(tokenWithPrefix).Result()
 			if err != nil {
 				if err == redis.Nil {
-					return graceful.UnauthorizedError{Message: "key doesn't exist in redis"}
+					return graceful.FailedDependencyError{Message: "key doesn't exist in redis"}
 				}
 				return err
 			}

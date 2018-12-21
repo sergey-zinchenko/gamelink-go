@@ -25,6 +25,10 @@ type (
 	ConflictError struct {
 		Message string
 	}
+	//FailedDependencyError - specific error class for conflict object handling
+	FailedDependencyError struct {
+		Message string
+	}
 	//StatusCode - interface for getting http status code from errors
 	StatusCode interface {
 		StatusCode() int
@@ -94,4 +98,17 @@ func (nf NotFoundError) Error() string {
 //StatusCode - function to meet StatusCode interface - returns NotFound http code
 func (nf NotFoundError) StatusCode() int {
 	return http.StatusNotFound
+}
+
+//Error - function required by error interface; It returns default message if not defined.
+func (fd FailedDependencyError) Error() string {
+	if fd.Message != "" {
+		return fd.Message
+	}
+	return "Failed dependency"
+}
+
+//StatusCode - function to meet StatusCode interface - returns NotFound http code
+func (fd FailedDependencyError) StatusCode() int {
+	return http.StatusFailedDependency
 }
