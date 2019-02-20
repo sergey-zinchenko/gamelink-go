@@ -80,9 +80,5 @@ func (a *App) registerLogin(ctx iris.Context) {
 		logrus.Warn(err.Error())
 		return
 	}
-	authToken, err = user.AuthToken()
-	if err != nil {
-		return
-	}
 	ctx.JSON(C.J{"token": authToken})
 }
