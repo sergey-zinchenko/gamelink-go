@@ -241,7 +241,7 @@ func (token VkToken) get(userInfo *VkInfo) error {
 		return errors.New("name or last name can not be blank")
 	}
 
-	if f.Response[0].Country !=nil && f.Response[0].Country.LocName != nil {
+	if f.Response[0].Country != nil && f.Response[0].Country.LocName != nil {
 		userInfo.UserCountry = *f.Response[0].Country.LocName
 	}
 	if f.Response[0].Bdate != nil {
@@ -250,7 +250,7 @@ func (token VkToken) get(userInfo *VkInfo) error {
 	if f.Response[0].Sex != nil {
 		if *f.Response[0].Sex == 1 {
 			userInfo.Sex = "F"
-		} else if  *f.Response[0].Sex == 2 {
+		} else if *f.Response[0].Sex == 2 {
 			userInfo.Sex = "M"
 		} else {
 			userInfo.Sex = "X"
@@ -321,4 +321,9 @@ func (token VkToken) getFriends(userInfo *VkInfo) error {
 	userInfo.friends = friendsIds
 
 	return nil
+}
+
+//IsDummy - false cause it's vk token
+func (token VkToken) IsDummy() bool {
+	return false
 }

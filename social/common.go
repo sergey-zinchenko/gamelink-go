@@ -18,6 +18,8 @@ type (
 	ThirdPartyToken interface {
 		//UserInfo - get user info or error (d = NotFound if token is invalid or obsolete)
 		UserInfo() (ThirdPartyUser, error) //social id, name, friendsIds, error
+		//IsDummy - return true if this is dummy token
+		IsDummy() bool
 	}
 
 	//ThirdPartyUser - interface for user Data

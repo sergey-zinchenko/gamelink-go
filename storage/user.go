@@ -9,8 +9,16 @@ import (
 	"gamelink-go/graceful"
 	"gamelink-go/social"
 	"gamelink-go/storage/queries"
+	"github.com/go-sql-driver/mysql"
+	"github.com/sirupsen/logrus"
+	"math/rand"
 	"regexp"
+	"time"
 )
+
+func init() {
+	rand.Seed(time.Now().UTC().UnixNano())
+}
 
 type (
 	//User - structure to work with user in our system. Developed to be passed through context of request.
@@ -26,6 +34,9 @@ func (u User) ID() int64 {
 }
 
 func (u *User) txCheck(userData social.ThirdPartyUser, tx *sql.Tx) (bool, error) {
+	if userData.ID() == nil {
+		return false, nil
+	}
 	var deletedFlag int
 	queryString := fmt.Sprintf(queries.CheckUserQuery, userData.ID().Name())
 	err := tx.QueryRow(queryString, userData.ID().Value()).Scan(&u.id)
@@ -104,40 +115,22 @@ func (u *User) LoginUsingThirdPartyToken(token social.ThirdPartyToken) error {
 
 //DataString - returns user's field data from database as text
 func (u User) DataString() (string, error) {
-	var str string
+	var str sql.NullString
 	if u.dbs.mySQL == nil {
 		return "", errors.New("databases not initialized")
 	}
 	err := u.dbs.mySQL.QueryRow(queries.GetExtraUserDataQuery, u.ID(), u.ID(), u.ID(), u.ID(), u.ID()).Scan(&str)
 	if err != nil {
+		logrus.Warn(err.Error())
 		if err == sql.ErrNoRows {
 			return "", graceful.NotFoundError{Message: "user not found"}
 		}
 		return "", err
 	}
-	return str, nil
-}
-
-//Data - returns user's field data from database
-//TODO вот это нам не нужно, если только где-то не понадобится вызов Data по коду см.выше реализацию
-func (u User) Data() (C.J, error) {
-	var bytes []byte
-	if u.dbs.mySQL == nil {
-		return nil, errors.New("databases not initialized")
+	if !str.Valid {
+		return "", graceful.NotFoundError{Message: "user not found"}
 	}
-	err := u.dbs.mySQL.QueryRow(queries.GetExtraUserDataQuery, u.ID(), u.ID(), u.ID(), u.ID(), u.ID(), u.ID()).Scan(&bytes)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, graceful.NotFoundError{Message: "user not found"}
-		}
-		return nil, err
-	}
-	var data C.J
-	err = json.Unmarshal(bytes, &data)
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
+	return str.String, nil
 }
 
 func (u User) txData(tx *sql.Tx) (C.J, error) {
@@ -161,7 +154,14 @@ func (u User) txUpdate(data C.J, tx *sql.Tx) error {
 	}
 	_, err = tx.Exec(queries.UpdateUserDataQuery, upd, u.ID())
 	if err != nil {
-		return err
+		switch v := err.(type) {
+		case *mysql.MySQLError:
+			if v.Number == mysqlKeyExist {
+				return graceful.ConflictError{Message: "user with this social account already exist"}
+			}
+		default:
+			return err
+		}
 	}
 	return nil
 }
@@ -206,11 +206,6 @@ func (u User) txSyncFriends(friendsIds []social.ThirdPartyID, tx *sql.Tx) error 
 			return err
 		}
 	}
-	return nil
-}
-
-func (u User) logout() error {
-	//TODO: нужно имплементировать
 	return nil
 }
 
@@ -319,15 +314,32 @@ func (u User) Delete(fields []string) (C.J, error) {
 func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 	var transaction = func(userData social.ThirdPartyUser, tx *sql.Tx) (C.J, error) {
 		data, err := u.txData(tx)
+		var isDummy bool
+		if data["vk_id"] == nil && data["fb_id"] == nil {
+			isDummy = true
+		}
 		if err != nil {
 			return nil, err
 		}
-		if _, ok := data[userData.ID().Name()]; ok {
-			return nil, graceful.BadRequestError{Message: "account already exist"}
-		}
 		data[userData.ID().Name()] = userData.ID().Value()
+		if isDummy {
+			data["name"] = userData.Name()
+			data["sex"] = userData.Gender()
+			data["email"] = userData.Email()
+			data["country"] = userData.Country()
+			data["bdate"] = userData.BirthDate()
+		}
 		err = u.txUpdate(data, tx)
 		if err != nil {
+			//Обработчик 409
+			switch err.(type) {
+			case graceful.ConflictError:
+				err = u.ReloginWithUpdate(data, userData, tx)
+				if err != nil {
+					return nil, err
+				}
+				return data, nil
+			}
 			return nil, err
 		}
 		err = u.txSyncFriends(userData.Friends(), tx)
@@ -359,4 +371,43 @@ func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 		return nil, err
 	}
 	return updData, nil
+}
+
+//ReloginWithUpdate - delete dummy user from db then update old account with social and change its id to deleted dummy id
+func (u User) ReloginWithUpdate(data C.J, thirdPartyUserData social.ThirdPartyUser, tx *sql.Tx) error {
+	_, err := tx.Exec(queries.DeleteDummyUserFromDB, u.ID())
+	if err != nil {
+		return err
+	}
+	q := fmt.Sprintf(queries.UpdateRecoveryUserDataAndIDQuery, thirdPartyUserData.ID().Name())
+	upd, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(q, u.ID(), upd, thirdPartyUserData.ID().Value())
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+//DeleteDummyCreateNormalRedisToken - delete dummy user from redis
+func (u User) DeleteDummyCreateNormalRedisToken(redisToken string) (string, error) {
+	var err error
+	var newToken string
+	for ok := false; !ok; {
+		newToken = C.RandStringBytes(40)
+		authKey := AuthRedisKeyPref + newToken
+		lifetime := time.Hour * 8
+		ok, err = u.dbs.rc.SetNX(authKey, u.ID(), lifetime).Result()
+		if err != nil {
+			return "", err
+		}
+	}
+	cmd := u.dbs.rc.Del(AuthRedisKeyPref + redisToken)
+	if cmd.Err() != nil {
+		logrus.Warn("redis delete token error", cmd.Err())
+		return "", cmd.Err()
+	}
+	return newToken, nil
 }

@@ -216,3 +216,8 @@ func (token FbToken) UserInfo() (ThirdPartyUser, error) {
 	}
 	return userInfo, nil
 }
+
+//IsDummy - false cause it's fb token
+func (token FbToken) IsDummy() bool {
+	return false
+}

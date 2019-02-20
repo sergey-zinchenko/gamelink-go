@@ -26,14 +26,12 @@ func (a *App) startTournament(ctx iris.Context) {
 	var getUsersInRoom, getTournamentDuration, getRegistrationDuration []string
 
 	getUsersInRoom = ctx.Request().URL.Query()["users_in_room"]
-	fmt.Println(getUsersInRoom)
 	if getUsersInRoom == nil || getUsersInRoom[0] == "" {
 		err = graceful.BadRequestError{Message: "invalid param users in room"}
 		return
 	}
 
 	getTournamentDuration = ctx.Request().URL.Query()["tournament_duration"]
-	fmt.Println(getTournamentDuration)
 	if getTournamentDuration == nil || getTournamentDuration[0] == "" {
 		err = graceful.BadRequestError{Message: "invalid tournament duration"}
 		return

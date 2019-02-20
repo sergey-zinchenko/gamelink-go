@@ -50,12 +50,12 @@ CREATE TABLE IF NOT EXISTS friends (
   FOREIGN KEY (user_id1)
   REFERENCES users (id)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
+    ON UPDATE CASCADE,
   CONSTRAINT fk_users_has_users_users2
   FOREIGN KEY (user_id2)
   REFERENCES users (id)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION
+    ON UPDATE CASCADE
 )
   ENGINE = InnoDB
   DEFAULT CHARACTER SET = utf8;`
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS friends (
    FOREIGN KEY (user_id)
    REFERENCES users (id)
    ON DELETE NO ACTION
-   ON UPDATE NO ACTION)
+   ON UPDATE CASCADE)
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;`
 
@@ -173,4 +173,11 @@ VIEW leader_board%[1]d AS
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;`
+
+	//AddColumnDummy - add generated column dummy to users table
+	AddColumnDummy = `ALTER TABLE gamelink.users ADD COLUMN dummy TINYINT(1) GENERATED ALWAYS AS (if(((vk_id is not null) or (fb_id is not null)),0,1));`
+	//InsertVersionOne - insert new db version
+	InsertVersionOne = `INSERT IGNORE INTO gamelink.db_version (version) values (1);`
+	//GetDbVersion - return max bd version
+	GetDbVersion = `SELECT MAX(version) FROM gamelink.db_version`
 )

@@ -85,6 +85,19 @@ func (dbs *DBS) CheckTables() (err error) {
 				return err
 			}
 		}
+		var ver int
+		err = tx.QueryRow(queries.GetDbVersion).Scan(&ver)
+		if err != nil {
+			return err
+		}
+		if ver < 1 {
+			if _, err = tx.Exec(queries.AddColumnDummy); err != nil {
+				return err
+			}
+			if _, err = tx.Exec(queries.InsertVersionOne); err != nil {
+				return err
+			}
+		}
 		return nil
 	}
 	tx, err := dbs.mySQL.Begin()

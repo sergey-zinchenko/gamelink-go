@@ -11,7 +11,8 @@ import (
 )
 
 const (
-	authRedisKeyPref = "auth:"
+	//AuthRedisKeyPref - auth redis key prefix
+	AuthRedisKeyPref = "auth:"
 )
 
 //AuthorizedUser - function to check our own authorization token from header. Returns user or nil if not valid token.
@@ -19,54 +20,84 @@ func (dbs DBS) AuthorizedUser(token string) (*User, error) {
 	if dbs.rc == nil {
 		return nil, errors.New("databases not initialized")
 	}
+	if len(token) < 6 {
+		return nil, graceful.UnauthorizedError{Message: "token too short"}
+	}
 	var id int64
-	err := dbs.rc.Watch(func(tx *redis.Tx) error {
-		idStr, err := dbs.rc.Get(authRedisKeyPref + token).Result()
-		if err != nil {
-			if err == redis.Nil {
-				return &graceful.UnauthorizedError{Message: "key does not exists in redis"}
+	isDummy := token[:5] == "dummy"
+	tokenWithPrefix := AuthRedisKeyPref + token
+	for {
+		err := dbs.rc.Watch(func(tx *redis.Tx) error {
+			var idStr string
+			var err error
+			idStr, err = tx.Get(tokenWithPrefix).Result()
+			if err != nil {
+				if err == redis.Nil {
+					return graceful.UnauthorizedError{Message: "key doesn't exist in redis"}
+				}
+				return err
 			}
+			id, err = strconv.ParseInt(idStr, 10, 64)
+			if err != nil {
+				return err
+			}
+			var lifetime time.Duration
+			if isDummy {
+				lifetime = 24 * 30 * time.Hour
+			} else {
+				lifetime = 8 * time.Hour
+			}
+			_, err = tx.Set(tokenWithPrefix, id, lifetime).Result()
 			return err
-		}
-		id, err = strconv.ParseInt(idStr, 10, 64)
+		}, tokenWithPrefix)
 		if err != nil {
-			return err
+			if err == redis.TxFailedErr {
+				continue
+			} else {
+				return nil, err
+			}
 		}
-		_, err = dbs.rc.Set(authRedisKeyPref+token, id, 8*time.Hour).Result()
-		if err != nil {
-			return err
-		}
-		return err
-	}, authRedisKeyPref+token)
-	if err != nil {
-		return nil, err
+		break
 	}
 	return &User{id, &dbs}, nil
 }
 
 //ThirdPartyUser - function to login or register user using his third party token
 func (dbs DBS) ThirdPartyUser(token social.ThirdPartyToken) (*User, error) {
+	var err error
 	if dbs.mySQL == nil {
 		return nil, errors.New("databases not initialized")
 	}
 	u := User{dbs: &dbs}
-	if err := u.LoginUsingThirdPartyToken(token); err != nil {
+	err = u.LoginUsingThirdPartyToken(token)
+	if err != nil {
 		return nil, err
 	}
 	return &u, nil
 }
 
 //AuthToken - Function to generate and store auth token in rc.
-func (u User) AuthToken() (string, error) {
+func (u User) AuthToken(isDummy bool) (string, error) {
 	if u.dbs.rc == nil {
 		return "", errors.New("databases not initialized")
 	}
-	var authToken string
+	var authToken, authKey string
 	for ok := false; !ok; {
-		authToken = C.RandStringBytes(40)
-		authKey := authRedisKeyPref + authToken
 		var err error
-		ok, err = u.dbs.rc.SetNX(authKey, u.ID(), time.Hour).Result()
+		var lifetime time.Duration
+		if !isDummy {
+			authToken = C.RandStringBytes(40)
+			for authToken[:5] == "dummy" {
+				authToken = C.RandStringBytes(40)
+			}
+			authKey = AuthRedisKeyPref + authToken
+			lifetime = time.Hour
+		} else {
+			authToken = "dummy" + C.RandStringBytes(35)
+			authKey = AuthRedisKeyPref + authToken
+			lifetime = 24 * 30 * time.Hour
+		}
+		ok, err = u.dbs.rc.SetNX(authKey, u.ID(), lifetime).Result()
 		if err != nil {
 			return "", err
 		}
