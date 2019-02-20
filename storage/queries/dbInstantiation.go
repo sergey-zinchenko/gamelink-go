@@ -174,6 +174,14 @@ VIEW leader_board%[1]d AS
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;`
 
+	//CreateTableDbVersion - create table for database versions
+	CreateTableDbVersion = `CREATE TABLE IF NOT EXISTS gamelink.db_version (
+ version INT NOT NULL,
+ PRIMARY KEY (version));`
+	//InsertVersionZero - insert 0 version of db
+	InsertVersionZero = `INSERT IGNORE INTO gamelink.db_version (version) VALUES (0);`
+	//ModifyBdateColumn - change varchar column to DATE
+
 	//AddColumnDummy - add generated column dummy to users table
 	AddColumnDummy = `ALTER TABLE gamelink.users ADD COLUMN dummy TINYINT(1) GENERATED ALWAYS AS (if(((vk_id is not null) or (fb_id is not null)),0,1));`
 	//InsertVersionOne - insert new db version

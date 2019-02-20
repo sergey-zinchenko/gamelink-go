@@ -85,6 +85,13 @@ func (dbs *DBS) CheckTables() (err error) {
 				return err
 			}
 		}
+
+		if _, err = tx.Exec(queries.CreateTableDbVersion); err != nil {
+			return err
+		}
+		if _, err = tx.Exec(queries.InsertVersionZero); err != nil {
+			return err
+		}
 		var ver int
 		err = tx.QueryRow(queries.GetDbVersion).Scan(&ver)
 		if err != nil {
