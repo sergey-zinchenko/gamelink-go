@@ -7,6 +7,7 @@ import (
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
 	"net/http"
+	"strings"
 )
 
 func (a *App) getUser(ctx iris.Context) {
@@ -66,8 +67,9 @@ func (a *App) deleteUser(ctx iris.Context) {
 
 func (a *App) addAuth(ctx iris.Context) {
 	var (
-		err  error
-		data C.J
+		err       error
+		data      C.J
+		existedID int64
 	)
 	defer func() {
 		if err != nil {
@@ -80,9 +82,31 @@ func (a *App) addAuth(ctx iris.Context) {
 		err = graceful.BadRequestError{Message: "invalid token"}
 		return
 	}
-	data, err = user.AddSocial(token)
+	data, existedID, err = user.AddSocial(token)
 	if err != nil {
 		return
 	}
-	ctx.JSON(data)
+	response := make(map[string]interface{})
+	response["data"] = data
+	header := strings.TrimSpace(ctx.GetHeader("Authorization"))
+	arr := strings.Split(header, " ")
+	tokenValue := arr[1]
+	if tokenValue != "" && tokenValue[:5] == "dummy" {
+		var updID int64
+		if existedID != 0 {
+			updID = existedID
+		} else {
+			updID = user.ID()
+		}
+		newToken, err := a.dbs.AuthToken(false, updID) //false cause we want generate new token for normal user not for dummy
+		if err != nil {
+			return
+		}
+		err = a.dbs.DeleteRedisToken(tokenValue)
+		if err != nil {
+			return
+		}
+		response["token"] = newToken
+	}
+	_, err = ctx.JSON(response)
 }

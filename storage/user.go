@@ -310,16 +310,22 @@ func (u User) Delete(fields []string) (C.J, error) {
 	return updData, nil
 }
 
-// AddSocial - allow
-func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
-	var transaction = func(userData social.ThirdPartyUser, tx *sql.Tx) (C.J, error) {
+// AddSocial - bind third party accoutn
+func (u User) AddSocial(token social.ThirdPartyToken) (C.J, int64, error) {
+	var transaction = func(userData social.ThirdPartyUser, tx *sql.Tx) (C.J, int64, error) {
+		var existedID int64
 		data, err := u.txData(tx)
+		if err != nil {
+			logrus.Warn(err)
+			return nil, 0, err
+		}
 		var isDummy bool
 		if data["vk_id"] == nil && data["fb_id"] == nil {
 			isDummy = true
 		}
 		if err != nil {
-			return nil, err
+			logrus.Warn(err)
+			return nil, 0, err
 		}
 		data[userData.ID().Name()] = userData.ID().Value()
 		if isDummy {
@@ -331,83 +337,85 @@ func (u User) AddSocial(token social.ThirdPartyToken) (C.J, error) {
 		}
 		err = u.txUpdate(data, tx)
 		if err != nil {
-			//Обработчик 409
+			logrus.Warn(err)
+			//409 handler
 			switch err.(type) {
 			case graceful.ConflictError:
-				err = u.ReloginWithUpdate(data, userData, tx)
+				logrus.Warn("409 error")
+				data, existedID, err = u.reloginWithUpdate(data, userData, tx)
 				if err != nil {
-					return nil, err
+					logrus.Warn(err)
+					return nil, 0, err
 				}
-				return data, nil
+			default:
+				return nil, 0, err
 			}
-			return nil, err
 		}
 		err = u.txSyncFriends(userData.Friends(), tx)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
-		return data, nil
+		return data, existedID, nil
 	}
 	tx, err := u.dbs.mySQL.Begin()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	if token == nil {
-		return nil, graceful.BadRequestError{Message: "empty token"}
+		return nil, 0, graceful.BadRequestError{Message: "empty token"}
 	}
 	userData, err := token.UserInfo()
 	if err != nil {
-		return nil, err
+		logrus.Warn(err)
+		return nil, 0, err
 	}
-	updData, err := transaction(userData, tx)
+	updData, existedID, err := transaction(userData, tx)
 	if err != nil {
+		logrus.Warn(err)
 		if e := tx.Rollback(); e != nil {
-			return nil, err
+			return nil, 0, err
 		}
-		return nil, err
+		return nil, 0, err
 	}
 	err = tx.Commit()
 	if err != nil {
-		return nil, err
+		logrus.Warn(err)
+		return nil, 0, err
 	}
-	return updData, nil
+	return updData, existedID, nil
 }
 
-//ReloginWithUpdate - delete dummy user from db then update old account with social and change its id to deleted dummy id
-func (u User) ReloginWithUpdate(data C.J, thirdPartyUserData social.ThirdPartyUser, tx *sql.Tx) error {
+//reloginWithUpdate - delete dummy user from db then update old account with social and change its id to deleted dummy id
+func (u User) reloginWithUpdate(data C.J, thirdPartyUserData social.ThirdPartyUser, tx *sql.Tx) (C.J, int64, error) {
 	_, err := tx.Exec(queries.DeleteDummyUserFromDB, u.ID())
 	if err != nil {
-		return err
+		logrus.Warn(err)
+		return nil, 0, err
 	}
-	q := fmt.Sprintf(queries.UpdateRecoveryUserDataAndIDQuery, thirdPartyUserData.ID().Name())
-	upd, err := json.Marshal(data)
+	ud, err := json.Marshal(data)
 	if err != nil {
-		return err
+		logrus.Warn(err)
+		return nil, 0, err
 	}
-	_, err = tx.Exec(q, u.ID(), upd, thirdPartyUserData.ID().Value())
+	var upd []byte
+	var existedID int64
+	q := fmt.Sprintf(queries.GetMergedUserDataBySocialID, thirdPartyUserData.ID().Name())
+	err = tx.QueryRow(q, ud, thirdPartyUserData.ID().Value()).Scan(&existedID, &upd)
 	if err != nil {
-		return err
+		logrus.Warn(err)
+		return nil, 0, err
 	}
-	return nil
-}
-
-//DeleteDummyCreateNormalRedisToken - delete dummy user from redis
-func (u User) DeleteDummyCreateNormalRedisToken(redisToken string) (string, error) {
-	var err error
-	var newToken string
-	for ok := false; !ok; {
-		newToken = C.RandStringBytes(40)
-		authKey := AuthRedisKeyPref + newToken
-		lifetime := time.Hour * 8
-		ok, err = u.dbs.rc.SetNX(authKey, u.ID(), lifetime).Result()
-		if err != nil {
-			return "", err
-		}
+	var updatedData C.J
+	err = json.Unmarshal(upd, &updatedData)
+	if err != nil {
+		logrus.Warn(err)
+		return nil, 0, err
 	}
-	cmd := u.dbs.rc.Del(AuthRedisKeyPref + redisToken)
-	if cmd.Err() != nil {
-		logrus.Warn("redis delete token error", cmd.Err())
-		return "", cmd.Err()
+	q = fmt.Sprintf(queries.UpdateUserDataByThirdPartyID, thirdPartyUserData.ID().Name())
+	_, err = tx.Exec(q, upd, thirdPartyUserData.ID().Value())
+	if err != nil {
+		logrus.Warn(err)
+		return nil, 0, err
 	}
-	return newToken, nil
+	return updatedData, existedID, nil
 }
