@@ -39,6 +39,11 @@ func NewApp() (a *App) {
 	a.iris = iris.New()
 	a.dbs = &storage.DBS{}
 
+	fakedata := a.iris.Party("/fake")
+	{
+		fakedata.Get("/users", a.addFakeUsers)
+	}
+
 	auth := a.iris.Party("/auth")
 	{
 		auth.Get("/", a.registerLogin)
