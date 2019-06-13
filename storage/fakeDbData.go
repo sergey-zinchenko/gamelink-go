@@ -53,7 +53,9 @@ func (dbs DBS) AddFakeUserGoroutine(goroutineNumber, count int, wg *sync.WaitGro
 			"sex":      "F",
 			"lb1":      RandStringScore(100),
 			"country":  "USA",
+			"fb_id":    999999999999 - i,
 			"save":     fakeSave,
+			"email":    "gamelink@test.gamelink",
 		}
 		dataByte, err := json.Marshal(fakeData)
 		if err != nil {

@@ -42,6 +42,7 @@ func NewApp() (a *App) {
 	fakedata := a.iris.Party("/fake")
 	{
 		fakedata.Get("/users", a.addFakeUsers)
+		fakedata.Get("/token/{id:int}", a.addFakeToken)
 	}
 
 	auth := a.iris.Party("/auth")
