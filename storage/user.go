@@ -232,21 +232,10 @@ func (u User) Update(data C.J) (C.J, error) {
 	delete(data, "bdate")
 	delete(data, "email")
 	delete(data, "sex")
-	for i := 1; i < 4; i++ {
-		lbnum := fmt.Sprintf("lb%d", i)
-		if score, ok := data[lbnum].(string); ok {
-			matched, err := regexp.MatchString("^\\d{100}$", score)
-			if err != nil {
-				return nil, err
-			}
-			if !matched {
-				err = graceful.BadRequestError{Message: "wrong score"}
-				return nil, err
-			}
-		} else if _, ok := data[lbnum]; ok {
-			err := graceful.BadRequestError{Message: "wrong score"}
-			return nil, err
-		}
+
+	scoreMap, err := u.ValidateScore(data)
+	if err != nil {
+		return nil, err
 	}
 	tx, err := u.dbs.mySQL.Begin()
 	if err != nil {
@@ -263,7 +252,49 @@ func (u User) Update(data C.J) (C.J, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = u.AddScoreToRedis(scoreMap)
+	if err != nil {
+		return nil, err
+	}
 	return data, nil
+}
+
+//ValidateScore - validate score from data
+func (u User) ValidateScore(data C.J) (map[string]string, error) {
+	scoreMap := make(map[string]string)
+	for i := 1; i < 4; i++ {
+		lbnum := fmt.Sprintf("lb%d", i)
+		if score, ok := data[lbnum].(string); ok {
+			matched, err := regexp.MatchString("^\\d{100}$", score)
+			if err != nil {
+				return nil, err
+			}
+			if !matched {
+				err = graceful.BadRequestError{Message: "wrong score"}
+				return nil, err
+			}
+			scoreMap[lbnum] = score //добавляем в список номер лидреборда и счет а случай, если в дате прилетеле данные по нескольким лидербордам
+		} else if _, ok := data[lbnum]; ok {
+			err := graceful.BadRequestError{Message: "wrong score"}
+			return nil, err
+		}
+	}
+	return scoreMap, nil
+}
+
+//AddScoreToRedis - add user score to redis
+func (u User) AddScoreToRedis(scoreMap map[string]string) error {
+	for lbnum, score := range scoreMap {
+		redisKey := fmt.Sprintf("%d%s", u.ID(), lbnum)
+		for ok := false; !ok; {
+			var err error
+			ok, err = u.dbs.rc.SetNX(redisKey, score, 0).Result()
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // Delete - allow user delete data about him or delete account
