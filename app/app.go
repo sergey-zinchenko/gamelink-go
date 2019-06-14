@@ -16,8 +16,9 @@ const (
 type (
 	//App structure - connects databases with the middleware and handlers of router
 	App struct {
-		dbs  *storage.DBS
-		iris *iris.Application
+		dbs   *storage.DBS
+		iris  *iris.Application
+		ranks *storage.Ranks
 	}
 )
 
@@ -32,12 +33,22 @@ func (a *App) ConnectDataBases() error {
 	return nil
 }
 
+//GenerateRanks - invoke storage func that generate rank arrays
+func (a *App) GenerateRanks(count int) error {
+	err := a.ranks.GenerateRankArrays(count)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 //NewApp - You can construct and initialize App (application) object with that function
 //router will be configured but not database connections
 func NewApp() (a *App) {
 	a = new(App)
 	a.iris = iris.New()
 	a.dbs = &storage.DBS{}
+	a.ranks = &storage.Ranks{DBS: a.dbs}
 
 	fakedata := a.iris.Party("/fake")
 	{

@@ -17,9 +17,16 @@ func init() {
 
 func main() {
 	a := app.NewApp()
-	if err := a.ConnectDataBases(); err != nil {
+	err := a.ConnectDataBases()
+	if err != nil {
 		log.Fatal(err.Error())
-	} else if err = a.Run(); err != nil {
+	}
+	err = a.GenerateRanks(0)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	err = a.Run()
+	if err != nil {
 		log.Fatal(err.Error())
 	}
 }
