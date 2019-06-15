@@ -23,6 +23,10 @@ type (
 	ConflictError struct {
 		Message string
 	}
+	//ServiceUnavailableError - specific error class for conflict object handling
+	ServiceUnavailableError struct {
+		Message string
+	}
 	//StatusCode - interface for getting http status code from errors
 	StatusCode interface {
 		StatusCode() int
@@ -87,6 +91,14 @@ func (nf NotFoundError) Error() string {
 		return nf.Message
 	}
 	return "notfound"
+}
+
+//Error - function required by error interface; It returns default message if not defined.
+func (nf ServiceUnavailableError) Error() string {
+	if nf.Message != "" {
+		return nf.Message
+	}
+	return "notavailiable"
 }
 
 //StatusCode - function to meet StatusCode interface - returns NotFound http code
