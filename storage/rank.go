@@ -41,7 +41,7 @@ func (r *Ranks) generate(num int) error {
 	if err != nil {
 		return nil
 	}
-	for rows.Next() { //проверить, если errNoRows, вернется ли пустой массив или вылезет ошибка?
+	for rows.Next() {
 		var r string
 		rows.Scan(&r)
 		res = append(res, r)

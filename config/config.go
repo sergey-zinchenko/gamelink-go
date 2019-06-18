@@ -8,6 +8,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var (
@@ -35,6 +36,8 @@ var (
 	TournamentsAdminUsername string
 	//TournamentsAdminPassword - password for base auth tournament admin (creation)
 	TournamentsAdminPassword string
+	//UpdateLbArraysDataInSecondsPeriod - set update leaderboards cache arrays period
+	UpdateLbArraysDataInSecondsPeriod time.Duration
 )
 
 const (
@@ -55,6 +58,7 @@ const (
 	redisDbKey       = "REDISDB"
 	taUnameKey       = "TAUSERNAME"
 	taPwdKey         = "TAPASSWORD"
+	updLbPeriodKey   = "UPDLBPERIOD"
 )
 
 //GetEnvironment - this function returns mode string of the os environment or "development" mode if empty or not defined
@@ -141,4 +145,11 @@ func LoadEnvironment() {
 			log.Fatal("tournament admin password must be set")
 		}
 	}
+	UpdLbPeriodInt, err := strconv.Atoi(os.Getenv(updLbPeriodKey))
+	if err != nil || UpdLbPeriodInt <= 0 {
+		log.Fatal("invalid update leaderboard cache period")
+	} else if UpdateLbArraysDataInSecondsPeriod < 60 {
+		log.Warn("too short update leaderboard cache period. There may be performance issues")
+	}
+	UpdateLbArraysDataInSecondsPeriod = time.Duration(UpdLbPeriodInt) * time.Second
 }

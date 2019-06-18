@@ -6,6 +6,7 @@ import (
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/middleware/basicauth"
+	log "github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -34,12 +35,14 @@ func (a *App) ConnectDataBases() error {
 }
 
 //GenerateRanks - invoke storage func that generate rank arrays
-func (a *App) GenerateRanks(count int) error {
-	err := a.ranks.GenerateRankArrays(count)
-	if err != nil {
-		return err
+func (a *App) GenerateRanks(count int) {
+	for {
+		err := a.ranks.GenerateRankArrays(count)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+		time.Sleep(config.UpdateLbArraysDataInSecondsPeriod)
 	}
-	return nil
 }
 
 //NewApp - You can construct and initialize App (application) object with that function

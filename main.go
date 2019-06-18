@@ -21,10 +21,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	err = a.GenerateRanks(0)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
+	go a.GenerateRanks(0)
 	err = a.Run()
 	if err != nil {
 		log.Fatal(err.Error())

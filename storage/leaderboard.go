@@ -124,7 +124,7 @@ func getRank(score string, rankArr *[]string) (int, error) {
 			}
 			start = median
 		} else {
-			rank = median
+			rank = median + 1
 			break
 		}
 	}
