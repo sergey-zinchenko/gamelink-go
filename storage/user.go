@@ -11,14 +11,11 @@ import (
 	"gamelink-go/storage/queries"
 	"github.com/go-sql-driver/mysql"
 	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"math/rand"
 	"regexp"
 	"time"
 )
-
-func init() {
-	rand.Seed(time.Now().UTC().UnixNano())
-}
 
 type (
 	//User - structure to work with user in our system. Developed to be passed through context of request.
@@ -27,6 +24,19 @@ type (
 		dbs *DBS
 	}
 )
+
+var (
+	lbRegexp *regexp.Regexp
+	err      error
+)
+
+func init() {
+	rand.Seed(time.Now().UTC().UnixNano())
+	lbRegexp, err = regexp.Compile("^\\d{100}$")
+	if err != nil {
+		log.Fatal(err)
+	}
+}
 
 //ID - returns user's id from database
 func (u User) ID() int64 {
@@ -147,12 +157,45 @@ func (u User) txData(tx *sql.Tx) (C.J, error) {
 	return data, nil
 }
 
+func (u User) data() (C.J, error) {
+	var bytes []byte
+	err := u.dbs.mySQL.QueryRow(queries.GetUserDataQuery, u.ID()).Scan(&bytes)
+	if err != nil {
+		return nil, err
+	}
+	var data C.J
+	err = json.Unmarshal(bytes, &data)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
 func (u User) txUpdate(data C.J, tx *sql.Tx) error {
 	upd, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
 	_, err = tx.Exec(queries.UpdateUserDataQuery, upd, u.ID())
+	if err != nil {
+		switch v := err.(type) {
+		case *mysql.MySQLError:
+			if v.Number == mysqlKeyExist {
+				return graceful.ConflictError{Message: "user with this social account already exist"}
+			}
+		default:
+			return err
+		}
+	}
+	return nil
+}
+
+func (u User) updateData(data C.J) error {
+	upd, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	_, err = u.dbs.mySQL.Exec(queries.UpdateUserDataQueryWithoutTransaction, upd, u.ID())
 	if err != nil {
 		switch v := err.(type) {
 		case *mysql.MySQLError:
@@ -210,52 +253,27 @@ func (u User) txSyncFriends(friendsIds []social.ThirdPartyID, tx *sql.Tx) error 
 }
 
 //Update - allow user update data
-func (u User) Update(data C.J) (C.J, error) {
-	var transaction = func(upd C.J, tx *sql.Tx) (C.J, error) {
-		data, err := u.txData(tx)
-		if err != nil {
-			return nil, err
-		}
-		for k, v := range upd {
-			data[k] = v
-		}
-		err = u.txUpdate(data, tx)
-		if err != nil {
-			return nil, err
-		}
-		return data, nil
-	}
-	delete(data, "fb_id")
-	delete(data, "vk_id")
-	delete(data, "name")
-	delete(data, "country")
-	delete(data, "bdate")
-	delete(data, "email")
-	delete(data, "sex")
-
-	err := u.ValidateScore(data)
+func (u User) Update(newData C.J) (C.J, error) {
+	delete(newData, "fb_id")
+	delete(newData, "vk_id")
+	delete(newData, "name")
+	delete(newData, "country")
+	delete(newData, "bdate")
+	delete(newData, "email")
+	delete(newData, "sex")
+	err := u.ValidateScore(newData)
 	if err != nil {
 		return nil, err
 	}
-	tx, err := u.dbs.mySQL.Begin()
+	err = u.updateData(newData)
 	if err != nil {
 		return nil, err
 	}
-	data, err = transaction(data, tx)
-	if err != nil {
-		if e := tx.Rollback(); e != nil {
-			return nil, e
-		}
-		return nil, err
-	}
-	err = tx.Commit()
+	updatedData, err := u.data()
 	if err != nil {
 		return nil, err
 	}
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
+	return updatedData, nil
 }
 
 //ValidateScore - validate score from data
@@ -263,12 +281,9 @@ func (u User) ValidateScore(data C.J) error {
 	for i := 1; i < 4; i++ {
 		lbnum := fmt.Sprintf("lb%d", i)
 		if score, ok := data[lbnum].(string); ok {
-			matched, err := regexp.MatchString("^\\d{100}$", score)
-			if err != nil {
-				return err
-			}
+			matched := lbRegexp.MatchString(score)
 			if !matched {
-				err = graceful.BadRequestError{Message: "wrong score"}
+				err := graceful.BadRequestError{Message: "wrong score"}
 				return err
 			}
 		} else if _, ok := data[lbnum]; ok {

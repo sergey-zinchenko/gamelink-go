@@ -53,16 +53,13 @@ SELECT (SELECT CAST(CONCAT( 	'{"id":'  , 	u.id,
                 (SELECT CAST(CONCAT('[',GROUP_CONCAT(DISTINCT CONCAT('{','"id":', t.tournament_id,'}')), ']') AS JSON) as tournaments FROM (SELECT tournament_id from users_tournaments WHERE user_id = ?)t) v`
 
 	//GetUserDataQuery - mysql query to get user's data json
-	GetUserDataQuery = `
-SELECT data
-FROM users u
-WHERE u.id = ? AND u.deleted != 1`
+	GetUserDataQuery = `SELECT data FROM users u WHERE u.id = ? AND u.deleted != 1`
 
 	//UpdateUserDataQuery - mysql query to update data field of the user record
-	UpdateUserDataQuery = `
-UPDATE users u
-SET u.data = ?
-WHERE u.id = ? AND u.deleted != 1`
+	UpdateUserDataQuery = `UPDATE users u SET u.data = ? WHERE u.id = ?`
+
+	//UpdateUserDataQueryWithoutTransaction - mysql query used to update user data not in transaction
+	UpdateUserDataQueryWithoutTransaction = `update users as u1 join users as u2 on u1.id = u2.id set u1.data = JSON_MERGE_PATCH(u2.data, ?) where u1.id = ?`
 
 	//GetMergedUserDataBySocialID - get user data by social id
 	GetMergedUserDataBySocialID = `SELECT u.id, JSON_MERGE_PATCH(? , u.data) from users u  WHERE %s = ?`

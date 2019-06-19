@@ -148,7 +148,7 @@ func LoadEnvironment() {
 	UpdLbPeriodInt, err := strconv.Atoi(os.Getenv(updLbPeriodKey))
 	if err != nil || UpdLbPeriodInt <= 0 {
 		log.Fatal("invalid update leaderboard cache period")
-	} else if UpdateLbArraysDataInSecondsPeriod < 60 {
+	} else if UpdLbPeriodInt < 299 {
 		log.Warn("too short update leaderboard cache period. There may be performance issues")
 	}
 	UpdateLbArraysDataInSecondsPeriod = time.Duration(UpdLbPeriodInt) * time.Second
