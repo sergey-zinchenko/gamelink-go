@@ -21,16 +21,15 @@ SELECT CAST(CONCAT(
     '}') AS JSON) as save 
     FROM (SELECT s.id, s.name, s.state, UNIX_TIMESTAMP(s.updated_at) as updated_at 
     from saves s, users u WHERE u.id=? AND u.deleted != 1  AND s.user_id=u.id  AND s.id = ?) s`
+
 	//GetSaveDataQuery - mysql query to get save's json field data
-	GetSaveDataQuery = `
-SELECT data
-FROM saves s
-WHERE s.id = ? AND s.user_id = (SELECT id from users WHERE id=? AND deleted != 1)`
-	//UpdateSaveDataQuery - mysql query to update save's data field
-	UpdateSaveDataQuery = `
-UPDATE saves s
-SET s.data = ?
-WHERE s.id = ? AND s.user_id = (SELECT id from users WHERE id=? AND deleted != 1)`
+	GetSaveDataQuery = `SELECT data FROM saves s WHERE s.id = ? AND s.user_id = (SELECT id from users WHERE id=? AND deleted != 1)`
+
+	//UpdateSaveDataQueryTransaction - mysql query to update save's data field
+	UpdateSaveDataQueryTransaction = `UPDATE saves s SET s.data = ? WHERE s.id = ? AND s.user_id = (SELECT id from users WHERE id=? AND deleted != 1)`
+
+	//UpdateSaveDataJSON - mysql query allows to update save data
+	UpdateSaveDataJSON = `UPDATE saves as s1 JOIN saves as s2 ON s1.id = s2.id SET s1.data = JSON_MERGE_PATCH(s2.data, ?) where s1.id = ?`
 
 	//DeleteSaveQuery - mysql query to delete save
 	DeleteSaveQuery = `

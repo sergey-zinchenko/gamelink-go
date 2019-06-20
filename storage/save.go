@@ -60,7 +60,7 @@ func (u User) txUpdateSaveData(data C.J, saveID int, tx *sql.Tx) error {
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(queries.UpdateSaveDataQuery, upd, saveID, u.ID())
+	_, err = tx.Exec(queries.UpdateSaveDataQueryTransaction, upd, saveID, u.ID())
 	if err != nil {
 		return err
 	}
@@ -83,37 +83,34 @@ func (u User) txDeleteSave(saveID int, tx *sql.Tx) error {
 
 //UpdateSave - update save data in transaction, return updated data
 func (u User) UpdateSave(data C.J, saveID int) (C.J, error) {
-	var transaction = func(upd C.J, saveID int, tx *sql.Tx) (C.J, error) {
-		data, err := u.txSaveData(saveID, tx)
-		if err != nil {
-			return nil, err
-		}
-		for k, v := range upd {
-			data[k] = v
-		}
-		err = u.txUpdateSaveData(data, saveID, tx)
-		if err != nil {
-			return nil, err
-		}
-		return data, nil
-	}
-	tx, err := u.dbs.mySQL.Begin()
+	upd, err := json.Marshal(data)
 	if err != nil {
 		return nil, err
 	}
-	data, err = transaction(data, saveID, tx)
-	if err != nil {
-		if e := tx.Rollback(); e != nil {
-			return nil, e
-		}
-		return nil, err
-	}
-	err = tx.Commit()
+	var flag int
+	err = u.dbs.mySQL.QueryRow(queries.IternalCheckFlag, u.ID()).Scan(&flag)
 	if err != nil {
 		return nil, err
 	}
-	data["updated_at"] = time.Now().Unix()
-	return data, nil
+	if flag == 1 {
+		return nil, graceful.ForbiddenError{Message: "cant't update deleted user save"}
+	}
+	_, err = u.dbs.mySQL.Exec(queries.UpdateSaveDataJSON, upd, saveID)
+	if err != nil {
+		return nil, err
+	}
+	var dataBytes []byte
+	err = u.dbs.mySQL.QueryRow(queries.GetSaveDataQuery, saveID, u.ID()).Scan(&dataBytes)
+	if err != nil {
+		return nil, err
+	}
+	var updatedData C.J
+	err = json.Unmarshal(dataBytes, &updatedData)
+	if err != nil {
+		return nil, err
+	}
+	data["updated_at"] = time.Now().Unix() // ЗАЧЕМ ТУТ ЭТО??
+	return updatedData, nil
 }
 
 //CreateSave - create new save instance in db
