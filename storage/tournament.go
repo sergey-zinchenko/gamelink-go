@@ -17,7 +17,8 @@ type (
 )
 
 const (
-	mysqlKeyExist = 1062
+	mysqlKeyExist            = 1062
+	mysqlTransactionDeadlock = 1213
 )
 
 //Tournament - method to make tournament struct
@@ -92,7 +93,6 @@ func (t Tournament) Join(userID int64) error {
 		if count == 0 {
 			return graceful.NotFoundError{Message: "user or tournament doesn't found"}
 		}
-
 		err = tx.QueryRow(queries.GetCountUsersInRoomAndTournamentExpiredTime, t.ID(), t.ID(), t.ID()).Scan(&registrationExpiredTime, &tournamentExpiredTime, &countUsersInRoom, &maxUsersInRoom)
 		if err != nil {
 			return err
@@ -121,12 +121,20 @@ func (t Tournament) Join(userID int64) error {
 	if err != nil {
 		return err
 	}
-	err = transaction(userID, tx)
-	if err != nil {
-		if e := tx.Rollback(); e != nil {
-			return e
+	for i := 0; i < 10; i++ {
+		err = transaction(userID, tx)
+		if err != nil {
+			switch v := err.(type) {
+			case *mysql.MySQLError:
+				if v.Number != mysqlTransactionDeadlock {
+					return err
+				}
+				continue
+			default:
+				return err
+			}
 		}
-		return err
+		break
 	}
 	err = tx.Commit()
 	if err != nil {

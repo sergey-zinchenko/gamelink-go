@@ -22,6 +22,8 @@ func main() {
 		log.Fatal(err.Error())
 	}
 	go a.GenerateRanks(0)
+
+	//a.GetDummyTokkens(5000)
 	err = a.Run()
 	if err != nil {
 		log.Fatal(err.Error())

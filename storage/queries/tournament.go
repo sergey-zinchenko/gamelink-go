@@ -14,7 +14,7 @@ const (
 	//GetCountUsersInRoomAndTournamentExpiredTime - query to get count of users in room to allow us to check max count users in room in current tournament
 	GetCountUsersInRoomAndTournamentExpiredTime = `SELECT t.registration_expired_time, t.tournament_expired_time, c.users_count, d.users_in_room  FROM 
 		(SELECT registration_expired_time, tournament_expired_time FROM tournaments WHERE id = ?) as t,
-		(SELECT IFNULL(count(user_id),0) as users_count FROM rooms_users WHERE room_id = (SELECT MAX(room_id) FROM rooms_users WHERE tournament_id = ?)) as c,
+		(SELECT IFNULL(count(user_id),0) as users_count FROM rooms_users WHERE room_id = (SELECT MAX(room_id) FROM rooms_users WHERE tournament_id = ?) FOR UPDATE) as c,
 		(SELECT users_in_room FROM tournaments WHERE id=?) as d`
 
 	//JoinUserToRoom - query to join user in room
