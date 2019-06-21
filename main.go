@@ -23,7 +23,7 @@ func main() {
 	}
 	go a.GenerateRanks(0)
 
-	//a.GetDummyTokkens(5000)
+	//a.GetDummyTokkens(25000)
 	err = a.Run()
 	if err != nil {
 		log.Fatal(err.Error())

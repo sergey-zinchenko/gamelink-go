@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"gamelink-go/graceful"
 	"gamelink-go/storage/queries"
-	"github.com/go-sql-driver/mysql"
 	"time"
 )
 
@@ -17,8 +16,7 @@ type (
 )
 
 const (
-	mysqlKeyExist            = 1062
-	mysqlTransactionDeadlock = 1213
+	mysqlKeyExist = 1062
 )
 
 //Tournament - method to make tournament struct
@@ -70,73 +68,7 @@ func (dbs DBS) StartTournament(usersInRoom int64, tournamentDuration int64, regi
 
 //Join - func to join user to tournament
 func (t Tournament) Join(userID int64) error {
-	var registrationExpiredTime, tournamentExpiredTime, countUsersInRoom, maxUsersInRoom int64
-	var transaction = func(userID int64, tx *sql.Tx) error {
-		result, err := tx.Exec(queries.JoinTournament, t.ID(), userID)
-		if err != nil {
-			switch v := err.(type) {
-			case *mysql.MySQLError:
-				if v.Number == mysqlKeyExist {
-					return graceful.ForbiddenError{Message: "you have been already registered in tournament"}
-				}
-			default:
-				return err
-			}
-		}
-		if result == nil {
-			return graceful.ForbiddenError{Message: "can't join tournament"}
-		}
-		count, err := result.RowsAffected()
-		if err != nil {
-			return err
-		}
-		if count == 0 {
-			return graceful.NotFoundError{Message: "user or tournament doesn't found"}
-		}
-		err = tx.QueryRow(queries.GetCountUsersInRoomAndTournamentExpiredTime, t.ID(), t.ID(), t.ID()).Scan(&registrationExpiredTime, &tournamentExpiredTime, &countUsersInRoom, &maxUsersInRoom)
-		if err != nil {
-			return err
-		}
-		if registrationExpiredTime < time.Now().Unix() {
-			return graceful.ForbiddenError{Message: "registration time have been expired"}
-		}
-		if countUsersInRoom < maxUsersInRoom {
-			_, err = tx.Exec(queries.JoinUserToRoom, t.ID(), t.ID(), userID, tournamentExpiredTime)
-			if err != nil {
-				return err
-			}
-		} else {
-			_, err = tx.Exec(queries.CreateNewRoomInCurrentTournament, t.ID())
-			if err != nil {
-				return err
-			}
-			_, err = tx.Exec(queries.JoinUserToRoom, t.ID(), t.ID(), userID, tournamentExpiredTime)
-		}
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-	tx, err := t.dbs.mySQL.Begin()
-	if err != nil {
-		return err
-	}
-	for i := 0; i < 10; i++ {
-		err = transaction(userID, tx)
-		if err != nil {
-			switch v := err.(type) {
-			case *mysql.MySQLError:
-				if v.Number != mysqlTransactionDeadlock {
-					return err
-				}
-				continue
-			default:
-				return err
-			}
-		}
-		break
-	}
-	err = tx.Commit()
+	_, err := t.dbs.mySQL.Exec(queries.JoinTournamentProc, userID, t.ID())
 	if err != nil {
 		return err
 	}
@@ -145,20 +77,11 @@ func (t Tournament) Join(userID int64) error {
 
 //UpdateTournamentScore - method to update user score
 func (t Tournament) UpdateTournamentScore(userID int64, score string) error {
-	result, err := t.dbs.mySQL.Exec(queries.UpdateUserTournamentScore, score, t.ID(), userID, time.Now().Unix())
+	_, err := t.dbs.mySQL.Exec(queries.UpdateUserTournamentScore, score, t.ID(), userID, time.Now().Unix())
 	if err != nil {
 		return err
 	}
-	if result == nil {
-		return graceful.NotFoundError{Message: "can't update score"}
-	}
-	count, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if count == 0 {
-		return graceful.NotFoundError{Message: "can't update score"}
-	}
+
 	return nil
 }
 
