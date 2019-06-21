@@ -87,8 +87,7 @@ CREATE TABLE IF NOT EXISTS tournaments (
   registration_expired_time INT(11) NOT NULL,
   users_in_room INT(11) NOT NULL,
   PRIMARY KEY (id),
-  UNIQUE INDEX id (tournament_expired_time ASC),
-  INDEX tournament_exp_time (tournament_expired_time ASC))
+  UNIQUE INDEX tournament_exp_time (tournament_expired_time ASC))
 ENGINE = InnoDB;`
 
 	//CreateTableRooms - query to create rooms table
