@@ -1,58 +1,80 @@
 package storage
 
 import (
-	"errors"
+	"database/sql"
 	"fmt"
+	"gamelink-go/storage/queries"
+	"sort"
+	"sync"
 )
 
 //Ranks - struct to work with rank arrays. Count of rank arrays == count of leaderboards
 type Ranks struct {
-	DBS      *DBS
-	RankArr1 *[]string
-	RankArr2 *[]string
-	RankArr3 *[]string
+	ranks []*Rank
 }
 
-//GenerateRankArrays - generate arrays using generate func
-func (r *Ranks) GenerateRankArrays(num int) error {
-	if num == 0 {
-		for i := 1; i <= NumOfLeaderBoards; i++ {
-			err := r.generate(i)
-			if err != nil {
-				return err
-			}
-		}
-	} else if num > 0 && num <= NumOfLeaderBoards {
-		err := r.generate(num)
-		if err != nil {
-			return err
-		}
-	} else {
-		return errors.New("wrong rank array num")
-	}
-	return nil
+//Rank - struct to work with leaderboard rank
+type Rank struct {
+	mysql   *sql.DB
+	num     int
+	rankArr *[]string
+	mutex   sync.RWMutex
 }
 
-//generate - get data from db and put it in rank arrays
-func (r *Ranks) generate(num int) error {
+//MakeRank - Rank object constructor
+func MakeRank(mysql *sql.DB, num int) *Rank {
+	return &Rank{mysql: mysql, num: num}
+}
+
+//Fill - fill rankArr from db
+func (r *Rank) Fill() error {
 	var res []string
-	q := fmt.Sprintf("SELECT score from gamelink.leader_board%d", num)
-	rows, err := r.DBS.mySQL.Query(q)
+	q := fmt.Sprintf(queries.GetUserScoresFromDb, r.num)
+	rows, err := r.mysql.Query(q)
 	if err != nil {
-		return nil
+		return err
 	}
+	defer rows.Close()
 	for rows.Next() {
 		var r string
 		rows.Scan(&r)
 		res = append(res, r)
 	}
-	switch n := num; n {
-	case 1:
-		r.RankArr1 = &res
-	case 2:
-		r.RankArr2 = &res
-	case 3:
-		r.RankArr3 = &res
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	r.rankArr = &res
+	return nil
+}
+
+//GetRank - return user rank in leaderboard
+func (r *Rank) GetRank(score string) int {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
+	indexInArray := sort.Search(len(*r.rankArr), func(i int) bool { return (*r.rankArr)[i] >= score })
+	return indexInArray + 1
+}
+
+//MakeRanks - constructor for Ranks
+func MakeRanks(num int, mysql *sql.DB) *Ranks {
+	var result = &Ranks{ranks: make([]*Rank, num)}
+	for i := 0; i < num; i++ {
+		result.ranks[i] = MakeRank(mysql, i+1)
+	}
+	return result
+}
+
+//Update - update ranks from db
+func (r *Ranks) Update() error {
+	for _, v := range r.ranks {
+		err := v.Fill()
+		if err != nil {
+			return err
+		}
 	}
 	return nil
+}
+
+//GetRank - get user rank
+func (r *Ranks) GetRank(lbNum int, score string) int {
+	return r.ranks[lbNum-1].GetRank(score)
 }

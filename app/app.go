@@ -6,7 +6,7 @@ import (
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/middleware/basicauth"
-	log "github.com/sirupsen/logrus"
+	"sync"
 	"time"
 )
 
@@ -17,9 +17,8 @@ const (
 type (
 	//App structure - connects databases with the middleware and handlers of router
 	App struct {
-		dbs   *storage.DBS
-		iris  *iris.Application
-		ranks *storage.Ranks
+		dbs  *storage.DBS
+		iris *iris.Application
 	}
 )
 
@@ -35,13 +34,12 @@ func (a *App) ConnectDataBases() error {
 }
 
 //GenerateRanks - invoke storage func that generate rank arrays
-func (a *App) GenerateRanks(count int) {
+func (a *App) GenerateRanks(wg *sync.WaitGroup) {
+	a.dbs.UpdateRanks()
+	wg.Done()
 	for {
-		err := a.ranks.GenerateRankArrays(count)
-		if err != nil {
-			log.Fatal(err.Error())
-		}
 		time.Sleep(config.UpdateLbArraysDataInSecondsPeriod)
+		a.dbs.UpdateRanks()
 	}
 }
 
@@ -70,7 +68,6 @@ func NewApp() (a *App) {
 	a = new(App)
 	a.iris = iris.New()
 	a.dbs = &storage.DBS{}
-	a.ranks = &storage.Ranks{DBS: a.dbs}
 
 	fakedata := a.iris.Party("/fake")
 	{
