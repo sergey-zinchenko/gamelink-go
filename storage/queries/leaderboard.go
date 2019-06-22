@@ -3,14 +3,7 @@ package queries
 const (
 	//AllUsersLeaderboardQuery - mysql query template to get leader board against all users
 	AllUsersLeaderboardQuery = `
-SELECT CAST(CONCAT(
-           '{"id":', i.id, ',',
-    		'"nickname":', JSON_QUOTE(i.nickname), ',',
-    		'"score":', IFNULL(JSON_QUOTE(i.score), 0), ',',
-    		'"rank":', rank, ',',
-    		IFNULL(CONCAT('"country":', JSON_QUOTE(i.country), ','),''),
-    		IFNULL(CONCAT('"meta":', i.meta, ','),''),
-           '"leaderboard":', leaderboard,'}') AS JSON) as leaderboard
+SELECT  i.id, i.nickname, IFNULL(i.score, "0") as score, i.country,IFNULL(i.meta, "") as meta, leaderboard 
 							FROM (SELECT * FROM leader_board%[1]d u WHERE u.id=?) as i,
 							(SELECT (CAST(IFNULL(CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('{',
 							'"id":', 			l.id, ',',
@@ -20,8 +13,7 @@ SELECT CAST(CONCAT(
 							IFNULL(CONCAT(',"meta":', l.meta),''),
 							'}')), ']'), "[]") AS JSON)) as leaderboard
    FROM
-  (SELECT v.id, v.nickname,v.score,v.meta, v.country FROM leader_board%[1]d v WHERE v.score > 0 LIMIT 100) l WHERE  l.id != ?) as q, 
-  (SELECT COUNT(*) + 1 as rank FROM leader_board%[1]d i, leader_board%[1]d j WHERE i.id = ? AND j.score > i.score) as rank`
+  (SELECT v.id, v.nickname,v.score,v.meta, v.country FROM leader_board%[1]d v WHERE v.score > 0 LIMIT 100) l WHERE  l.id != ?) as q`
 
 	//FriendsLeaderboardQuery - mysql query template to get leader board against friends
 	FriendsLeaderboardQuery = `

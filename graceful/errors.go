@@ -19,6 +19,14 @@ type (
 	ForbiddenError struct {
 		Message string
 	}
+	//ConflictError - specific error class for conflict object handling
+	ConflictError struct {
+		Message string
+	}
+	//ServiceUnavailableError - specific error class for conflict object handling
+	ServiceUnavailableError struct {
+		Message string
+	}
 	//StatusCode - interface for getting http status code from errors
 	StatusCode interface {
 		StatusCode() int
@@ -59,6 +67,19 @@ func (fb ForbiddenError) StatusCode() int {
 	return http.StatusForbidden
 }
 
+//StatusCode - function to meet StatusCode interface - returns conflict http code
+func (cf ConflictError) StatusCode() int {
+	return http.StatusConflict
+}
+
+//Error - function required by error interface; It returns default message if not defined.
+func (cf ConflictError) Error() string {
+	if cf.Message != "" {
+		return cf.Message
+	}
+	return "conflict"
+}
+
 //StatusCode - function to meet StatusCode interface - returns BadRequest http code
 func (br BadRequestError) StatusCode() int {
 	return http.StatusBadRequest
@@ -70,6 +91,14 @@ func (nf NotFoundError) Error() string {
 		return nf.Message
 	}
 	return "notfound"
+}
+
+//Error - function required by error interface; It returns default message if not defined.
+func (nf ServiceUnavailableError) Error() string {
+	if nf.Message != "" {
+		return nf.Message
+	}
+	return "notavailiable"
 }
 
 //StatusCode - function to meet StatusCode interface - returns NotFound http code

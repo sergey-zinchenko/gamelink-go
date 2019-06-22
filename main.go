@@ -4,6 +4,7 @@ import (
 	"gamelink-go/app"
 	"gamelink-go/config"
 	log "github.com/sirupsen/logrus"
+	"sync"
 )
 
 func init() {
@@ -17,9 +18,19 @@ func init() {
 
 func main() {
 	a := app.NewApp()
-	if err := a.ConnectDataBases(); err != nil {
+	err := a.ConnectDataBases()
+	if err != nil {
 		log.Fatal(err.Error())
-	} else if err = a.Run(); err != nil {
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go a.GenerateRanks(&wg)
+	wg.Wait()
+
+	//a.GetDummyTokkens(25000)
+	err = a.Run()
+	if err != nil {
 		log.Fatal(err.Error())
 	}
 }

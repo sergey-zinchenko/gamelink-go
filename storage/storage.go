@@ -20,8 +20,14 @@ type (
 	DBS struct {
 		rc    *redis.Client
 		mySQL *sql.DB
+		ranks *Ranks
 	}
 )
+
+//UpdateRanks - update ranks
+func (dbs *DBS) UpdateRanks() error {
+	return dbs.ranks.Update()
+}
 
 //Connect - Connections to all databases will be established here.
 func (dbs *DBS) Connect() (err error) {
@@ -44,6 +50,7 @@ func (dbs *DBS) Connect() (err error) {
 		dbs.mySQL.Close() //i dont know about correctness
 		return
 	}
+	dbs.ranks = MakeRanks(NumOfLeaderBoards, dbs.mySQL)
 	return
 }
 
@@ -85,6 +92,23 @@ func (dbs *DBS) CheckTables() (err error) {
 				return err
 			}
 		}
+
+		if _, err = tx.Exec(queries.CreateTableDbVersion); err != nil {
+			return err
+		}
+
+		if _, err = tx.Exec(queries.DropProcedure); err != nil {
+			return err
+		}
+
+		if _, err = tx.Exec(queries.CreateStoredProcedureForTournamentJoin); err != nil {
+			return err
+		}
+
+		if _, err = tx.Exec(queries.InsertVersionZero); err != nil {
+			return err
+		}
+
 		return nil
 	}
 	tx, err := dbs.mySQL.Begin()
