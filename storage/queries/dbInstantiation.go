@@ -100,13 +100,13 @@ CREATE TABLE IF NOT EXISTS rooms (
   INDEX fk_rooms_1_idx (tournament_id ASC),
   CONSTRAINT fk_rooms_1
     FOREIGN KEY (tournament_id)
-    REFERENCES gamelink.tournaments (id)
+    REFERENCES tournaments (id)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;`
 
 	//CreateTableRoomsUsers - query to create table rooms_users
-	CreateTableRoomsUsers = `CREATE TABLE IF NOT EXISTS gamelink.rooms_users (
+	CreateTableRoomsUsers = `CREATE TABLE IF NOT EXISTS rooms_users (
 id INT(11) NOT NULL AUTO_INCREMENT,
 tournament_id INT(11) NOT NULL,
 tournament_expired_time INT(11) NOT NULL,
@@ -120,17 +120,17 @@ score VARCHAR(100) NULL DEFAULT NULL,
   INDEX tiduid (tournament_id ASC, user_id ASC),
   CONSTRAINT fk_rooms_users_1
     FOREIGN KEY (tournament_id)
-    REFERENCES gamelink.tournaments (id)
+    REFERENCES tournaments (id)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
   CONSTRAINT fk_rooms_users_rooms1
     FOREIGN KEY (room_id)
-    REFERENCES gamelink.rooms (id)
+    REFERENCES rooms (id)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
   CONSTRAINT fk_rooms_users_users1
     FOREIGN KEY (user_id)
-     REFERENCES gamelink.users (id)
+     REFERENCES users (id)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;`
@@ -150,7 +150,7 @@ VIEW leader_board%[1]d AS
         users u
     ORDER BY u.lb%[1]d DESC`
 	//CreateUsersTournamentsTable - query to create table users in tournament
-	CreateUsersTournamentsTable = `CREATE TABLE IF NOT EXISTS gamelink.users_tournaments (
+	CreateUsersTournamentsTable = `CREATE TABLE IF NOT EXISTS users_tournaments (
   tournament_id INT(11) NOT NULL,
   user_id INT(11) NOT NULL,
   PRIMARY KEY (user_id, tournament_id),
@@ -158,26 +158,26 @@ VIEW leader_board%[1]d AS
   INDEX fk_users_tournaments_users1_idx (user_id ASC),
   CONSTRAINT fk_users_tournaments_tournaments1
     FOREIGN KEY (tournament_id)
-    REFERENCES gamelink.tournaments (id)
+    REFERENCES tournaments (id)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
   CONSTRAINT fk_users_tournaments_users1
     FOREIGN KEY (user_id)
-    REFERENCES gamelink.users (id)
+    REFERENCES users (id)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;`
 
 	//CreateTableDbVersion - create table for database versions
-	CreateTableDbVersion = `CREATE TABLE IF NOT EXISTS gamelink.db_version (
+	CreateTableDbVersion = `CREATE TABLE IF NOT EXISTS db_version (
  version INT NOT NULL,
  PRIMARY KEY (version));`
 
 	//InsertVersionZero - insert 0 version of db
-	InsertVersionZero = `INSERT IGNORE INTO gamelink.db_version (version) VALUES (0);`
+	InsertVersionZero = `INSERT IGNORE INTO db_version (version) VALUES (0);`
 
 	//GetDbVersion - query to get db version
-	GetDbVersion = `SELECT MAX(version) FROM gamelink.db_version`
+	GetDbVersion = `SELECT MAX(version) FROM db_version`
 
 	//DropProcedure - drop procedure before instantiate it in db
 	DropProcedure = `DROP PROCEDURE IF EXISTS join_tournament`

@@ -50,7 +50,8 @@ func (r *Rank) Fill() error {
 func (r *Rank) GetRank(score string) int {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
-	indexInArray := sort.Search(len(*r.rankArr), func(i int) bool { return (*r.rankArr)[i] >= score })
+	indexInArray := sort.Search(len(*r.rankArr), func(i int) bool { return (*r.rankArr)[i] <= score })
+
 	return indexInArray + 1
 }
 
