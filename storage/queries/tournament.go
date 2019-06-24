@@ -9,7 +9,7 @@ const (
 	CreateNewRoom = `INSERT INTO rooms (tournament_id) VALUES ((SELECT MAX(id) from tournaments))`
 
 	//JoinTournamentProc - call procedure
-	JoinTournamentProc = `CALL gamelink.join_tournament(?, ?);`
+	JoinTournamentProc = `CALL join_tournament(?, ?);`
 
 	//UpdateUserTournamentScore - query to update user tournament score
 	UpdateUserTournamentScore = `UPDATE rooms_users SET score = ? WHERE tournament_id = ? AND user_id = (SELECT id from users u WHERE u.id = ? AND u.deleted != 1) AND tournament_expired_time > ?`

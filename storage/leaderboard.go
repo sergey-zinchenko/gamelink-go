@@ -118,9 +118,12 @@ func (u User) getAllUsersLeaderboard(lbNum int) (string, error) {
 		}
 		if res.Leaderboard[i].ID == u.ID() {
 			res.Rank = i + 1
+			res.Leaderboard[i] = lbUser{}
+			i--
 		}
 		i++
 	}
+	res.Leaderboard = res.Leaderboard[0:i]
 	if res.Rank == 0 {
 		res.Rank = u.dbs.ranks.GetRank(lbNum, res.Score)
 	}

@@ -42,7 +42,7 @@ type (
 	commonInfo struct {
 		FullName    string `json:"name"`
 		Bdate       int64  `json:"bdate,omitempty"`
-		Sex         string `json:"sex"`
+		Sex         string `json:"sex,omitempty"`
 		UserEmail   string `json:"email,omitempty"`
 		UserCountry string `json:"country,omitempty"`
 		friends     []ThirdPartyID
