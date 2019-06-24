@@ -56,7 +56,7 @@ func (u User) LeaderboardString(lbType string, lbNum int) (string, error) {
 //getAllUsersLeaderboard - getting "all" leaderboard
 func (u User) getAllUsersLeaderboard(lbNum int) (string, error) {
 	var id, rank int
-	var nickname, score, country, meta string
+	var nickname, score, country, meta sql.NullString
 	var leaderboard []byte
 	var err error
 	resMap := make(C.J)
@@ -65,17 +65,25 @@ func (u User) getAllUsersLeaderboard(lbNum int) (string, error) {
 		return "", err
 	}
 	resMap["id"] = id
-	resMap["nickname"] = nickname
-	resMap["score"] = score
-	resMap["country"] = country
-	resMap["meta"] = meta
+	if nickname.Valid {
+		resMap["nickname"] = nickname.String
+	}
+	if score.Valid {
+		resMap["score"] = score.String
+	}
+	if country.Valid {
+		resMap["country"] = country.String
+	}
+	if meta.Valid {
+		resMap["meta"] = meta
+	}
 	var lb []C.J
 	err = json.Unmarshal(leaderboard, &lb)
 	resMap["leaderboard"] = lb
 	if err != nil {
 		return "", err
 	}
-	rank = u.dbs.ranks.GetRank(lbNum, score)
+	rank = u.dbs.ranks.GetRank(lbNum, score.String)
 	resMap["rank"] = rank
 	bytes, err := json.Marshal(resMap)
 	if err != nil {
