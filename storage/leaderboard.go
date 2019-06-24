@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	C "gamelink-go/common"
 	"gamelink-go/graceful"
 	"gamelink-go/storage/queries"
 )
@@ -55,37 +54,77 @@ func (u User) LeaderboardString(lbType string, lbNum int) (string, error) {
 
 //getAllUsersLeaderboard - getting "all" leaderboard
 func (u User) getAllUsersLeaderboard(lbNum int) (string, error) {
-	var id, rank int
-	var nickname, score, country, meta sql.NullString
-	var leaderboard []byte
 	var err error
-	resMap := make(C.J)
-	err = u.dbs.mySQL.QueryRow(fmt.Sprintf(queries.AllUsersLeaderboardQuery, lbNum), u.ID(), u.ID()).Scan(&id, &nickname, &score, &country, &meta, &leaderboard)
+	type hasScan interface {
+		Scan(dest ...interface{}) error
+	}
+	//lbUser - struct for lbUser
+	type lbUser struct {
+		ID       int64  `json:"id"`
+		Nickname string `json:"nickname,omitempty"`
+		Score    string `json:"score,omitempty"`
+		Country  string `json:"country,omitempty"`
+		Meta     string `json:"meta,omitempty"`
+	}
+	//lbResponse - struct for response
+	type lbResponse struct {
+		lbUser
+		Rank        int      `json:"rank"`
+		Leaderboard []lbUser `json:"leaderboard"`
+	}
+
+	var datacheck = func(lbUser *lbUser, scan hasScan) error {
+		var id int64
+		var nickname, score, country, meta sql.NullString
+		err := scan.Scan(&id, &nickname, &score, &country, &meta)
+		if err != nil {
+			return err
+		}
+		lbUser.ID = id
+		if nickname.Valid {
+			lbUser.Nickname = nickname.String
+		}
+		if score.Valid {
+			lbUser.Score = score.String
+		} else {
+			lbUser.Score = "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+		}
+		if country.Valid {
+			lbUser.Country = country.String
+		}
+		if meta.Valid {
+			lbUser.Meta = meta.String
+		}
+		return nil
+	}
+	row := u.dbs.mySQL.QueryRow(fmt.Sprintf(queries.MyInfoForLeaderboard, lbNum), u.ID())
+	res := lbResponse{}
+	err = datacheck(&res.lbUser, row)
 	if err != nil {
 		return "", err
 	}
-	resMap["id"] = id
-	if nickname.Valid {
-		resMap["nickname"] = nickname.String
-	}
-	if score.Valid {
-		resMap["score"] = score.String
-	}
-	if country.Valid {
-		resMap["country"] = country.String
-	}
-	if meta.Valid {
-		resMap["meta"] = meta
-	}
-	var lb []C.J
-	err = json.Unmarshal(leaderboard, &lb)
-	resMap["leaderboard"] = lb
+	rows, err := u.dbs.mySQL.Query(fmt.Sprintf(queries.AllUsersLeaderboardQuery, lbNum))
 	if err != nil {
 		return "", err
 	}
-	rank = u.dbs.ranks.GetRank(lbNum, score.String)
-	resMap["rank"] = rank
-	bytes, err := json.Marshal(resMap)
+	defer rows.Close()
+	res.Leaderboard = make([]lbUser, 100)
+	var i int
+	res.Rank = 0
+	for rows.Next() {
+		err = datacheck(&res.Leaderboard[i], rows)
+		if err != nil {
+			return "", err
+		}
+		if res.Leaderboard[i].ID == u.ID() {
+			res.Rank = i + 1
+		}
+		i++
+	}
+	if res.Rank == 0 {
+		res.Rank = u.dbs.ranks.GetRank(lbNum, res.Score)
+	}
+	bytes, err := json.Marshal(res)
 	if err != nil {
 		return "", err
 	}

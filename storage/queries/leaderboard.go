@@ -2,18 +2,10 @@ package queries
 
 const (
 	//AllUsersLeaderboardQuery - mysql query template to get leader board against all users
-	AllUsersLeaderboardQuery = `
-SELECT  i.id, i.nickname, IFNULL(i.score, "0") as score, i.country,IFNULL(i.meta, "") as meta, leaderboard 
-							FROM (SELECT * FROM leader_board%[1]d u WHERE u.id=?) as i,
-							(SELECT (CAST(IFNULL(CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('{',
-							'"id":', 			l.id, ',',
-							'"nickname":', 	JSON_QUOTE(l.nickname), ',',
-							'"score":', JSON_QUOTE(l.score),
-							IFNULL(CONCAT(',"country":', JSON_QUOTE(l.country)),''),
-							IFNULL(CONCAT(',"meta":', l.meta),''),
-							'}')), ']'), "[]") AS JSON)) as leaderboard
-   FROM
-  (SELECT v.id, v.nickname,v.score,v.meta, v.country FROM leader_board%[1]d v WHERE v.score > 0 LIMIT 100) l WHERE  l.id != ?) as q`
+	AllUsersLeaderboardQuery = `SELECT v.id, v.nickname,v.score,v.meta, v.country FROM leader_board%[1]d v WHERE v.score > 0 LIMIT 100`
+
+	//MyInfoForLeaderboard - mysql query to get user info for leaderboard
+	MyInfoForLeaderboard = `SELECT v.id, v.nickname,v.lb%[1]d,v.meta, v.country FROM users v WHERE id = ?`
 
 	//FriendsLeaderboardQuery - mysql query template to get leader board against friends
 	FriendsLeaderboardQuery = `

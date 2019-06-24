@@ -145,7 +145,7 @@ VIEW leader_board%[1]d AS
         IFNULL(u.nickname, u.name) AS nickname,
         u.country AS country,
         u.meta AS meta,
-        IFNULL(u.lb%[1]d, 0) AS score
+        IFNULL(u.lb%[1]d, "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000") AS score
     FROM
         users u
     ORDER BY u.lb%[1]d DESC`

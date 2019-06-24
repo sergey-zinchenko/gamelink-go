@@ -46,7 +46,7 @@ func (dbs DBS) AddFakeUserGoroutine(goroutineNumber, count int, wg *sync.WaitGro
 		if i%1000 == 0 && i != 0 {
 			t1 = time.Now()
 		}
-		fakeSave := C.J{"id": i, "name": "iPhone9,3", "state": C.J{"Gold": 438, "SafeData": C.J{"MaxSum": 30, "LastTimeGet": "07/06/2018 06:28:40", "AmountInHour": 50}, "leavedId": -1, "LastTutor": 7, "LevelData": C.J{"Level": 3, "Progress": 30}, "TotalMoney": "441635587284", "AutoMultiplier": 1, "OpenedBoosters": 9, "LastBookingPerk": C.J{"Id": 6, "Level": 3}, "MissionsProgress": C.J{"CurrentMission": 0, "isFirstGoalDone": false, "isThirdGoalDone": false, "isSecondGoalDone": false}}}
+		fakeSave := C.J{"id": i, "name": "iPhone9,3", "state": C.J{"Gold": 438, "SafeData": C.J{"MaxSum": 30, "LastTimeGet": "07/06/2018 06:28:40", "AmountInHour": 50}, "leavedId": -1, "LastTutor": 7, "LevelData": C.J{"Level": 3, "Progress": 30}, "TotalMoney": "441635587284", "AutoMultiplier": 1, "OpenedBoosters": 9, "LastBookingPerk": C.J{"ID": 6, "Level": 3}, "MissionsProgress": C.J{"CurrentMission": 0, "isFirstGoalDone": false, "isThirdGoalDone": false, "isSecondGoalDone": false}}}
 		fakeData := C.J{
 			"name":     petname.Generate(2, " "),
 			"nickname": petname.Generate(1, ""),
