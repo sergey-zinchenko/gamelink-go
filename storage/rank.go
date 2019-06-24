@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"gamelink-go/storage/queries"
+	"github.com/kataras/iris/core/errors"
 	"sort"
 	"sync"
 )
@@ -27,9 +28,12 @@ func MakeRank(mysql *sql.DB, num int) *Rank {
 }
 
 //Fill - fill rankArr from db
-func (r *Rank) Fill() error {
+func (r *Rank) Fill(lbNum int) error {
+	if lbNum <= 0 || lbNum > NumOfLeaderBoards {
+		return errors.New("wrong leaderboard number")
+	}
 	var res []string
-	q := fmt.Sprintf(queries.GetUserScoresFromDb, r.num)
+	q := fmt.Sprintf(queries.GetUserScoresFromDb, lbNum)
 	rows, err := r.mysql.Query(q)
 	if err != nil {
 		return err
@@ -50,7 +54,8 @@ func (r *Rank) Fill() error {
 func (r *Rank) GetRank(score string) int {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
-	indexInArray := sort.Search(len(*r.rankArr), func(i int) bool { return (*r.rankArr)[i] >= score })
+	l := len(*r.rankArr)
+	indexInArray := sort.Search(l, func(i int) bool { return (*r.rankArr)[i] >= score })
 	return indexInArray + 1
 }
 
@@ -65,8 +70,8 @@ func MakeRanks(num int, mysql *sql.DB) *Ranks {
 
 //Update - update ranks from db
 func (r *Ranks) Update() error {
-	for _, v := range r.ranks {
-		err := v.Fill()
+	for k, v := range r.ranks {
+		err := v.Fill(k + 1)
 		if err != nil {
 			return err
 		}

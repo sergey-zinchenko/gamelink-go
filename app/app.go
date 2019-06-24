@@ -43,6 +43,7 @@ func (a *App) GenerateRanks(wg *sync.WaitGroup) {
 	}
 }
 
+//GetDummyTokkens - write user dummy tokens to the file. File used for load testing with wrk as part of lua script
 //func (a *App) GetDummyTokkens(count int) {
 //	f, err := os.OpenFile("/home/alex/Desktop/ngrok/tokens", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 //	if err != nil {
