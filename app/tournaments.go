@@ -1,12 +1,13 @@
 package app
 
 import (
-	"fmt"
 	"gamelink-go/graceful"
 	"gamelink-go/storage"
 	"github.com/gorhill/cronexpr"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
+	log "github.com/sirupsen/logrus"
+	"math/rand"
 	"net/http"
 	"os/exec"
 	"regexp"
@@ -14,6 +15,19 @@ import (
 	"strings"
 	"time"
 )
+
+var (
+	lbRegexp *regexp.Regexp
+	err      error
+)
+
+func init() {
+	rand.Seed(time.Now().UTC().UnixNano())
+	lbRegexp, err = regexp.Compile("^\\d{100}$")
+	if err != nil {
+		log.Fatal(err)
+	}
+}
 
 //startTournament - func to start tournament from cron
 func (a *App) startTournament(ctx iris.Context) {
@@ -26,14 +40,12 @@ func (a *App) startTournament(ctx iris.Context) {
 	var getUsersInRoom, getTournamentDuration, getRegistrationDuration []string
 
 	getUsersInRoom = ctx.Request().URL.Query()["users_in_room"]
-	fmt.Println(getUsersInRoom)
 	if getUsersInRoom == nil || getUsersInRoom[0] == "" {
 		err = graceful.BadRequestError{Message: "invalid param users in room"}
 		return
 	}
 
 	getTournamentDuration = ctx.Request().URL.Query()["tournament_duration"]
-	fmt.Println(getTournamentDuration)
 	if getTournamentDuration == nil || getTournamentDuration[0] == "" {
 		err = graceful.BadRequestError{Message: "invalid tournament duration"}
 		return
@@ -113,7 +125,7 @@ func (a *App) updateScore(ctx iris.Context) {
 		return
 	}
 	score := ctx.PostValue("score")
-	matched, err := regexp.MatchString("^\\d{100}$", score)
+	matched := lbRegexp.MatchString(score)
 	if err != nil {
 		return
 	}

@@ -6,6 +6,7 @@ import (
 	"gamelink-go/social"
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
+	"github.com/sirupsen/logrus"
 	"net/url"
 	"strings"
 )
@@ -40,11 +41,11 @@ func (a *App) authMiddleware(ctx iris.Context) {
 	header := strings.TrimSpace(ctx.GetHeader("Authorization"))
 	arr := strings.Split(header, " ")
 	if len(arr) < 2 {
-		err = graceful.BadRequestError{Message: "authorization header not valid"}
+		err = graceful.UnauthorizedError{Message: "authorization header not valid"}
 		return
 	}
 	if strings.ToUpper(arr[0]) != "BEARER" {
-		err = graceful.BadRequestError{Message: "authorization header not valid"}
+		err = graceful.BadRequestError{Message: "authorization bearer not valid"}
 		return
 	}
 	user, err = a.dbs.AuthorizedUser(arr[1])
@@ -67,15 +68,16 @@ func (a *App) registerLogin(ctx iris.Context) {
 	}()
 	thirdPartyToken := tokenFromValues(ctx.Request().URL.Query())
 	if thirdPartyToken == nil {
-		err = graceful.BadRequestError{Message: "query without vk or fb token"}
-		return
+		thirdPartyToken = social.NewDummyToken()
 	}
 	user, err = a.dbs.ThirdPartyUser(thirdPartyToken)
 	if err != nil {
+		logrus.Warn(err.Error())
 		return
 	}
-	authToken, err = user.AuthToken()
+	authToken, err = a.dbs.AuthToken(thirdPartyToken.IsDummy(), user.ID())
 	if err != nil {
+		logrus.Warn(err.Error())
 		return
 	}
 	ctx.JSON(C.J{"token": authToken})

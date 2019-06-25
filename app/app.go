@@ -6,6 +6,7 @@ import (
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/middleware/basicauth"
+	"sync"
 	"time"
 )
 
@@ -30,6 +31,16 @@ func (a *App) ConnectDataBases() error {
 		return err
 	}
 	return nil
+}
+
+//GenerateRanks - invoke storage func that generate rank arrays
+func (a *App) GenerateRanks(wg *sync.WaitGroup) {
+	a.dbs.UpdateRanks()
+	wg.Done()
+	for {
+		time.Sleep(config.UpdateLbArraysDataInSecondsPeriod)
+		a.dbs.UpdateRanks()
+	}
 }
 
 //NewApp - You can construct and initialize App (application) object with that function
