@@ -28,9 +28,6 @@ func main() {
 	go a.GenerateRanks(&wg)
 	wg.Wait()
 
-	//uncomment this if need get dummy tokkens for testing
-	//a.GetDummyTokkens(25000)
-
 	err = a.Run()
 	if err != nil {
 		log.Fatal(err.Error())

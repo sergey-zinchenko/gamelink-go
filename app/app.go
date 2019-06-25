@@ -43,39 +43,12 @@ func (a *App) GenerateRanks(wg *sync.WaitGroup) {
 	}
 }
 
-//GetDummyTokkens - write user dummy tokens to the file. File used for load testing with wrk as part of lua script
-//func (a *App) GetDummyTokkens(count int) {
-//	f, err := os.OpenFile("/home/alex/Desktop/ngrok/tokens", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//	for i := 1; i <= count; i++ {
-//		authToken, err := a.dbs.AuthToken(true, int64(i))
-//		if err != nil {
-//			fmt.Print("err")
-//		}
-//		if _, err := f.Write([]byte(fmt.Sprintf("%s\n", authToken))); err != nil {
-//			log.Fatal(err)
-//		}
-//	}
-//	if err := f.Close(); err != nil {
-//		log.Fatal(err)
-//	}
-//}
-
 //NewApp - You can construct and initialize App (application) object with that function
 //router will be configured but not database connections
 func NewApp() (a *App) {
 	a = new(App)
 	a.iris = iris.New()
 	a.dbs = &storage.DBS{}
-
-	//routes for testing purpose
-	//fakedata := a.iris.Party("/fake")
-	//{
-	//	fakedata.Get("/users", a.addFakeUsers) //add fake users to db
-	//	fakedata.Get("/token/{id:int}", a.addFakeToken) //generate token for user
-	//}
 
 	auth := a.iris.Party("/auth")
 	{
