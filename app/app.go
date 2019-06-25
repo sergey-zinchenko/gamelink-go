@@ -70,11 +70,12 @@ func NewApp() (a *App) {
 	a.iris = iris.New()
 	a.dbs = &storage.DBS{}
 
-	fakedata := a.iris.Party("/fake")
-	{
-		fakedata.Get("/users", a.addFakeUsers)
-		fakedata.Get("/token/{id:int}", a.addFakeToken)
-	}
+	//routes for testing purpose
+	//fakedata := a.iris.Party("/fake")
+	//{
+	//	fakedata.Get("/users", a.addFakeUsers) //add fake users to db
+	//	fakedata.Get("/token/{id:int}", a.addFakeToken) //generate token for user
+	//}
 
 	auth := a.iris.Party("/auth")
 	{
