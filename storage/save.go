@@ -102,6 +102,9 @@ func (u User) UpdateSave(data C.J, saveID int) (C.J, error) {
 	var dataBytes []byte
 	err = u.dbs.mySQL.QueryRow(queries.GetSaveDataQuery, saveID, u.ID()).Scan(&dataBytes)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, graceful.NotFoundError{Message: "save not found"}
+		}
 		return nil, err
 	}
 	var updatedData C.J
