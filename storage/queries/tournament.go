@@ -42,7 +42,7 @@ const (
 									'"id":', t.id,
 									',', '"registration_expired_time":', t.registration_expired_time,
 									',', '"tournament_expired_time":', t.tournament_expired_time,
-									'}')), ']') AS JSON),"[]") FROM tournaments t WHERE registration_expired_time > ?`
+									'}')), ']') AS JSON),"[]") FROM tournaments t WHERE registration_expired_time > unix_timestamp()`
 
 	//GetResults - query to get all user results from last 100 tournaments
 	GetResults = ` SELECT IFNULL(CAST(CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('{',
