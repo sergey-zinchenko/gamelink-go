@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"gamelink-go/graceful"
 	"gamelink-go/storage/queries"
+	"github.com/go-sql-driver/mysql"
 	"time"
 )
 
@@ -70,7 +71,14 @@ func (dbs DBS) StartTournament(usersInRoom int64, tournamentDuration int64, regi
 func (t Tournament) Join(userID int64) error {
 	_, err := t.dbs.mySQL.Exec(queries.JoinTournamentProc, userID, t.ID())
 	if err != nil {
-		return err
+		switch v := err.(type) {
+		case *mysql.MySQLError:
+			if v.Number == mysqlKeyExist {
+				return graceful.ForbiddenError{Message: "you have been already registered in tournament"}
+			}
+		default:
+			return err
+		}
 	}
 	return nil
 }
@@ -119,7 +127,7 @@ func (u User) GetTournaments() (string, error) {
 		err = graceful.ForbiddenError{Message: "request for deleted user"}
 		return "", err
 	}
-	err = u.dbs.mySQL.QueryRow(queries.GetAvailableTournaments, time.Now().Unix()).Scan(&result)
+	err = u.dbs.mySQL.QueryRow(queries.GetAvailableTournaments).Scan(&result)
 	if err != nil {
 		return "", err
 	}
