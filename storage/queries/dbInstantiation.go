@@ -186,29 +186,29 @@ ENGINE = InnoDB;`
 	CreateStoredProcedureForTournamentJoin = `
 		CREATE  PROCEDURE join_tournament(IN uid INT, IN tid INT)
 		BEGIN
-		DECLARE countUsersInRoom, regExpTime, tournExpTime, maxUsersInRoom INT;
-		
-		DECLARE EXIT HANDLER FOR SQLEXCEPTION
-		BEGIN
-		ROLLBACK;
-		RESIGNAL;
-		END;
-		
-		START TRANSACTION;
-		
-		INSERT INTO users_tournaments (user_id,tournament_id) VALUES ((SELECT id FROM users WHERE id=uid AND deleted !=1),(SELECT id from tournaments where id=tid AND registration_expired_time > unix_timestamp()));
-		
-		SELECT  @tournExpTime := a.tournament_expired_time, @countUsersInRoom := b.users_count, @maxUsersInRoom := users_in_room FROM 
-				(SELECT tournament_expired_time FROM tournaments WHERE id = tid) a,
-				(SELECT IFNULL(count(user_id),0) as users_count FROM rooms_users WHERE room_id = (SELECT MAX(room_id) FROM rooms_users WHERE tournament_id = tid) FOR UPDATE) b,
-				(SELECT users_in_room FROM tournaments WHERE id=tid) c;
-		IF countUsersInRoom < maxUsersInRoom THEN
-			INSERT INTO rooms_users (room_id,tournament_id, user_id, tournament_expired_time) VALUES ((SELECT MAX(id) FROM rooms WHERE tournament_id=tid), tid, uid, tournExpTime);
-		ELSE 
-		    INSERT INTO rooms (tournament_id) VALUES (tid); 
-		    INSERT INTO rooms_users (room_id,tournament_id, user_id, tournament_expired_time) VALUES (LAST_INSERT_ID(), tid, uid, @tournExpTime);    
-		END IF;
-		COMMIT;
-		SELECT 1;
-		END;`
+    	DECLARE countUsersInRoom, regExpTime, tournExpTime, maxUsersInRoom INT;
+    	
+    	DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    	BEGIN
+    	ROLLBACK;
+    	RESIGNAL;
+    	END;
+    	
+    	START TRANSACTION;
+    	
+    	INSERT INTO users_tournaments (user_id,tournament_id) VALUES ((SELECT id FROM users WHERE id=uid AND deleted !=1),(SELECT id from tournaments where id=tid AND registration_expired_time > unix_timestamp()));
+    	
+    	SELECT  @tournExpTime := a.tournament_expired_time, @countUsersInRoom := b.users_count, @maxUsersInRoom := users_in_room FROM 
+    	    (SELECT tournament_expired_time FROM tournaments WHERE id = tid) a,
+    	    (SELECT IFNULL(count(user_id),0) as users_count FROM rooms_users WHERE room_id = (SELECT MAX(id) FROM rooms WHERE tournament_id = tid for update) FOR UPDATE) b,
+    	    (SELECT users_in_room FROM tournaments WHERE id=tid) c;
+    	IF (@countUsersInRoom < @maxUsersInRoom) THEN
+    	  INSERT INTO rooms_users (room_id,tournament_id, user_id, tournament_expired_time) VALUES ((SELECT MAX(id) FROM rooms WHERE tournament_id=tid), tid, uid, @tournExpTime);
+    	ELSE 
+    	    INSERT INTO rooms (tournament_id) VALUES (tid); 
+    	    INSERT INTO rooms_users (room_id,tournament_id, user_id, tournament_expired_time) VALUES ((SELECT MAX(id) FROM rooms WHERE tournament_id=tid), tid, uid, @tournExpTime);    
+    	END IF;
+    	COMMIT;
+    	SELECT 1;
+    	END`
 )
