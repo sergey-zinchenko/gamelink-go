@@ -128,19 +128,21 @@ func (u User) GetTournaments() (string, error) {
 
 //GetResults - method to get user results from last 100 tournaments
 func (u User) GetResults() (string, error) {
-	var result string
+	var result sql.NullString
 	var flag int
 	err := u.dbs.mySQL.QueryRow(queries.IternalCheckFlag, u.ID()).Scan(&flag)
 	if err != nil {
 		return "", err
 	}
 	if flag == 1 {
-		err = graceful.ForbiddenError{Message: "request for deleted user"}
-		return "", err
+		return "", graceful.ForbiddenError{Message: "request for deleted user"}
 	}
 	err = u.dbs.mySQL.QueryRow(queries.GetResults, u.ID()).Scan(&result)
 	if err != nil {
 		return "", err
 	}
-	return result, nil
+	if !result.Valid {
+		return "", graceful.NotFoundError{Message: "no results for this user"}
+	}
+	return result.String, nil
 }

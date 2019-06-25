@@ -12,7 +12,7 @@ import (
 
 // SavesString - return saves from db all or one by instance id
 func (u User) SavesString(saveID int) (string, error) {
-	var str string
+	var str sql.NullString
 	var err error
 	if u.dbs.mySQL == nil {
 		return "", errors.New("databases not initialized")
@@ -28,7 +28,10 @@ func (u User) SavesString(saveID int) (string, error) {
 		}
 		return "", err
 	}
-	return str, nil
+	if !str.Valid {
+		return "", graceful.NotFoundError{Message: "can't find save"}
+	}
+	return str.String, nil
 }
 
 //txSaveData - returns save data in C.J format
