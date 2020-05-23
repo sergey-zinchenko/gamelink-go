@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	C "gamelink-go/common"
 	"gamelink-go/graceful"
 	"gamelink-go/social"
@@ -50,7 +51,7 @@ func (a *App) authMiddleware(ctx iris.Context) {
 		err = graceful.BadRequestError{Message: "authorization bearer not valid"}
 		return
 	}
-	user, err = a.dbs.AuthorizedUser(arr[1])
+	user, err = a.dbs.AuthorizedUser(context.Background(), arr[1])
 	if err != nil {
 		return
 	}
@@ -81,7 +82,7 @@ func (a *App) registerLogin(ctx iris.Context) {
 		logrus.Warn(err.Error())
 		return
 	}
-	authToken, err = a.dbs.AuthToken(thirdPartyToken.IsDummy(), user.ID())
+	authToken, err = a.dbs.AuthToken(context.Background(), thirdPartyToken.IsDummy(), user.ID())
 	if err != nil {
 		logrus.Warn(err.Error())
 		return

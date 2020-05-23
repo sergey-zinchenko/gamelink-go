@@ -110,6 +110,7 @@ func NewApp() (a *App) {
 			tournaments.Get("/{tournament_id:int}/leaderboard", a.getRoomLeaderboard)
 			tournaments.Get("/list", a.getAvailableTournaments)
 			tournaments.Get("/results", a.getUsersResults)
+			tournaments.Get("/next", a.timeToNextTournament)
 		}
 	}
 	a.iris.OnAnyErrorCode(func(ctx iris.Context) {

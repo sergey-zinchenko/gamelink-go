@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"gamelink-go/app"
 	"gamelink-go/config"
 	"gamelink-go/version"
@@ -22,7 +23,7 @@ func main() {
 		version.Commit, version.BuildTime, version.Release,
 	)
 	a := app.NewApp()
-	err := a.ConnectDataBases()
+	err := a.ConnectDataBases(context.Background())
 	if err != nil {
 		log.Fatal(err.Error())
 	}

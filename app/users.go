@@ -17,16 +17,12 @@ import (
 func (a *App) getUser(ctx iris.Context) {
 	user := ctx.Values().Get(userCtxKey).(*storage.User)
 	data, err := user.DataString()
-	defer func() {
-		if err != nil {
-			handleError(err, ctx)
-		}
-	}()
 	if err != nil {
+		handleError(err, ctx)
 		return
 	}
 	ctx.ContentType(context.ContentJSONHeaderValue)
-	_, err = ctx.WriteString(data)
+	ctx.WriteString(data)
 }
 
 func (a *App) postUser(ctx iris.Context) {
