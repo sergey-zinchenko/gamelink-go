@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"gamelink-go/admingrpc"
 	"gamelink-go/adminnats"
 	C "gamelink-go/common"
@@ -27,7 +28,7 @@ type (
 
 //ConnectDataBases - tries to connect to all databases required to function of the app. Method can be recalled.
 func (a *App) ConnectDataBases() error {
-	if err := a.dbs.Connect(); err != nil {
+	if err := a.dbs.Connect(context.Background()); err != nil {
 		return err
 	}
 	if err := a.dbs.CheckTables(); err != nil {
@@ -110,7 +111,6 @@ func NewApp() (a *App) {
 			tournaments.Get("/{tournament_id:int}/leaderboard", a.getRoomLeaderboard)
 			tournaments.Get("/list", a.getAvailableTournaments)
 			tournaments.Get("/results", a.getUsersResults)
-			tournaments.Get("/next", a.timeToNextTournament)
 		}
 	}
 	a.iris.OnAnyErrorCode(func(ctx iris.Context) {

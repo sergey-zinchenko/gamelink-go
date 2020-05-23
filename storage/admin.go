@@ -3,10 +3,10 @@ package storage
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	C "gamelink-go/common"
 	"gamelink-go/proto_msg"
-	"github.com/kataras/iris/core/errors"
 )
 
 const (

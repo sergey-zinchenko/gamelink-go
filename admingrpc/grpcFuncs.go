@@ -17,7 +17,7 @@ import (
 )
 
 type (
-	//AdminServiceServer - grpc server struct
+	//AdminServiceServer - grpc server struct`
 	AdminServiceServer struct {
 		dbs *storage.DBS
 		nc  *adminnats.NatsService
