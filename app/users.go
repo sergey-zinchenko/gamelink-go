@@ -1,11 +1,12 @@
 package app
 
 import (
+	"context"
 	C "gamelink-go/common"
 	"gamelink-go/graceful"
 	"gamelink-go/storage"
 	"github.com/kataras/iris"
-	"github.com/kataras/iris/context"
+	irisConext "github.com/kataras/iris/context"
 	"net/http"
 	"strings"
 )
@@ -17,7 +18,7 @@ func (a *App) getUser(ctx iris.Context) {
 		handleError(err, ctx)
 		return
 	}
-	ctx.ContentType(context.ContentJSONHeaderValue)
+	ctx.ContentType(irisConext.ContentJSONHeaderValue)
 	ctx.WriteString(data)
 }
 
@@ -65,7 +66,7 @@ func (a *App) deleteUser(ctx iris.Context) {
 	}
 }
 
-func (a *App) addAuth(ctx iris.Context) {
+func (a *App) addAuth(ctx irisConext.Context) {
 	var (
 		err       error
 		data      C.J
@@ -98,11 +99,11 @@ func (a *App) addAuth(ctx iris.Context) {
 		} else {
 			updID = user.ID()
 		}
-		newToken, err := a.dbs.AuthToken(false, updID) //false cause we want generate new token for normal user not for dummy
+		newToken, err := a.dbs.AuthToken(context.Background(), false, updID) //false cause we want generate new token for normal user not for dummy
 		if err != nil {
 			return
 		}
-		err = a.dbs.DeleteRedisToken(tokenValue)
+		err = a.dbs.DeleteRedisToken(context.Background(), tokenValue)
 		if err != nil {
 			return
 		}

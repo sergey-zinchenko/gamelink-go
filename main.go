@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"gamelink-go/app"
 	"gamelink-go/config"
 	log "github.com/sirupsen/logrus"
@@ -18,7 +19,7 @@ func init() {
 
 func main() {
 	a := app.NewApp()
-	err := a.ConnectDataBases()
+	err := a.ConnectDataBases(context.Background())
 	if err != nil {
 		log.Fatal(err.Error())
 	}

@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -30,7 +31,7 @@ func (dbs *DBS) UpdateRanks() error {
 }
 
 //Connect - Connections to all databases will be established here.
-func (dbs *DBS) Connect() (err error) {
+func (dbs *DBS) Connect(ctx context.Context) (err error) {
 	if dbs.mySQL, err = sql.Open("mysql", config.MysqlDsn); err != nil {
 		return err
 	}
@@ -45,7 +46,7 @@ func (dbs *DBS) Connect() (err error) {
 		Password: config.RedisPassword,
 		DB:       config.RedisDb,
 	})
-	if _, err = dbs.rc.Ping().Result(); err != nil {
+	if _, err = dbs.rc.Ping(ctx).Result(); err != nil {
 		dbs.rc.Close()    //i dont know about correctness
 		dbs.mySQL.Close() //i dont know about correctness
 		return

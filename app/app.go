@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	C "gamelink-go/common"
 	"gamelink-go/config"
 	"gamelink-go/storage"
@@ -23,8 +24,8 @@ type (
 )
 
 //ConnectDataBases - tries to connect to all databases required to function of the app. Method can be recalled.
-func (a *App) ConnectDataBases() error {
-	if err := a.dbs.Connect(); err != nil {
+func (a *App) ConnectDataBases(ctx context.Context) error {
+	if err := a.dbs.Connect(ctx); err != nil {
 		return err
 	}
 	if err := a.dbs.CheckTables(); err != nil {
